@@ -24,7 +24,6 @@ interface ReaderProps {
 
 type Tool = 'view' | 'highlight' | 'underline' | 'box' | 'note';
 
-// مجموعة ألوان موسعة (8 ألوان) كما طلب المستخدم
 const COLORS = [
   { name: 'Yellow', hex: '#fbbf24' },
   { name: 'Red', hex: '#ef4444' },
@@ -83,7 +82,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const starThreshold = 900;
   const minsToNextStar = Math.ceil((starThreshold - (totalSeconds % starThreshold)) / 60);
 
-  // منطق إخفاء العناصر التلقائي في وضع الزن (Zen Mode)
   useEffect(() => {
     if (isZenMode) {
       setShowControls(false);
@@ -99,7 +97,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     if (controlsTimeoutRef.current) window.clearTimeout(controlsTimeoutRef.current);
     controlsTimeoutRef.current = window.setTimeout(() => {
       setShowControls(false);
-    }, 3500); // إخفاء بعد 3.5 ثانية من الخمول
+    }, 3500);
   };
 
   useEffect(() => {
@@ -160,12 +158,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     if (audioRef.current) {
       audioRef.current.pause();
       if (sound.id !== 'none') {
-        // نستخدم المسار المطلق من الجذر لضمان الوصول للملفات في مجلد public
         audioRef.current.src = sound.url;
         audioRef.current.load();
         audioRef.current.play().catch(err => {
           console.error("Audio Playback Error:", err);
-          // محاولة بمسار نسبي كبديل (خاص ببعض أنواع الاستضافة)
           if (audioRef.current) {
             audioRef.current.src = `.${sound.url}`;
             audioRef.current.play().catch(e => console.error("Secondary Path Failure:", e));
@@ -179,9 +175,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const getRelativeCoords = (clientX: number, clientY: number) => {
     if (!pageRef.current) return { x: 0, y: 0 };
     const rect = pageRef.current.getBoundingClientRect();
+    const rawX = ((clientX - rect.left) / rect.width) * 100;
+    const rawY = ((clientY - rect.top) / rect.height) * 100;
     return {
-      x: ((clientX - rect.left) / rect.width) * 100,
-      y: ((clientY - rect.top) / rect.height) * 100
+      x: Math.max(0.1, Math.min(99.9, rawX)),
+      y: Math.max(0.1, Math.min(99.9, rawY))
     };
   };
 
@@ -201,6 +199,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     }
     setIsDrawing(true);
     setStartPos({ x, y });
+    setCurrentRect({ x, y, w: 0, h: 0 });
   };
 
   const handleMove = (clientX: number, clientY: number) => {
@@ -208,19 +207,22 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     const { x: currentX, y: currentY } = getRelativeCoords(clientX, clientY);
     setCurrentRect({
       x: Math.min(startPos.x, currentX), y: Math.min(startPos.y, currentY),
-      w: Math.abs(currentX - startPos.x), h: Math.abs(currentY - startPos.y)
+      w: Math.max(0.1, Math.abs(currentX - startPos.x)), 
+      h: Math.max(0.1, Math.abs(currentY - startPos.y))
     });
   };
 
   const handleEnd = () => {
-    if (!isDrawing || !currentRect) { setIsDrawing(false); return; }
-    const newAnno: Annotation = {
-      id: Math.random().toString(36).substr(2, 9),
-      type: activeTool as any, pageIndex: currentPage, x: currentRect.x, y: currentRect.y,
-      width: currentRect.w, height: activeTool === 'underline' ? 0.8 : currentRect.h,
-      color: activeColor, text: ''
-    };
-    setAnnotations([...annotations, newAnno]);
+    if (!isDrawing) return;
+    if (currentRect && currentRect.w > 0.4 && currentRect.h > 0.4) {
+      const newAnno: Annotation = {
+        id: Math.random().toString(36).substr(2, 9),
+        type: activeTool as any, pageIndex: currentPage, x: currentRect.x, y: currentRect.y,
+        width: currentRect.w, height: activeTool === 'underline' ? 0.8 : currentRect.h,
+        color: activeColor, text: ''
+      };
+      setAnnotations([...annotations, newAnno]);
+    }
     setIsDrawing(false);
     setCurrentRect(null);
   };
@@ -237,14 +239,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     >
       <audio ref={audioRef} loop hidden />
 
-      {/* شريط التحكم العلوي */}
       <AnimatePresence>
         {showControls && (
           <motion.header 
             initial={{ y: -100, opacity: 0 }} 
             animate={{ y: 0, opacity: 1 }} 
             exit={{ y: -100, opacity: 0 }} 
-            className="fixed top-0 left-0 right-0 p-3 md:p-8 flex items-center justify-between z-[1100] bg-gradient-to-b from-black via-black/80 to-transparent pointer-events-none"
+            className="fixed top-0 left-0 right-0 p-4 md:p-8 flex items-center justify-between z-[1100] bg-gradient-to-b from-black via-black/80 to-transparent pointer-events-none"
           >
             <div className="flex items-center gap-2 md:gap-3 pointer-events-auto">
               <button onClick={onBack} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white/5 rounded-full text-white/60 hover:bg-white/10 active:scale-90"><ChevronLeft size={20} className={isRTL ? "rotate-180" : ""} /></button>
@@ -253,7 +254,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             </div>
 
             <div className="flex flex-col items-center gap-2 pointer-events-auto">
-              {/* لوحة الألوان الموسعة */}
               <AnimatePresence>
                 {activeTool !== 'view' && (
                   <motion.div 
@@ -274,30 +274,26 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 )}
               </AnimatePresence>
 
-              <div className="flex items-center gap-1 md:gap-2 bg-black/60 backdrop-blur-xl p-1 md:p-1.5 rounded-full border border-white/10 overflow-x-auto no-scrollbar max-w-[65vw]">
+              <div className="flex items-center gap-1 md:gap-2 bg-black/60 backdrop-blur-xl p-1 md:p-1.5 rounded-full border border-white/10 overflow-x-auto no-scrollbar max-w-[55vw]">
                 {[{id: 'view', icon: MousePointer2}, {id: 'highlight', icon: Highlighter}, {id: 'underline', icon: PenTool}, {id: 'box', icon: Square}, {id: 'note', icon: MessageSquare}].map(tool => (
                   <button 
                     key={tool.id} 
                     onClick={() => setActiveTool(tool.id as Tool)} 
-                    className={`p-2.5 md:p-4 rounded-full transition-all shrink-0 ${activeTool === tool.id ? 'bg-white text-black shadow-lg' : 'text-white/40 hover:bg-white/5'}`}
+                    className={`p-2 md:p-3.5 rounded-full transition-all shrink-0 ${activeTool === tool.id ? 'bg-white text-black shadow-lg' : 'text-white/40 hover:bg-white/5'}`}
                   >
-                    <tool.icon size={16} className="md:size-5" />
+                    <tool.icon size={16} />
                   </button>
                 ))}
               </div>
             </div>
 
             <div className="flex items-center gap-2 md:gap-3 pointer-events-auto">
-              <button onClick={() => setIsZenMode(!isZenMode)} className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full transition-all active:scale-90 ${isZenMode ? 'bg-[#ff0000] text-white' : 'bg-white/5 text-white/40'}`}>
-                {isZenMode ? <Minimize2 size={20} className="md:size-6" /> : <Maximize2 size={20} className="md:size-6" />}
-              </button>
-              <div className="hidden md:flex w-12 h-12 items-center justify-center bg-white/5 rounded-full border border-[#ff0000]/30 shadow-inner"><Star size={20} className="text-[#ff0000] fill-[#ff0000]" /></div>
+              <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white/5 rounded-full border border-[#ff0000]/20"><Star size={18} className="text-[#ff0000] fill-[#ff0000]/20" /></div>
             </div>
           </motion.header>
         )}
       </AnimatePresence>
 
-      {/* مساحة العرض الرئيسية */}
       <main className={`flex-1 flex items-center justify-center bg-black transition-all duration-1000 ${isZenMode ? 'p-0' : 'p-2 md:p-4'}`}>
         {!isLoading && (
           <motion.div 
@@ -309,10 +305,17 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             onTouchStart={(e) => handleStart(e.touches[0].clientX, e.touches[0].clientY)}
             onTouchMove={(e) => handleMove(e.touches[0].clientX, e.touches[0].clientY)}
             onTouchEnd={handleEnd}
-            className={`relative bg-white shadow-2xl overflow-hidden transition-all duration-700 ${isZenMode ? 'h-screen w-auto aspect-[1/1.41] shadow-[0_0_100px_rgba(255,255,255,0.06)]' : 'max-h-[82vh] md:max-h-[85vh] w-auto aspect-[1/1.41] rounded-lg'}`}
+            className={`relative bg-white shadow-2xl overflow-hidden transition-all duration-700 ${isZenMode ? 'h-screen w-auto aspect-[1/1.41] shadow-[0_0_100px_rgba(255,255,255,0.06)]' : 'max-h-[82vh] md:max-h-[85vh] w-auto aspect-[1/1.41] rounded-lg md:rounded-2xl'}`}
           >
             <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none" alt="Page" />
             
+            {/* مؤقت القراءة الأنيق والمتهج */}
+            <div className="absolute bottom-5 left-0 right-0 text-center pointer-events-none z-[20]">
+              <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.4em] text-red-600/80 drop-shadow-[0_0_5px_rgba(220,38,38,0.6)]">
+                {sessionMinutes}MIN READING
+              </span>
+            </div>
+
             <div className="absolute inset-0 pointer-events-none">
               {annotations.filter(a => a.pageIndex === currentPage).map(anno => (
                 <div 
@@ -321,14 +324,14 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   onClick={() => setEditingAnnoId(anno.id)}
                   style={{ 
                     left: `${anno.x}%`, top: `${anno.y}%`, 
-                    width: anno.width ? `${anno.width}%` : 'auto', 
-                    height: anno.height ? `${anno.height}%` : 'auto', 
+                    width: anno.width ? `${anno.width}%` : '0%', 
+                    height: anno.height ? `${anno.height}%` : '0%', 
                     backgroundColor: anno.type === 'highlight' ? `${anno.color}66` : 'transparent',
                     borderBottom: anno.type === 'underline' ? `3px solid ${anno.color}` : 'none',
                     border: anno.type === 'box' ? `2px solid ${anno.color}` : 'none'
                   }}
                 >
-                  {anno.type === 'note' && <div className="w-6 h-6 md:w-7 md:h-7 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff0000] text-white flex items-center justify-center shadow-2xl border-2 border-white"><MessageSquare size={10} className="md:size-12" /></div>}
+                  {anno.type === 'note' && <div className="w-6 h-6 md:w-8 md:h-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff0000] text-white flex items-center justify-center shadow-2xl border-2 border-white"><MessageSquare size={10} className="md:size-4" /></div>}
                 </div>
               ))}
               {currentRect && (
@@ -357,60 +360,64 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </main>
 
-      {/* شريط التنقل السفلي */}
+      {/* الشريط السفلي الأنيق - ZEN STYLE UI */}
       <AnimatePresence>
         {showControls && (
           <motion.div 
-            initial={{ y: 100, opacity: 0 }} 
-            animate={{ y: 0, opacity: 1 }} 
-            exit={{ y: 100, opacity: 0 }} 
-            className="fixed bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 z-[1100] flex items-center gap-3 md:gap-4 bg-black/80 backdrop-blur-2xl border border-white/10 px-4 md:px-6 py-2.5 md:py-3 rounded-full shadow-2xl scale-[0.85] md:scale-100"
+            initial={{ y: 80, opacity: 0, x: '-50%' }} 
+            animate={{ y: 0, opacity: 1, x: '-50%' }} 
+            exit={{ y: 80, opacity: 0, x: '-50%' }} 
+            className="fixed bottom-6 md:bottom-10 left-1/2 z-[1100] flex items-center justify-between gap-4 md:gap-8 bg-black/70 backdrop-blur-2xl border border-white/10 px-5 py-2 md:py-3 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-[85vw] max-w-[440px] border-t border-[#ff0000]/10"
           >
-            <button onClick={() => handlePageChange(currentPage - 1)} className="p-2 text-white/40 hover:text-white active:scale-90"><ChevronLeft size={20} className="md:size-6"/></button>
-            
-            <button 
-              onClick={() => setIsGoToPageOpen(true)} 
-              className="px-3 md:px-4 py-1.5 md:py-2 flex items-center gap-2 md:gap-3 group bg-white/5 rounded-full hover:bg-white/10 transition-all"
-            >
-              <Search size={14} className="text-white/20 group-hover:text-[#ff0000] transition-colors" />
-              <span className="text-[10px] md:text-sm font-black tracking-widest text-white uppercase group-hover:text-[#ff0000] transition-colors">{currentPage + 1} / {totalPages}</span>
-            </button>
-            
-            <button onClick={() => handlePageChange(currentPage + 1)} className="p-2 text-white/40 hover:text-white active:scale-90"><ChevronRight size={20} className="md:size-6"/></button>
-            
-            <div className="w-[1px] h-4 bg-white/10 mx-1" />
-            
-            <div className="flex items-center gap-3">
-               <div className="flex items-center gap-1.5">
-                  <Clock size={12} className="text-white/40 md:size-3.5" />
-                  <span className="text-[9px] md:text-[10px] font-black text-white/60">{sessionMinutes}m</span>
-               </div>
-               <div className="hidden md:flex items-center gap-1.5 border-l border-white/10 pl-3">
-                  <Sparkles size={14} className="text-[#ff0000] animate-pulse" />
-                  <span className="text-[10px] font-black text-[#ff0000]">{minsToNextStar}m</span>
-               </div>
+            <div className="flex items-center gap-1 md:gap-2">
+              <button onClick={() => handlePageChange(currentPage - 1)} className="p-1.5 md:p-2 text-white/30 hover:text-white transition-colors active:scale-90"><ChevronLeft size={18} /></button>
+              
+              <button 
+                onClick={() => setIsGoToPageOpen(true)} 
+                className="px-3 md:px-5 py-1.5 flex items-center gap-2.5 group bg-white/5 rounded-full hover:bg-white/10 transition-all border border-white/5"
+              >
+                <Search size={14} className="text-white/20 group-hover:text-[#ff0000] transition-colors" />
+                <span className="text-[9px] md:text-xs font-black tracking-[0.3em] text-white uppercase group-hover:text-[#ff0000] transition-colors">
+                  {currentPage + 1}<span className="opacity-10 mx-1">/</span>{totalPages}
+                </span>
+              </button>
+              
+              <button onClick={() => handlePageChange(currentPage + 1)} className="p-1.5 md:p-2 text-white/30 hover:text-white transition-colors active:scale-90"><ChevronRight size={18} /></button>
+            </div>
+
+            <div className="w-[1px] h-3.5 bg-white/10" />
+
+            <div className="flex items-center gap-2 pr-1 md:pr-2">
+              <Sparkles size={14} className="text-[#ff0000] animate-pulse" />
+              <span className="text-[8px] md:text-[10px] font-black text-[#ff0000] tracking-widest uppercase">
+                {minsToNextStar}m NEXT
+              </span>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* زر الخروج من وضع الزن في حال إخفاء الواجهة */}
+      {/* زر وضع الاستغراق - أسفل اليسار */}
       <AnimatePresence>
-        {isZenMode && !showControls && (
+        {(!isZenMode || showControls) && (
           <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.15 }}
-            whileHover={{ opacity: 1, scale: 1.1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsZenMode(false)}
-            className="fixed bottom-6 right-6 p-4 md:p-5 rounded-full bg-white/5 border border-white/10 text-white z-[1200] backdrop-blur-md shadow-2xl"
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -30 }}
+            onClick={() => setIsZenMode(!isZenMode)}
+            className={`fixed bottom-6 left-5 md:left-8 w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-full z-[1200] backdrop-blur-3xl transition-all active:scale-90 border shadow-2xl ${isZenMode ? 'bg-[#ff0000] text-white border-white/20 shadow-[#ff0000]/50 scale-105' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:border-white/20'}`}
           >
-            <Minimize2 size={20} className="md:size-6" />
+            {isZenMode ? <Minimize2 size={22} /> : <Maximize2 size={22} />}
           </motion.button>
         )}
       </AnimatePresence>
 
-      {/* النوافذ المنبثقة */}
+      {/* توقيع المطور - صغير جداً */}
+      <div className="fixed bottom-2 left-0 right-0 text-center pointer-events-none opacity-10 z-[1001]">
+        <span className="text-[6px] md:text-[8px] font-black uppercase tracking-[0.8em] text-white font-en">Developed By Oussama SEBROU</span>
+      </div>
+
+      {/* Modals */}
       <AnimatePresence>
         {isSoundPickerOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4">
