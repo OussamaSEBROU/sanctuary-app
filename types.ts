@@ -10,7 +10,7 @@ export interface Annotation {
   type: 'highlight' | 'underline' | 'box' | 'note';
   pageIndex: number;
   x: number; // Percentage
-  y: number; // Percentage
+  y: number; // Percentageض
   width?: number; // Percentage
   height?: number; // Percentage
   text?: string; // For notes
@@ -28,6 +28,7 @@ export interface Book {
   stars: number;
   addedAt: number;
   lastReadAt?: number;
+  lastPage?: number; // New field to resume reading
   annotations?: Annotation[];
 }
 
