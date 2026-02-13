@@ -8,7 +8,7 @@ import { pdfStorage } from '../services/pdfStorage';
 import { 
   ChevronLeft, ChevronRight, Maximize2, Highlighter, 
   PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
-  ListOrdered, Minimize2, Star, Trophy, Info, Bookmark, Clock, Hash
+  ListOrdered, Minimize2, Star, Trophy, Info, Bookmark, Clock, Hash, Zap
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -49,14 +49,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [isGoToPageOpen, setIsGoToPageOpen] = useState(false);
   const [targetPageInput, setTargetPageInput] = useState('');
   const [sessionSeconds, setSessionSeconds] = useState(0);
+  const [isFlowActive, setIsFlowActive] = useState(false);
 
   const touchStartRef = useRef<number | null>(null);
-
-  const t = translations[lang];
   const timerRef = useRef<number | null>(null);
   const controlTimeoutRef = useRef<number | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const t = translations[lang];
   const isRTL = lang === 'ar';
   const fontClass = isRTL ? 'font-ar' : 'font-en';
 
@@ -103,6 +104,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     storageService.updateBookAnnotations(book.id, annotations);
   }, [annotations]);
 
+  // خوارزمية تتبع حالة "التدفق" (Flow State Detection)
+  useEffect(() => {
+    if (sessionSeconds > 300) { // بعد 5 دقائق من القراءة المستمرة
+      setIsFlowActive(true);
+    }
+  }, [sessionSeconds]);
+
   const handlePageChange = (newPage: number) => {
     if (newPage >= 0 && newPage < totalPages) {
       setCurrentPage(newPage);
@@ -128,7 +136,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         if (!isArchiveOpen && editingAnnoId === null && !isGoToPageOpen) {
           setShowControls(false);
         }
-      }, 5000);
+      }, isFlowActive ? 3000 : 5000); // تسريع التلاشي في وضع التدفق
     };
 
     window.addEventListener('mousemove', handleActivity);
@@ -138,7 +146,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       window.removeEventListener('mousemove', handleActivity);
       window.removeEventListener('touchstart', handleActivity);
     };
-  }, [isArchiveOpen, editingAnnoId, isGoToPageOpen]);
+  }, [isArchiveOpen, editingAnnoId, isGoToPageOpen, isFlowActive]);
 
   const toggleZenMode = async () => {
     const nextState = !isZenMode;
@@ -164,9 +172,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       if (isTouch) touchStartRef.current = clientX;
       return;
     }
-    
     const { x, y } = getRelativeCoords(clientX, clientY);
-
     if (activeTool === 'note') {
       const newNote: Annotation = {
         id: Math.random().toString(36).substr(2, 9),
@@ -208,13 +214,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       }
       touchStartRef.current = null;
     }
-
     if (!isDrawing || !currentRect) {
       setIsDrawing(false);
       setCurrentRect(null);
       return;
     }
-    
     const newAnno: Annotation = {
       id: Math.random().toString(36).substr(2, 9),
       type: activeTool as any,
@@ -234,10 +238,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     setCurrentRect(null);
   };
 
-  const deleteAnnotation = (id: string) => {
-    setAnnotations(annotations.filter(a => a.id !== id));
-  };
-
   const sessionMinutes = Math.floor(sessionSeconds / 60);
   const progress = totalPages > 0 ? ((currentPage + 1) / totalPages) * 100 : 0;
   const currentPageAnnos = annotations.filter(a => a.pageIndex === currentPage);
@@ -245,17 +245,26 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   return (
     <div ref={containerRef} className={`h-screen flex flex-col bg-black overflow-hidden select-none relative ${fontClass}`} dir={isRTL ? 'rtl' : 'ltr'}>
       
-      {/* Permanent Small Red Session Timer at Bottom - Always Visible */}
-      <div className={`fixed bottom-2 left-1/2 -translate-x-1/2 z-[1005] transition-opacity duration-1000 ${showControls ? 'opacity-50' : 'opacity-30'}`}>
-        <div className="flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded-full border border-[#ff0000]/10">
-          <Clock size={8} className="text-[#ff0000]" />
-          <span className="text-[8px] md:text-[10px] font-black tracking-widest text-[#ff0000] uppercase">
+      {/* خوارزمية النبض البصري (Biometric Sync) */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+         <motion.div 
+            animate={{ opacity: [0.02, 0.05, 0.02] }} 
+            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+            className="w-full h-full bg-[#ff0000]/10 blur-[120px]"
+         />
+      </div>
+
+      {/* المؤقت الأحمر الخافت */}
+      <div className={`fixed bottom-2 left-1/2 -translate-x-1/2 z-[1005] transition-opacity duration-1000 ${showControls ? 'opacity-50' : 'opacity-20'}`}>
+        <div className="flex items-center gap-1.5 bg-black/40 px-3 py-1 rounded-full border border-[#ff0000]/10">
+          <Clock size={8} className={`${isFlowActive ? 'text-[#ff0000] animate-pulse' : 'text-white/40'}`} />
+          <span className={`text-[8px] md:text-[10px] font-black tracking-widest uppercase ${isFlowActive ? 'text-[#ff0000]' : 'text-white/40'}`}>
             {sessionMinutes}{lang === 'ar' ? ' د' : 'm'}
+            {isFlowActive && <Zap size={8} className="inline ml-1 mb-0.5" />}
           </span>
         </div>
       </div>
 
-      {/* Wisdom Archive Overlay */}
       <AnimatePresence>
         {isArchiveOpen && (
           <motion.div initial={{ x: isRTL ? '100%' : '-100%' }} animate={{ x: 0 }} exit={{ x: isRTL ? '100%' : '-100%' }} className={`fixed inset-y-0 ${isRTL ? 'right-0' : 'left-0'} w-full md:w-[450px] z-[2000] bg-[#0a0a0a]/95 backdrop-blur-3xl border-${isRTL ? 'l' : 'r'} border-white/10 shadow-2xl flex flex-col`}>
@@ -280,7 +289,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </AnimatePresence>
 
-      {/* Go To Page Modal */}
       <AnimatePresence>
         {isGoToPageOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3500] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl">
@@ -292,22 +300,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   <p className="text-[10px] font-black opacity-30 uppercase tracking-[0.2em]">{t.page} 1 - {totalPages}</p>
                 </div>
                 <form onSubmit={handleGoToPage} className="flex gap-2">
-                  <input 
-                    autoFocus
-                    type="number"
-                    min="1"
-                    max={totalPages}
-                    value={targetPageInput}
-                    onChange={(e) => setTargetPageInput(e.target.value)}
-                    placeholder="e.g. 42"
-                    className="flex-1 bg-white/5 border border-white/10 p-5 rounded-2xl text-white font-black text-center outline-none focus:border-[#ff0000]/50 transition-all"
-                  />
-                  <button 
-                    type="submit"
-                    className="px-6 bg-[#ff0000] text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all"
-                  >
-                    {t.jump}
-                  </button>
+                  <input autoFocus type="number" min="1" max={totalPages} value={targetPageInput} onChange={(e) => setTargetPageInput(e.target.value)} placeholder="e.g. 42" className="flex-1 bg-white/5 border border-white/10 p-5 rounded-2xl text-white font-black text-center outline-none focus:border-[#ff0000]/50 transition-all" />
+                  <button type="submit" className="px-6 bg-[#ff0000] text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all">{t.jump}</button>
                 </form>
              </motion.div>
           </motion.div>
@@ -338,7 +332,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   </div>
                 </div>
                 <div className="flex items-center justify-between mt-8 pt-8 border-t border-white/5">
-                  <button onClick={() => { deleteAnnotation(editingAnnoId!); setEditingAnnoId(null); }} className="p-4 bg-red-600/10 text-red-600 hover:bg-red-600 hover:text-white transition-all rounded-2xl"><Trash2 size={20} /></button>
+                  <button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} className="p-4 bg-red-600/10 text-red-600 hover:bg-red-600 hover:text-white transition-all rounded-2xl"><Trash2 size={20} /></button>
                   <button onClick={() => setEditingAnnoId(null)} className="px-10 py-5 bg-[#ff0000] text-white font-black uppercase text-xs tracking-[0.3em] rounded-2xl shadow-xl">{t.save}</button>
                 </div>
              </motion.div>
@@ -367,11 +361,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   </div>
                 </div>
             </div>
-            <AnimatePresence>
-              {activeTool !== 'view' && (
-                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex justify-center mt-2"><div className="flex items-center gap-2.5 bg-black/40 backdrop-blur-3xl px-4 py-1.5 rounded-full border border-white/10">{COLORS.map(c => (<button key={c.hex} onClick={() => setActiveColor(c.hex)} className={`w-5 h-5 md:w-6 md:h-6 rounded-full border-2 transition-all ${activeColor === c.hex ? 'border-white scale-125 shadow-lg' : 'border-transparent opacity-40 hover:opacity-100'}`} style={{ backgroundColor: c.hex }} />))}</div></motion.div>
-              )}
-            </AnimatePresence>
           </motion.header>
         )}
       </AnimatePresence>
@@ -380,9 +369,19 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         {isLoading ? (
           <div className="flex flex-col items-center gap-6"><div className="w-12 h-12 border-2 border-[#ff0000]/20 border-t-[#ff0000] rounded-full animate-spin" /></div>
         ) : (
-          <div className="relative h-full w-full flex items-center justify-center">
+          <div className="relative h-full w-full flex items-center justify-center z-10">
             <div ref={pageRef} onMouseDown={(e) => handleStart(e.clientX, e.clientY)} onMouseMove={(e) => handleMove(e.clientX, e.clientY)} onMouseUp={() => handleEnd()} onTouchStart={(e) => { if(activeTool !== 'view') e.preventDefault(); handleStart(e.touches[0].clientX, e.touches[0].clientY, true); }} onTouchMove={(e) => { if(activeTool !== 'view') e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); }} onTouchEnd={(e) => handleEnd(e.changedTouches[0].clientX)} className={`relative shadow-2xl border border-white/5 overflow-hidden transition-all duration-700 touch-none ${activeTool === 'view' ? 'cursor-default' : 'cursor-crosshair'} ${isZenMode ? 'h-full w-auto' : 'max-h-[85vh] h-full w-auto aspect-[1/1.41] bg-white'}`}>
               <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none" alt="Page" />
+              
+              {/* Cognitive Pacer - خط أحمر خافت جداً للمساعدة على القراءة */}
+              {isFlowActive && !isDrawing && activeTool === 'view' && (
+                <motion.div 
+                   animate={{ y: ["0%", "100%", "0%"] }}
+                   transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+                   className="absolute left-0 right-0 h-[1px] bg-[#ff0000]/5 shadow-[0_0_10px_rgba(255,0,0,0.1)] pointer-events-none"
+                />
+              )}
+
               <div className="absolute inset-0 pointer-events-none">
                 {currentPageAnnos.map(anno => (
                   <div key={anno.id} className="absolute group pointer-events-auto cursor-pointer" onClick={() => setEditingAnnoId(anno.id)} style={{ left: `${anno.x}%`, top: `${anno.y}%`, width: anno.width ? `${anno.width}%` : 'auto', height: anno.height ? `${anno.height}%` : 'auto', backgroundColor: anno.type === 'highlight' ? `${anno.color}44` : 'transparent', borderBottom: anno.type === 'underline' ? `3px solid ${anno.color}` : 'none', border: anno.type === 'box' ? `2px solid ${anno.color}` : 'none' }}>
@@ -396,16 +395,12 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </main>
 
-      {/* Floating Slimmed Navigation Bar for Mobile */}
       <AnimatePresence>
         {showControls && (
           <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="fixed bottom-8 md:bottom-10 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-2 md:gap-3 bg-black/50 backdrop-blur-3xl border border-white/10 px-4 py-2 rounded-full shadow-2xl scale-[0.85] md:scale-100">
             <div className="flex items-center gap-4 text-white/40">
               <button onClick={() => handlePageChange(currentPage - 1)} className="hover:text-white p-1"><ChevronLeft size={16}/></button>
-              <button 
-                onClick={() => setIsGoToPageOpen(true)}
-                className="flex items-center gap-1 font-black text-[9px] tracking-widest text-white hover:text-[#ff0000] transition-colors"
-              >
+              <button onClick={() => setIsGoToPageOpen(true)} className="flex items-center gap-1 font-black text-[9px] tracking-widest text-white hover:text-[#ff0000] transition-colors">
                 <span>{currentPage + 1}</span><span className="opacity-10">/</span><span className="opacity-30">{totalPages}</span>
               </button>
               <button onClick={() => handlePageChange(currentPage + 1)} className="hover:text-white p-1"><ChevronRight size={16}/></button>
