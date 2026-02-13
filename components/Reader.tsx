@@ -337,42 +337,42 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] bg-black/98 backdrop-blur-3xl flex flex-col items-center justify-center p-10 text-center">
             <Star size={70} className="text-[#ff0000] fill-[#ff0000] drop-shadow-[0_0_50px_rgba(255,0,0,1)] mb-6 md:size-[120px]" />
             <h2 className="text-xl md:text-7xl font-black italic text-white uppercase mb-6">{t.starAchieved}</h2>
-            <button onClick={() => setShowStarCelebration(false)} className="px-8 py-3 bg-red-600 text-white font-black uppercase text-xs tracking-[0.3em] rounded-full">{t.continueJourney}</button>
+            <button onClick={() => setShowStarCelebration(false)} className="px-10 py-4 bg-red-600 text-white font-black uppercase text-xs tracking-[0.3em] rounded-full">{t.continueJourney}</button>
           </motion.div>
         )}
       </AnimatePresence>
 
       <AnimatePresence>
         {showControls && (
-          <motion.header initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -50, opacity: 0 }} className="fixed top-0 left-0 right-0 flex items-center justify-between p-2 md:p-10 bg-gradient-to-b from-black/95 to-transparent z-[1001]">
-            <div className="flex items-center gap-1 md:gap-5">
-              <button onClick={onBack} className="p-2 md:p-5 bg-white/5 rounded-full text-white/60"><ChevronLeft size={16} className={`${isRTL ? "rotate-180" : ""} md:size-6`} /></button>
-              <button onClick={() => setIsArchiveOpen(true)} className="p-2 md:p-5 bg-white/5 rounded-full text-white/40"><ListOrdered size={16} className="md:size-6" /></button>
-              <button onClick={() => { setIsSoundPickerOpen(true); initAudioEngine(); }} className="p-2 md:p-5 bg-white/5 rounded-full text-white/40"><Volume2 size={16} className="md:size-6" /></button>
+          <motion.header initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -50, opacity: 0 }} className="fixed top-0 left-0 right-0 flex items-center justify-between p-2 md:p-10 bg-gradient-to-b from-black/95 to-transparent z-[1001] pointer-events-none">
+            <div className="flex items-center gap-2 md:gap-5 pointer-events-auto">
+              <button onClick={onBack} className="p-3 md:p-5 bg-white/5 rounded-full text-white/60 hover:bg-white/10 active:scale-90"><ChevronLeft size={20} className={`${isRTL ? "rotate-180" : ""}`} /></button>
+              <button onClick={() => setIsArchiveOpen(true)} className="p-3 md:p-5 bg-white/5 rounded-full text-white/40 hover:bg-white/10 active:scale-90"><ListOrdered size={20} /></button>
+              <button onClick={() => { setIsSoundPickerOpen(true); initAudioEngine(); }} className="p-3 md:p-5 bg-white/5 rounded-full text-white/40 hover:bg-white/10 active:scale-90"><Volume2 size={20} /></button>
             </div>
             
-            <div className="flex items-center gap-1 md:gap-2 bg-black/50 p-1 md:p-1.5 rounded-full border border-white/10 overflow-x-auto no-scrollbar max-w-[40vw] md:max-w-none">
+            <div className="flex items-center gap-1.5 md:gap-3 bg-black/50 p-1.5 md:p-2.5 rounded-full border border-white/10 pointer-events-auto overflow-x-auto no-scrollbar scroll-smooth">
               {[{id: 'view', icon: MousePointer2}, {id: 'highlight', icon: Highlighter}, {id: 'underline', icon: PenTool}, {id: 'box', icon: Square}, {id: 'note', icon: MessageSquare}].map(tool => (
-                <button key={tool.id} onClick={() => { setActiveTool(tool.id as Tool); initAudioEngine(); }} className={`p-1.5 md:p-4 rounded-full transition-all shrink-0 ${activeTool === tool.id ? 'bg-white text-black' : 'text-white/40'}`}><tool.icon size={12} className="md:size-5"/></button>
+                <button key={tool.id} onClick={() => { setActiveTool(tool.id as Tool); initAudioEngine(); }} className={`p-3 md:p-4 rounded-full transition-all shrink-0 active:scale-90 ${activeTool === tool.id ? 'bg-white text-black' : 'text-white/40 hover:bg-white/5'}`}><tool.icon size={16}/></button>
               ))}
             </div>
 
-            <div className="flex items-center gap-1 md:gap-5">
-              <button onClick={toggleZenMode} className="p-2 md:p-5 bg-white/5 rounded-full text-white/40"><Maximize2 size={16} className="md:size-6" /></button>
-              <div className="w-8 h-8 md:w-16 md:h-16 flex items-center justify-center bg-white/5 rounded-full border border-[#ff0000]/30"><Star size={12} className="text-[#ff0000] fill-[#ff0000] md:size-6" /></div>
+            <div className="flex items-center gap-2 md:gap-5 pointer-events-auto">
+              <button onClick={toggleZenMode} className="p-3 md:p-5 bg-white/5 rounded-full text-white/40 active:scale-90"><Maximize2 size={20} /></button>
+              <div className="w-10 h-10 md:w-16 md:h-16 flex items-center justify-center bg-white/5 rounded-full border border-[#ff0000]/30"><Star size={16} className="text-[#ff0000] fill-[#ff0000]" /></div>
             </div>
           </motion.header>
         )}
       </AnimatePresence>
 
-      <main className={`flex-1 relative flex items-center justify-center bg-black transition-all ${isZenMode ? 'p-0' : 'p-2 md:p-14'}`} onMouseDown={initAudioEngine} onTouchStart={initAudioEngine}>
+      <main className={`flex-1 relative flex items-center justify-center bg-black transition-all ${isZenMode ? 'p-0' : 'p-2 md:p-14'}`}>
         {!isLoading && (
-          <div ref={pageRef} onMouseDown={(e) => handleStart(e.clientX, e.clientY)} onMouseMove={(e) => handleMove(e.clientX, e.clientY)} onMouseUp={() => handleEnd()} onTouchStart={(e) => handleStart(e.touches[0].clientX, e.touches[0].clientY, true)} onTouchMove={(e) => handleMove(e.touches[0].clientX, e.touches[0].clientY)} onTouchEnd={(e) => handleEnd(e.changedTouches[0].clientX)} className={`relative shadow-2xl border border-white/10 overflow-hidden bg-white ${isZenMode ? 'h-full w-auto' : 'max-h-[80vh] h-full w-auto aspect-[1/1.41]'}`}>
+          <div ref={pageRef} onMouseDown={(e) => handleStart(e.clientX, e.clientY)} onMouseMove={(e) => handleMove(e.clientX, e.clientY)} onMouseUp={() => handleEnd()} onTouchStart={(e) => handleStart(e.touches[0].clientX, e.touches[0].clientY, true)} onTouchMove={(e) => handleMove(e.touches[0].clientX, e.touches[0].clientY)} onTouchEnd={(e) => handleEnd(e.changedTouches[0].clientX)} className={`relative shadow-2xl border border-white/10 overflow-hidden bg-white ${isZenMode ? 'h-full w-auto' : 'max-h-[85vh] h-full w-auto aspect-[1/1.41]'}`}>
             <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none" alt="Page" />
             <div className="absolute inset-0 pointer-events-none">
               {currentPageAnnos.map(anno => (
                 <div key={anno.id} className="absolute pointer-events-auto" onClick={() => setEditingAnnoId(anno.id)} style={{ left: `${anno.x}%`, top: `${anno.y}%`, width: anno.width ? `${anno.width}%` : 'auto', height: anno.height ? `${anno.height}%` : 'auto', backgroundColor: anno.type === 'highlight' ? `${anno.color}66` : 'transparent', borderBottom: anno.type === 'underline' ? `2px solid ${anno.color}` : 'none', border: anno.type === 'box' ? `1px solid ${anno.color}` : 'none' }}>
-                  {anno.type === 'note' && <div className="w-4 h-4 md:w-6 md:h-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff0000] text-white flex items-center justify-center"><MessageSquare size={8} className="md:size-4" /></div>}
+                  {anno.type === 'note' && <div className="w-5 h-5 md:w-6 md:h-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff0000] text-white flex items-center justify-center"><MessageSquare size={10} /></div>}
                 </div>
               ))}
               {currentRect && <div className="absolute border border-dashed" style={{ left: `${currentRect.x}%`, top: `${currentRect.y}%`, width: `${currentRect.w}%`, height: activeTool === 'underline' ? '1px' : `${currentRect.h}%`, backgroundColor: activeTool === 'highlight' ? `${activeColor}44` : 'transparent', borderColor: activeColor }} />}
@@ -383,19 +383,19 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
       <AnimatePresence>
         {showControls && (
-          <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-2 bg-black/80 backdrop-blur-xl border border-white/10 px-3 py-1.5 rounded-full scale-[0.85] md:scale-100 md:bottom-6 md:px-5 md:py-2.5 md:gap-4">
-            <button onClick={() => handlePageChange(currentPage - 1)} className="text-white/40"><ChevronLeft size={16}/></button>
-            <button onClick={() => setIsGoToPageOpen(true)} className="text-[9px] font-black tracking-widest text-white whitespace-nowrap md:text-xs">
+          <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-3 bg-black/80 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-full scale-[0.9] md:scale-100 md:bottom-10 md:px-6 md:py-3 md:gap-5">
+            <button onClick={() => handlePageChange(currentPage - 1)} className="p-2 text-white/40 active:scale-90"><ChevronLeft size={20}/></button>
+            <button onClick={() => setIsGoToPageOpen(true)} className="px-2 text-[10px] font-black tracking-widest text-white whitespace-nowrap md:text-xs uppercase">
               {currentPage + 1} / {totalPages}
             </button>
-            <button onClick={() => handlePageChange(currentPage + 1)} className="text-white/40"><ChevronRight size={16}/></button>
-            <div className="w-[1px] h-3 bg-white/10 mx-1 md:h-4 md:mx-2" />
-            <div className="flex items-center gap-1"><Clock size={10} className="text-[#ff0000] md:size-3" /><span className="text-[8px] font-black md:text-[10px]">{sessionMinutes}m</span></div>
+            <button onClick={() => handlePageChange(currentPage + 1)} className="p-2 text-white/40 active:scale-90"><ChevronRight size={20}/></button>
+            <div className="w-[1px] h-4 bg-white/10 mx-1 md:mx-2" />
+            <div className="flex items-center gap-1.5"><Clock size={12} className="text-[#ff0000]" /><span className="text-[10px] font-black">{sessionMinutes}m</span></div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="fixed bottom-0 left-0 right-0 h-0.5 bg-white/5 md:h-1"><motion.div className="h-full bg-[#ff0000]" animate={{ width: `${progress}%` }} /></div>
+      <div className="fixed bottom-0 left-0 right-0 h-1 bg-white/5"><motion.div className="h-full bg-[#ff0000]" animate={{ width: `${progress}%` }} /></div>
     </div>
   );
 };
