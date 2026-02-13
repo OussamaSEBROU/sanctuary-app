@@ -8,7 +8,7 @@ import { pdfStorage } from '../services/pdfStorage';
 import { 
   ChevronLeft, ChevronRight, Maximize2, Highlighter, 
   PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
-  ListOrdered, Minimize2, Star, Flame, Trophy, Info
+  ListOrdered, Minimize2, Star, Trophy, Info
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -33,7 +33,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [isZenMode, setIsZenMode] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [pages, setPages] = useState<string[]>([]);
-  // Start from book.lastPage or 0
   const [currentPage, setCurrentPage] = useState(book.lastPage || 0);
   const [isLoading, setIsLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(0);
@@ -47,6 +46,9 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [sessionSeconds, setSessionSeconds] = useState(0);
+
+  // Swipe logic states
+  const touchStartRef = useRef<number | null>(null);
 
   const t = translations[lang];
   const timerRef = useRef<number | null>(null);
@@ -69,10 +71,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       try {
         const pdf = await pdfjsLib.getDocument({ data: fileData }).promise;
         setTotalPages(pdf.numPages);
-        const maxPages = Math.min(pdf.numPages, 200); // Increased limit slightly
+        const maxPages = Math.min(pdf.numPages, 300); 
         for (let i = 1; i <= maxPages; i++) {
           const p = await pdf.getPage(i);
-          const vp = p.getViewport({ scale: 1.5 }); // Lower scale for performance on load
+          const vp = p.getViewport({ scale: 1.5 });
           const cv = document.createElement('canvas');
           cv.height = vp.height; cv.width = vp.width;
           await p.render({ canvasContext: cv.getContext('2d')!, viewport: vp }).promise;
@@ -99,7 +101,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     storageService.updateBookAnnotations(book.id, annotations);
   }, [annotations]);
 
-  // Handle page change and persistence
   const handlePageChange = (newPage: number) => {
     if (newPage >= 0 && newPage < totalPages) {
       setCurrentPage(newPage);
@@ -107,7 +108,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     }
   };
 
-  // Handle auto-hide controls
   useEffect(() => {
     const handleActivity = () => {
       setShowControls(true);
@@ -138,11 +138,23 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     }
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (activeTool === 'view' || !pageRef.current) return;
+  // Shared coordinate extractor for Mouse and Touch
+  const getRelativeCoords = (clientX: number, clientY: number) => {
+    if (!pageRef.current) return { x: 0, y: 0 };
     const rect = pageRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    return {
+      x: ((clientX - rect.left) / rect.width) * 100,
+      y: ((clientY - rect.top) / rect.height) * 100
+    };
+  };
+
+  const handleStart = (clientX: number, clientY: number, isTouch = false) => {
+    if (activeTool === 'view') {
+      if (isTouch) touchStartRef.current = clientX;
+      return;
+    }
+    
+    const { x, y } = getRelativeCoords(clientX, clientY);
 
     if (activeTool === 'note') {
       const newNote: Annotation = {
@@ -162,11 +174,9 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     setStartPos({ x, y });
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDrawing || !pageRef.current) return;
-    const rect = pageRef.current.getBoundingClientRect();
-    const currentX = ((e.clientX - rect.left) / rect.width) * 100;
-    const currentY = ((e.clientY - rect.top) / rect.height) * 100;
+  const handleMove = (clientX: number, clientY: number) => {
+    if (!isDrawing) return;
+    const { x: currentX, y: currentY } = getRelativeCoords(clientX, clientY);
     setCurrentRect({
       x: Math.min(startPos.x, currentX),
       y: Math.min(startPos.y, currentY),
@@ -175,7 +185,23 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     });
   };
 
-  const handleMouseUp = () => {
+  const handleEnd = (clientX?: number) => {
+    // Swipe detection for 'view' tool on touch end
+    if (activeTool === 'view' && touchStartRef.current !== null && clientX !== undefined) {
+      const diff = clientX - touchStartRef.current;
+      const threshold = 50;
+      if (Math.abs(diff) > threshold) {
+        if (isRTL) {
+          if (diff > 0) handlePageChange(currentPage + 1);
+          else handlePageChange(currentPage - 1);
+        } else {
+          if (diff > 0) handlePageChange(currentPage - 1);
+          else handlePageChange(currentPage + 1);
+        }
+      }
+      touchStartRef.current = null;
+    }
+
     if (!isDrawing || !currentRect) {
       setIsDrawing(false);
       setCurrentRect(null);
@@ -326,7 +352,30 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </AnimatePresence>
 
-      <main className={`flex-1 relative flex items-center justify-center overflow-hidden bg-black transition-all duration-1000 ${isZenMode ? 'p-0' : 'p-2 md:p-10'}`}>
+      <main 
+        className={`flex-1 relative flex items-center justify-center overflow-hidden bg-black transition-all duration-1000 ${isZenMode ? 'p-0' : 'p-2 md:p-10'}`}
+        onTouchStart={(e) => {
+          if (activeTool === 'view') {
+             touchStartRef.current = e.touches[0].clientX;
+          }
+        }}
+        onTouchEnd={(e) => {
+          if (activeTool === 'view' && touchStartRef.current !== null) {
+            const clientX = e.changedTouches[0].clientX;
+            const diff = clientX - touchStartRef.current;
+            if (Math.abs(diff) > 50) {
+              if (isRTL) {
+                if (diff > 0) handlePageChange(currentPage + 1);
+                else handlePageChange(currentPage - 1);
+              } else {
+                if (diff > 0) handlePageChange(currentPage - 1);
+                else handlePageChange(currentPage + 1);
+              }
+            }
+            touchStartRef.current = null;
+          }
+        }}
+      >
         {isLoading ? (
           <div className="flex flex-col items-center gap-6">
              <div className="w-12 h-12 border-2 border-[#ff0000]/20 border-t-[#ff0000] rounded-full animate-spin" />
@@ -335,10 +384,21 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
           <div className={`relative h-full w-full flex items-center justify-center transition-all duration-1000 ${isZenMode ? 'scale-100' : 'scale-[0.98]'}`}>
             <div 
               ref={pageRef}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              className={`relative shadow-[0_50px_100px_rgba(0,0,0,0.95)] border border-white/5 overflow-hidden transition-all duration-700
+              onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
+              onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
+              onMouseUp={() => handleEnd()}
+              onTouchStart={(e) => {
+                if (activeTool !== 'view') e.preventDefault();
+                handleStart(e.touches[0].clientX, e.touches[0].clientY, true);
+              }}
+              onTouchMove={(e) => {
+                if (activeTool !== 'view') e.preventDefault();
+                handleMove(e.touches[0].clientX, e.touches[0].clientY);
+              }}
+              onTouchEnd={(e) => {
+                handleEnd(e.changedTouches[0].clientX);
+              }}
+              className={`relative shadow-[0_50px_100px_rgba(0,0,0,0.95)] border border-white/5 overflow-hidden transition-all duration-700 touch-none
                 ${activeTool === 'view' ? 'cursor-default' : 'cursor-crosshair'}
                 ${isZenMode ? 'h-full w-auto' : 'max-h-[85vh] h-full w-auto aspect-[1/1.41] bg-white'}`}
             >
@@ -393,8 +453,19 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               </div>
             </div>
 
-            <div className="absolute inset-y-0 left-0 w-[20%] cursor-pointer z-10" onClick={() => handlePageChange(currentPage - 1)} />
-            <div className="absolute inset-y-0 right-0 w-[20%] cursor-pointer z-10" onClick={() => handlePageChange(currentPage + 1)} />
+            {/* Visual Tap Navigation Guides for Mobile (only in View mode) */}
+            {activeTool === 'view' && (
+              <>
+                <div 
+                  className="absolute inset-y-0 left-0 w-[15%] md:w-[20%] cursor-pointer z-[15] group hidden md:block" 
+                  onClick={() => handlePageChange(currentPage - 1)} 
+                />
+                <div 
+                  className="absolute inset-y-0 right-0 w-[15%] md:w-[20%] cursor-pointer z-[15] group hidden md:block" 
+                  onClick={() => handlePageChange(currentPage + 1)} 
+                />
+              </>
+            )}
           </div>
         )}
       </main>
@@ -409,13 +480,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             className="fixed bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-2 md:gap-3 bg-black/50 backdrop-blur-3xl border border-white/10 px-6 md:px-8 py-3 md:py-4 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
           >
             <div className="flex items-center gap-3 md:gap-4 text-white/40">
-              <button onClick={() => handlePageChange(currentPage - 1)} className="hover:text-white transition-colors"><ChevronLeft size={18}/></button>
+              <button onClick={() => handlePageChange(currentPage - 1)} className="hover:text-white transition-colors p-1"><ChevronLeft size={18}/></button>
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] md:text-[11px] font-black tracking-widest text-white">{currentPage + 1}</span>
                 <span className="text-[9px] md:text-[10px] opacity-10">/</span>
                 <span className="text-[10px] md:text-[11px] font-black tracking-widest text-white/30">{totalPages}</span>
               </div>
-              <button onClick={() => handlePageChange(currentPage + 1)} className="hover:text-white transition-colors"><ChevronRight size={18}/></button>
+              <button onClick={() => handlePageChange(currentPage + 1)} className="hover:text-white transition-colors p-1"><ChevronRight size={18}/></button>
             </div>
             
             <div className="w-[1px] h-3 bg-white/10 mx-1.5" />
@@ -439,7 +510,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </AnimatePresence>
 
-      {/* Persistent Page Progress Line */}
       <div className="fixed bottom-0 left-0 right-0 h-0.5 md:h-1 bg-white/5 z-[1002]">
         <motion.div className="h-full bg-[#ff0000]/40" animate={{ width: `${progress}%` }} />
       </div>
