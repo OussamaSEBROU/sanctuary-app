@@ -29,7 +29,13 @@ export const translations = {
     readingConsistency: 'Cognitive Flow',
     recentActivity: 'Recent Deciphering',
     minutes: 'minutes',
-    hours: 'hours'
+    hours: 'hours',
+    collections: 'Collections',
+    status: 'Status',
+    activeSession: 'Deciphering Active',
+    cognitiveMetrics: 'Cognitive Metrics',
+    newIntake: 'New Intake',
+    establish: 'Establish'
   },
   ar: {
     title: 'SANCTUARY',
@@ -60,6 +66,12 @@ export const translations = {
     readingConsistency: 'التدفق المعرفي',
     recentActivity: 'نشاط الفك والتحليل الأخير',
     minutes: 'دقيقة',
-    hours: 'ساعة'
+    hours: 'ساعة',
+    collections: 'المجموعات',
+    status: 'الحالة',
+    activeSession: 'فك التشفير نشط',
+    cognitiveMetrics: 'تحليلات معرفية',
+    newIntake: 'إدخال جديد',
+    establish: 'إنشاء'
   }
 };
