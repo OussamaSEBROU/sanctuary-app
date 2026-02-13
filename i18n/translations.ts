@@ -38,7 +38,9 @@ export const translations = {
     establish: 'Establish',
     modTitle: 'Modification Title',
     chapterName: 'Chapter / Bab',
-    editDetails: 'Edit Entry Details'
+    editDetails: 'Edit Entry Details',
+    goToPage: 'Go to Page',
+    jump: 'Jump'
   },
   ar: {
     title: 'SANCTUARY',
@@ -78,6 +80,8 @@ export const translations = {
     establish: 'إنشاء',
     modTitle: 'عنوان التعديل',
     chapterName: 'اسم الباب / الفصل',
-    editDetails: 'تعديل بيانات الإدخال'
+    editDetails: 'تعديل بيانات الإدخال',
+    goToPage: 'الذهاب إلى صفحة',
+    jump: 'انتقال'
   }
 };
