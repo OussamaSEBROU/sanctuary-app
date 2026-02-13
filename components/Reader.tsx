@@ -10,7 +10,7 @@ import {
   PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
   ListOrdered, Minimize2, Star, Trophy, Info, Clock, Hash, Zap, PauseCircle,
   Volume2, CloudLightning, Waves, Droplets, Moon, Bird, Flame, Save, ArrowLeft, VolumeX,
-  Sparkles
+  Sparkles, Music
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -31,18 +31,19 @@ const COLORS = [
   { name: 'Purple', hex: '#a855f7' }
 ];
 
-// روابط صوتية مباشرة ومستقرة
+// قمنا بتغيير الروابط إلى مسارات محلية. 
+// يجب عليك إنشاء مجلد اسمه assets/sounds داخل مجلد public في مشروعك
 const SOUNDS = [
   { id: 'none', icon: VolumeX, url: '' },
-  { id: 'rain', icon: CloudLightning, url: 'https://www.soundjay.com/nature/rain-01.mp3' },
-  { id: 'sea', icon: Waves, url: 'https://www.soundjay.com/nature/ocean-wave-1.mp3' },
-  { id: 'river', icon: Droplets, url: 'https://www.soundjay.com/nature/river-1.mp3' },
-  { id: 'night', icon: Moon, url: 'https://www.soundjay.com/nature/cricket-chirping-01.mp3' },
-  { id: 'birds', icon: Bird, url: 'https://www.soundjay.com/nature/canary-singing-01.mp3' },
-  { id: 'fire', icon: Flame, url: 'https://www.soundjay.com/ambient/fire-crackling-01.mp3' }
+  { id: 'rain', icon: CloudLightning, url: '/assets/sounds/rain.mp3' },
+  { id: 'sea', icon: Waves, url: '/assets/sounds/sea.mp3' },
+  { id: 'river', icon: Droplets, url: '/assets/sounds/river.mp3' },
+  { id: 'night', icon: Moon, url: '/assets/sounds/night.mp3' },
+  { id: 'birds', icon: Bird, url: '/assets/sounds/birds.mp3' },
+  { id: 'fire', icon: Flame, url: '/assets/sounds/fire.mp3' }
 ];
 
-const CELEBRATION_SOUND_URL = 'https://www.soundjay.com/human/applause-01.mp3';
+const CELEBRATION_SOUND_URL = '/assets/sounds/celebration.mp3';
 
 export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdate }) => {
   const [isZenMode, setIsZenMode] = useState(false);
@@ -65,13 +66,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [isGoToPageOpen, setIsGoToPageOpen] = useState(false);
   const [isSoundPickerOpen, setIsSoundPickerOpen] = useState(false);
   const [activeSoundId, setActiveSoundId] = useState('none');
+  const [customSoundUrl, setCustomSoundUrl] = useState<string | null>(null);
   const [volume, setVolume] = useState(0.5);
   const [targetPageInput, setTargetPageInput] = useState('');
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [isFlowActive, setIsFlowActive] = useState(false);
   const [isWindowActive, setIsWindowActive] = useState(true);
 
-  // نظام النجوم
   const [showStarCelebration, setShowStarCelebration] = useState(false);
   const prevStarsRef = useRef(book.stars);
 
@@ -80,6 +81,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const controlTimeoutRef = useRef<number | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const soundInputRef = useRef<HTMLInputElement>(null);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const celebrationAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -96,12 +98,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const starProgress = (secondsTowardsNextStar / starThreshold) * 100;
   const minsToNextStar = Math.ceil((starThreshold - secondsTowardsNextStar) / 60);
 
-  // مراقبة تحصيل النجوم للاحتفال
   useEffect(() => {
     if (book.stars > prevStarsRef.current) {
       setShowStarCelebration(true);
       if (celebrationAudioRef.current) {
-        celebrationAudioRef.current.volume = 0.7;
+        celebrationAudioRef.current.volume = 0.8;
         celebrationAudioRef.current.play().catch(e => console.warn("Celebration audio blocked", e));
       }
       prevStarsRef.current = book.stars;
@@ -124,7 +125,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         audioContextRef.current = ctx;
         gainNodeRef.current = gain;
 
-        // تطبيق التضخيم (Gain)
         gain.gain.setValueAtTime(volume * 4, ctx.currentTime);
       } catch (e) {
         console.error("Audio Context Init Failed", e);
@@ -165,18 +165,23 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     }
   }, [volume]);
 
-  // تشغيل الصوت وتكراره
   useEffect(() => {
     if (audioRef.current) {
       if (activeSoundId === 'none') {
         audioRef.current.pause();
         audioRef.current.src = '';
+      } else if (activeSoundId === 'custom' && customSoundUrl) {
+        initAudioEngine();
+        audioRef.current.src = customSoundUrl;
+        audioRef.current.loop = true;
+        audioRef.current.load();
+        audioRef.current.play().catch(e => console.warn("Playback failed", e));
       } else {
         const sound = SOUNDS.find(s => s.id === activeSoundId);
         if (sound && sound.url) {
           initAudioEngine();
           audioRef.current.src = sound.url;
-          audioRef.current.loop = true; // التكرار دائماً
+          audioRef.current.loop = true;
           audioRef.current.load();
           if (isWindowActive) {
             audioRef.current.play().catch(e => console.warn("Playback failed", e));
@@ -184,7 +189,17 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         }
       }
     }
-  }, [activeSoundId, isWindowActive]);
+  }, [activeSoundId, isWindowActive, customSoundUrl]);
+
+  const handleCustomSoundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setCustomSoundUrl(url);
+      setActiveSoundId('custom');
+      setIsSoundPickerOpen(false);
+    }
+  };
 
   useEffect(() => {
     const loadPdfVisuals = async () => {
@@ -220,6 +235,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     return () => { 
       if (timerRef.current) clearInterval(timerRef.current);
       if (controlTimeoutRef.current) clearTimeout(controlTimeoutRef.current);
+      if (customSoundUrl) URL.revokeObjectURL(customSoundUrl);
     };
   }, [book.id]);
 
@@ -369,8 +385,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     <div ref={containerRef} className={`h-screen flex flex-col bg-black overflow-hidden select-none relative ${fontClass}`} dir={isRTL ? 'rtl' : 'ltr'}>
       <audio ref={audioRef} crossOrigin="anonymous" hidden />
       <audio ref={celebrationAudioRef} src={CELEBRATION_SOUND_URL} crossOrigin="anonymous" hidden />
+      <input type="file" ref={soundInputRef} onChange={handleCustomSoundUpload} accept="audio/*" className="hidden" />
       
-      {/* واجهة الاحتفال بالفوز بنجمة */}
       <AnimatePresence>
         {showStarCelebration && (
           <motion.div 
@@ -540,14 +556,14 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       <AnimatePresence>
         {isSoundPickerOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3500] flex items-center justify-center p-6 bg-black/85 backdrop-blur-2xl">
-            <motion.div initial={{ scale: 0.9, y: 40 }} animate={{ scale: 1, y: 0 }} className="bg-[#0f0f0f] border border-white/10 p-12 rounded-[4rem] w-full max-w-md shadow-[0_40px_100px_rgba(0,0,0,0.8)] relative text-center">
-                <button onClick={() => setIsSoundPickerOpen(false)} className="absolute top-10 right-10 p-3 rounded-full bg-white/5 text-white/30 hover:text-white transition-all"><X size={24}/></button>
-                <div className="flex flex-col items-center gap-6 mb-10">
+            <motion.div initial={{ scale: 0.9, y: 40 }} animate={{ scale: 1, y: 0 }} className="bg-[#0f0f0f] border border-white/10 p-12 rounded-[4rem] w-full max-w-md shadow-[0_40px_100px_rgba(0,0,0,0.8)] relative text-center flex flex-col max-h-[90vh] overflow-hidden">
+                <button onClick={() => setIsSoundPickerOpen(false)} className="absolute top-10 right-10 p-3 rounded-full bg-white/5 text-white/30 hover:text-white transition-all z-10"><X size={24}/></button>
+                <div className="flex flex-col items-center gap-6 mb-10 shrink-0">
                   <div className="p-6 bg-[#ff0000]/10 rounded-full text-[#ff0000] shadow-[0_0_30px_rgba(255,0,0,0.3)]"><Volume2 size={32} /></div>
                   <h3 className="text-3xl font-black uppercase italic tracking-tighter">{t.soundscape}</h3>
                 </div>
 
-                <div className="mb-12 px-6 space-y-6 text-left bg-white/5 p-8 rounded-[2.5rem] border border-white/10">
+                <div className="mb-8 px-6 space-y-6 text-left bg-white/5 p-8 rounded-[2.5rem] border border-white/10 shrink-0">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white/40">{t.volume}</span>
                     <span className="text-[12px] font-black text-[#ff0000] bg-black/50 px-3 py-1 rounded-xl shadow-inner">
@@ -567,7 +583,30 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-3 overflow-y-auto custom-scroll pr-2 pb-6">
+                  <button 
+                    onClick={() => soundInputRef.current?.click()}
+                    className="flex items-center justify-between p-6 rounded-[1.8rem] transition-all border bg-[#ff0000]/10 border-dashed border-[#ff0000]/40 text-[#ff0000] hover:bg-[#ff0000]/20"
+                  >
+                    <div className="flex items-center gap-5">
+                      <Music size={20} />
+                      <span className="text-[12px] font-black uppercase tracking-widest">{t.uploadCustomSound}</span>
+                    </div>
+                  </button>
+
+                  {customSoundUrl && (
+                    <button 
+                      onClick={() => { setActiveSoundId('custom'); setIsSoundPickerOpen(false); }}
+                      className={`flex items-center justify-between p-6 rounded-[1.8rem] transition-all border ${activeSoundId === 'custom' ? 'bg-[#ff0000]/15 border-[#ff0000]/40 text-white shadow-lg' : 'bg-white/5 border-transparent text-white/50 hover:bg-white/10'}`}
+                    >
+                      <div className="flex items-center gap-5">
+                        <Music size={20} className={activeSoundId === 'custom' ? 'text-[#ff0000]' : 'text-inherit'} />
+                        <span className="text-[12px] font-black uppercase tracking-widest">{t.custom}</span>
+                      </div>
+                      {activeSoundId === 'custom' && <motion.div layoutId="soundDot" className="w-2 h-2 rounded-full bg-[#ff0000] shadow-[0_0_12px_#ff0000]" />}
+                    </button>
+                  )}
+
                   {SOUNDS.map(sound => (
                     <button 
                       key={sound.id} 
@@ -595,7 +634,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   <button onClick={onBack} className="p-3 md:p-5 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full hover:bg-[#ff0000] text-white/60 hover:text-white transition-all shadow-2xl group"><ChevronLeft size={24} className={`${isRTL ? "rotate-180" : ""} group-hover:scale-110`} /></button>
                   <button onClick={() => setIsArchiveOpen(true)} className="p-3 md:p-5 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full text-white/40 hover:text-white relative transition-all shadow-2xl"><ListOrdered size={24} />{annotations.length > 0 && <div className="absolute top-4 right-4 w-2.5 h-2.5 bg-[#ff0000] rounded-full shadow-[0_0_8px_#ff0000]" />}</button>
                   <button onClick={() => { setIsSoundPickerOpen(true); initAudioEngine(); }} className={`p-3 md:p-5 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full transition-all shadow-2xl ${activeSoundId !== 'none' ? 'text-[#ff0000] border-[#ff0000]/40 bg-[#ff0000]/10' : 'text-white/40 hover:text-white'}`}>
-                    {activeSoundId === 'none' ? <Volume2 size={24} /> : React.createElement(SOUNDS.find(s => s.id === activeSoundId)!.icon, { size: 24 })}
+                    {activeSoundId === 'none' ? <Volume2 size={24} /> : React.createElement((activeSoundId === 'custom' ? Music : SOUNDS.find(s => s.id === activeSoundId)!.icon) as any, { size: 24 })}
                   </button>
                 </div>
 
