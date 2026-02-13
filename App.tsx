@@ -216,7 +216,7 @@ const App: React.FC = () => {
             {view === ViewState.SHELF && (
               <motion.div key="shelf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">
                 <header className="flex flex-col items-center text-center pt-16 md:pt-24 pb-4 md:pb-8 shrink-0">
-                  <h1 className="text-[clamp(3rem,14vw,8.5rem)] font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[0.8] text-center w-full max-w-full overflow-hidden">
+                  <h1 className="text-[clamp(3rem,14vw,8.5rem)] font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[1.1] text-center w-full max-w-full">
                     {t.title}
                   </h1>
                   <p className="shining-text text-[11px] md:text-sm font-bold mt-4 md:mt-8 px-12 max-w-2xl tracking-[0.3em] md:tracking-[0.4em] leading-relaxed opacity-80">
