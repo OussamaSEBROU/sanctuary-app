@@ -103,7 +103,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
           </div>
           <div className="h-8 md:h-10 w-[1px] bg-white/10" />
           <div className="flex flex-col items-center">
-            <div className="flex items-center gap-1.5 md:gap-2.5 text-xs md:text-xl font-black text-white">
+            <div className="flex items-center gap-1.5 md:gap-2.5 text-xs md:text-xl font-black text-[#ff0000]">
               <Clock size={14} className="text-[#ff0000]" />
               {formatTime(activeBook.timeSpentSeconds)}
             </div>
