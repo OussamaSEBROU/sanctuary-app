@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, PanInfo, useSpring } from 'framer-motion';
+import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { Book, Language, Annotation } from '../types';
 import { translations } from '../i18n/translations';
 import { storageService } from '../services/storageService';
@@ -10,7 +10,7 @@ import {
   PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
   ListOrdered, Star, Volume2, CloudLightning, Waves, 
   Moon, Bird, Flame, VolumeX, Sparkles, Search, Droplets, PartyPopper,
-  Minimize2, Edit3, Award, RefreshCw, Layers, LogOut
+  Minimize2, Edit3, Award, Layers, LogOut
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -79,12 +79,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [lastProcessedStars, setLastProcessedStars] = useState(book.stars);
   
-  // Manual Zoom State
-  const [scale, setScale] = useState(1);
-  const springScale = useSpring(scale, { stiffness: 100, damping: 20 });
-  const [lastTap, setLastTap] = useState(0);
-  const [initialPinchDist, setInitialPinchDist] = useState<number | null>(null);
-
   const timerRef = useRef<number | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -95,7 +89,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const isRTL = lang === 'ar';
   const fontClass = isRTL ? 'font-ar' : 'font-en';
 
-  // Star Countdown Calculation: Target is every 15 mins (900s)
   const starThreshold = 900; 
   const secondsIntoCycle = book.timeSpentSeconds % starThreshold;
   const remainingSeconds = starThreshold - secondsIntoCycle;
@@ -180,7 +173,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const handlePageChange = (newPage: number) => {
     if (newPage >= 0 && newPage < totalPages) {
       setCurrentPage(newPage);
-      setScale(1); 
       storageService.updateBookPage(book.id, newPage);
     }
   };
@@ -210,41 +202,18 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   const handleTouchStart = (e: React.TouchEvent) => {
     handleUserActivity();
-    if (e.touches.length === 2) {
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      setInitialPinchDist(dist);
-    } else {
-      const now = Date.now();
-      if (now - lastTap < 300) {
-        setScale(scale === 1 ? 2.5 : 1);
-      }
-      setLastTap(now);
-    }
-
-    if (activeTool !== 'view' && scale === 1 && e.touches.length === 1) {
+    if (activeTool !== 'view' && e.touches.length === 1) {
       handleStart(e.touches[0].clientX, e.touches[0].clientY);
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && initialPinchDist) {
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      const delta = dist / initialPinchDist;
-      setScale(prev => Math.max(1, Math.min(prev * delta, 5)));
-      setInitialPinchDist(dist);
-    } else if (isDrawing && scale === 1 && e.touches.length === 1) {
+    if (isDrawing && e.touches.length === 1) {
       handleMove(e.touches[0].clientX, e.touches[0].clientY);
     }
   };
 
   const handleTouchEnd = () => {
-    setInitialPinchDist(null);
     if (isDrawing) handleEnd();
   };
 
@@ -260,7 +229,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   };
 
   const handleStart = (clientX: number, clientY: number) => {
-    if (activeTool === 'view' || scale > 1) return;
+    if (activeTool === 'view') return;
     const { x, y } = getRelativeCoords(clientX, clientY);
     if (activeTool === 'note') {
       const newNote: Annotation = {
@@ -304,7 +273,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   };
 
   const handleDragEnd = (_event: any, info: PanInfo) => {
-    if (activeTool !== 'view' || scale > 1.1) return;
+    if (activeTool !== 'view') return;
     const threshold = 40;
     if (info.offset.x < -threshold) {
       handlePageChange(currentPage + 1);
@@ -377,9 +346,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             <motion.div 
               ref={pageRef} 
               layout
-              style={{ scale: springScale }}
-              drag={scale > 1.1 ? true : (activeTool === 'view' ? 'x' : false)}
-              dragConstraints={scale > 1.1 ? false : { left: 0, right: 0 }}
+              drag={activeTool === 'view' ? 'x' : false}
+              dragConstraints={{ left: 0, right: 0 }}
               onDragEnd={handleDragEnd}
               onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
               onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
@@ -449,11 +417,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               {sessionMinutes}Min Concentration
             </span>
           </motion.div>
-          {scale > 1.05 && (
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex items-center gap-1 px-3 py-1 rounded-full bg-[#ff0000]/20 border border-[#ff0000]/30 text-[#ff0000] text-[8px] font-black uppercase tracking-widest pointer-events-auto">
-              <Search size={10} /> {scale.toFixed(1)}X (Pinch)
-            </motion.div>
-          )}
         </div>
 
         <AnimatePresence>
@@ -558,7 +521,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                         onClick={() => { handlePageChange(anno.pageIndex); setIsArchiveOpen(false); }} 
                         className="relative p-12 bg-white/[0.03] rounded-[4rem] border border-white/[0.08] flex flex-col gap-8 group hover:border-[#ff0000]/30 transition-all duration-500 cursor-pointer overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.6)]"
                       >
-                        {/* Elegant background highlight */}
                         <div className="absolute -top-10 -right-10 w-48 h-48 bg-[#ff0000]/10 rounded-full blur-[80px] group-hover:bg-[#ff0000]/20 transition-all pointer-events-none" />
                         
                         <div className="flex items-center justify-between z-10 relative">
