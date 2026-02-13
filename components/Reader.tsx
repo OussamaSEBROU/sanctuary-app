@@ -1,0 +1,448 @@
+
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Book, Language, Annotation } from '../types';
+import { translations } from '../i18n/translations';
+import { storageService } from '../services/storageService';
+import { pdfStorage } from '../services/pdfStorage';
+import { 
+  ChevronLeft, ChevronRight, Maximize2, Highlighter, 
+  PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
+  ListOrdered, Minimize2, Star, Flame, Trophy, Info
+} from 'lucide-react';
+
+declare const pdfjsLib: any;
+
+interface ReaderProps {
+  book: Book;
+  lang: Language;
+  onBack: () => void;
+  onStatsUpdate: () => void;
+}
+
+type Tool = 'view' | 'highlight' | 'underline' | 'box' | 'note';
+const COLORS = [
+  { name: 'Yellow', hex: '#fbbf24' },
+  { name: 'Red', hex: '#ef4444' },
+  { name: 'Green', hex: '#22c55e' },
+  { name: 'Blue', hex: '#3b82f6' },
+  { name: 'Purple', hex: '#a855f7' }
+];
+
+export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdate }) => {
+  const [isZenMode, setIsZenMode] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [pages, setPages] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalPages, setTotalPages] = useState(0);
+  
+  const [activeTool, setActiveTool] = useState<Tool>('view');
+  const [activeColor, setActiveColor] = useState(COLORS[0].hex);
+  const [annotations, setAnnotations] = useState<Annotation[]>(book.annotations || []);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+  const [currentRect, setCurrentRect] = useState<{ x: number, y: number, w: number, h: number } | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
+  const [sessionSeconds, setSessionSeconds] = useState(0);
+
+  const t = translations[lang];
+  const timerRef = useRef<number | null>(null);
+  const controlTimeoutRef = useRef<number | null>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isRTL = lang === 'ar';
+  const fontClass = isRTL ? 'font-ar' : 'font-en';
+
+  const totalSeconds = book.timeSpentSeconds;
+  const starThreshold = 900; 
+  const secondsTowardsNextStar = totalSeconds % starThreshold;
+  const starProgress = (secondsTowardsNextStar / starThreshold) * 100;
+  const minsToNextStar = Math.ceil((starThreshold - secondsTowardsNextStar) / 60);
+
+  useEffect(() => {
+    const loadPdfVisuals = async () => {
+      const fileData = await pdfStorage.getFile(book.id);
+      if (!fileData) { onBack(); return; }
+      try {
+        const pdf = await pdfjsLib.getDocument({ data: fileData }).promise;
+        setTotalPages(pdf.numPages);
+        const maxPages = Math.min(pdf.numPages, 100);
+        for (let i = 1; i <= maxPages; i++) {
+          const p = await pdf.getPage(i);
+          const vp = p.getViewport({ scale: 2.0 });
+          const cv = document.createElement('canvas');
+          cv.height = vp.height; cv.width = vp.width;
+          await p.render({ canvasContext: cv.getContext('2d')!, viewport: vp }).promise;
+          setPages(prev => [...prev, cv.toDataURL('image/jpeg', 0.85)]);
+          if (i === 1) setIsLoading(false);
+        }
+      } catch (err) { console.error(err); }
+    };
+    loadPdfVisuals();
+
+    timerRef.current = window.setInterval(() => {
+      setSessionSeconds(s => s + 1);
+      storageService.updateBookStats(book.id, 1);
+      onStatsUpdate();
+    }, 1000);
+
+    return () => { 
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (controlTimeoutRef.current) clearTimeout(controlTimeoutRef.current);
+    };
+  }, [book.id]);
+
+  useEffect(() => {
+    storageService.updateBookAnnotations(book.id, annotations);
+  }, [annotations]);
+
+  // Handle auto-hide controls
+  useEffect(() => {
+    const handleActivity = () => {
+      setShowControls(true);
+      if (controlTimeoutRef.current) clearTimeout(controlTimeoutRef.current);
+      controlTimeoutRef.current = window.setTimeout(() => {
+        if (!isArchiveOpen && editingNoteId === null) {
+          setShowControls(false);
+        }
+      }, 5000);
+    };
+
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('touchstart', handleActivity);
+    handleActivity();
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('touchstart', handleActivity);
+    };
+  }, [isArchiveOpen, editingNoteId]);
+
+  const toggleZenMode = async () => {
+    const nextState = !isZenMode;
+    setIsZenMode(nextState);
+    if (nextState) {
+      if (containerRef.current?.requestFullscreen) containerRef.current.requestFullscreen();
+    } else {
+      if (document.fullscreenElement) document.exitFullscreen();
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (activeTool === 'view' || !pageRef.current) return;
+    const rect = pageRef.current.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+    if (activeTool === 'note') {
+      const newNote: Annotation = {
+        id: Math.random().toString(36).substr(2, 9),
+        type: 'note',
+        pageIndex: currentPage,
+        x, y,
+        text: '',
+        color: activeColor
+      };
+      setAnnotations([...annotations, newNote]);
+      setEditingNoteId(newNote.id);
+      setActiveTool('view');
+      return;
+    }
+    setIsDrawing(true);
+    setStartPos({ x, y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDrawing || !pageRef.current) return;
+    const rect = pageRef.current.getBoundingClientRect();
+    const currentX = ((e.clientX - rect.left) / rect.width) * 100;
+    const currentY = ((e.clientY - rect.top) / rect.height) * 100;
+    setCurrentRect({
+      x: Math.min(startPos.x, currentX),
+      y: Math.min(startPos.y, currentY),
+      w: Math.abs(currentX - startPos.x),
+      h: Math.abs(currentY - startPos.y)
+    });
+  };
+
+  const handleMouseUp = () => {
+    if (!isDrawing || !currentRect) {
+      setIsDrawing(false);
+      setCurrentRect(null);
+      return;
+    }
+    const newAnno: Annotation = {
+      id: Math.random().toString(36).substr(2, 9),
+      type: activeTool as any,
+      pageIndex: currentPage,
+      x: currentRect.x,
+      y: currentRect.y,
+      width: currentRect.w,
+      height: activeTool === 'underline' ? 0.8 : currentRect.h,
+      color: activeColor
+    };
+    setAnnotations([...annotations, newAnno]);
+    setIsDrawing(false);
+    setCurrentRect(null);
+  };
+
+  const deleteAnnotation = (id: string) => {
+    setAnnotations(annotations.filter(a => a.id !== id));
+  };
+
+  const progress = totalPages > 0 ? ((currentPage + 1) / totalPages) * 100 : 0;
+  const currentPageAnnos = annotations.filter(a => a.pageIndex === currentPage);
+
+  return (
+    <div ref={containerRef} className={`h-screen flex flex-col bg-black overflow-hidden select-none relative ${fontClass}`} dir={isRTL ? 'rtl' : 'ltr'}>
+      
+      {/* Wisdom Archive Overlay */}
+      <AnimatePresence>
+        {isArchiveOpen && (
+          <motion.div 
+            initial={{ x: isRTL ? '100%' : '-100%' }} 
+            animate={{ x: 0 }} 
+            exit={{ x: isRTL ? '100%' : '-100%' }} 
+            className={`fixed inset-y-0 ${isRTL ? 'right-0' : 'left-0'} w-full md:w-[450px] z-[2000] bg-[#0a0a0a]/95 backdrop-blur-3xl border-${isRTL ? 'l' : 'r'} border-white/10 shadow-2xl flex flex-col`}
+          >
+            <div className="p-8 border-b border-white/5 flex items-center justify-between">
+               <h3 className="text-xl md:text-2xl font-black italic tracking-tighter flex items-center gap-4"><ListOrdered size={24} className="text-[#ff0000]" /> {t.wisdomIndex}</h3>
+               <button onClick={() => setIsArchiveOpen(false)} className="p-2.5 rounded-full bg-white/5 hover:bg-white/10 transition-all text-white/50"><X size={20}/></button>
+            </div>
+            <div className="flex-1 overflow-y-auto custom-scroll p-6 space-y-4">
+              {annotations.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 opacity-10">
+                  <Info size={32} className="mb-2" />
+                  <p className="text-xs uppercase font-black">{t.noAnnotations}</p>
+                </div>
+              ) : (
+                annotations.sort((a,b) => a.pageIndex - b.pageIndex).map(anno => (
+                  <button 
+                    key={anno.id} 
+                    onClick={() => { setCurrentPage(anno.pageIndex); setIsArchiveOpen(false); }} 
+                    className="w-full text-left p-4 md:p-6 bg-white/[0.03] border border-white/5 rounded-3xl hover:bg-white/[0.08] transition-all flex flex-col gap-2 md:gap-3 group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-[#ff0000]">
+                        {anno.type} • {t.page} {anno.pageIndex + 1}
+                      </span>
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: anno.color }} />
+                    </div>
+                    {anno.type === 'note' && anno.text && (
+                      <p className="text-xs md:text-sm italic opacity-70 line-clamp-2">"{anno.text}"</p>
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Responsive Top Nav */}
+      <AnimatePresence>
+        {showControls && (
+          <motion.header 
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -100, opacity: 0 }}
+            className="fixed top-0 left-0 right-0 flex flex-col gap-2 p-2 md:p-6 bg-gradient-to-b from-black/90 to-transparent z-[1001]"
+          >
+            <div className="flex items-center justify-between w-full">
+                {/* Left side actions */}
+                <div className="flex items-center gap-1.5 md:gap-3">
+                  <button onClick={onBack} className="p-2 md:p-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full hover:bg-[#ff0000] text-white/60 hover:text-white transition-all">
+                    <ChevronLeft size={18} className={isRTL ? "rotate-180" : ""} />
+                  </button>
+                  <button onClick={() => setIsArchiveOpen(true)} className="p-2 md:p-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full text-white/40 hover:text-white relative transition-all">
+                    <ListOrdered size={20} />
+                    {annotations.length > 0 && <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-[#ff0000] rounded-full" />}
+                  </button>
+                </div>
+
+                {/* Center Tool Picker (Compact on Mobile) */}
+                <div className="flex items-center gap-1 bg-white/5 backdrop-blur-3xl p-1 rounded-full border border-white/10 max-w-[45%] md:max-w-none overflow-x-auto no-scrollbar">
+                  {[
+                    {id: 'view', icon: MousePointer2}, 
+                    {id: 'highlight', icon: Highlighter}, 
+                    {id: 'underline', icon: PenTool}, 
+                    {id: 'box', icon: Square},
+                    {id: 'note', icon: MessageSquare}
+                  ].map(tool => (
+                    <button 
+                      key={tool.id} 
+                      onClick={() => setActiveTool(tool.id as Tool)} 
+                      className={`p-2 md:p-3 rounded-full transition-all shrink-0 ${activeTool === tool.id ? 'bg-white text-black shadow-lg' : 'text-white/30 hover:text-white'}`}
+                    >
+                      <tool.icon size={16}/>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Right side status */}
+                <div className="flex items-center gap-1.5 md:gap-3">
+                  <button onClick={toggleZenMode} className={`p-2 md:p-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full transition-all ${isZenMode ? 'text-[#ff0000] border-[#ff0000]/30' : 'text-white/40 hover:text-white'}`}>
+                    {isZenMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                  </button>
+                  <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white/5 backdrop-blur-xl border border-white/10 rounded-full">
+                    <svg className="absolute inset-0 w-full h-full -rotate-90">
+                      <circle cx="50%" cy="50%" r="42%" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/5" />
+                      <circle cx="50%" cy="50%" r="42%" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="100%" strokeDashoffset={`${100 - starProgress}%`} className="text-[#ff0000] transition-all duration-1000" />
+                    </svg>
+                    <Star size={16} className="text-[#ff0000] fill-[#ff0000]" />
+                  </div>
+                </div>
+            </div>
+
+            {/* Color picker (secondary row to avoid overlap) */}
+            <AnimatePresence>
+              {activeTool !== 'view' && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  exit={{ opacity: 0, y: -10 }}
+                  className="flex items-center justify-center gap-3 w-full"
+                >
+                  <div className="flex items-center gap-2.5 bg-black/40 backdrop-blur-3xl px-4 py-1.5 rounded-full border border-white/10 shadow-2xl">
+                    {COLORS.map(c => (
+                      <button 
+                        key={c.hex} 
+                        onClick={() => setActiveColor(c.hex)} 
+                        className={`w-5 h-5 md:w-6 md:h-6 rounded-full border-2 transition-all ${activeColor === c.hex ? 'border-white scale-125 shadow-lg' : 'border-transparent opacity-40 hover:opacity-100'}`} 
+                        style={{ backgroundColor: c.hex }} 
+                      />
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.header>
+        )}
+      </AnimatePresence>
+
+      <main className={`flex-1 relative flex items-center justify-center overflow-hidden bg-black transition-all duration-1000 ${isZenMode ? 'p-0' : 'p-2 md:p-10'}`}>
+        {isLoading ? (
+          <div className="flex flex-col items-center gap-6">
+             <div className="w-12 h-12 border-2 border-[#ff0000]/20 border-t-[#ff0000] rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className={`relative h-full w-full flex items-center justify-center transition-all duration-1000 ${isZenMode ? 'scale-100' : 'scale-[0.98]'}`}>
+            <div 
+              ref={pageRef}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              className={`relative shadow-[0_50px_100px_rgba(0,0,0,0.95)] border border-white/5 overflow-hidden transition-all duration-700
+                ${activeTool === 'view' ? 'cursor-default' : 'cursor-crosshair'}
+                ${isZenMode ? 'h-full w-auto' : 'max-h-[85vh] h-full w-auto aspect-[1/1.41] bg-white'}`}
+            >
+              <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none" alt="Manuscript Page" />
+              
+              <div className="absolute inset-0 pointer-events-none">
+                {currentPageAnnos.map(anno => (
+                  <div 
+                    key={anno.id} 
+                    className="absolute group pointer-events-auto"
+                    style={{
+                      left: `${anno.x}%`, top: `${anno.y}%`,
+                      width: anno.width ? `${anno.width}%` : 'auto',
+                      height: anno.height ? `${anno.height}%` : 'auto',
+                      backgroundColor: anno.type === 'highlight' ? `${anno.color}44` : 'transparent',
+                      borderBottom: anno.type === 'underline' ? `3px solid ${anno.color}` : 'none',
+                      border: anno.type === 'box' ? `2px solid ${anno.color}` : 'none'
+                    }}
+                  >
+                    {anno.type === 'note' && (
+                      <div className="relative">
+                        <button onClick={() => setEditingNoteId(anno.id)} className="w-6 h-6 -translate-x-1/2 -translate-y-1/2 rounded-full flex items-center justify-center bg-[#ff0000] text-white shadow-xl">
+                          <MessageSquare size={10} />
+                        </button>
+                        <AnimatePresence>
+                          {editingNoteId === anno.id && (
+                            <motion.div initial={{ scale: 0.8, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.8, opacity: 0, y: 10 }} className="absolute top-10 left-0 z-[500] w-64 bg-[#0f0f0f]/95 backdrop-blur-3xl border border-white/10 p-5 rounded-3xl shadow-2xl">
+                              <textarea autoFocus className="w-full bg-transparent text-sm text-white outline-none resize-none h-32 custom-scroll" value={anno.text} onChange={(e) => setAnnotations(annotations.map(a => a.id === anno.id ? {...a, text: e.target.value} : a))} placeholder="Write your reflection..." />
+                              <div className="flex justify-between mt-3 pt-3 border-t border-white/5">
+                                <button onClick={() => deleteAnnotation(anno.id)} className="p-2 text-white/20 hover:text-red-600"><Trash2 size={16}/></button>
+                                <button onClick={() => setEditingNoteId(null)} className="px-4 py-2 bg-[#ff0000] text-white text-[9px] font-black uppercase rounded-full">Save</button>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+                    {anno.type !== 'note' && activeTool === 'view' && (
+                      <button onClick={() => deleteAnnotation(anno.id)} className="absolute -top-3 -right-3 opacity-0 group-hover:opacity-100 bg-black border border-white/20 text-red-600 p-1.5 rounded-full">
+                        <X size={10} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {currentRect && (
+                  <div className="absolute border-2 border-dashed" style={{ 
+                    left: `${currentRect.x}%`, top: `${currentRect.y}%`, width: `${currentRect.w}%`, 
+                    height: activeTool === 'underline' ? '2px' : `${currentRect.h}%`,
+                    backgroundColor: activeTool === 'highlight' ? `${activeColor}22` : 'transparent', borderColor: activeColor
+                  }} />
+                )}
+              </div>
+            </div>
+
+            <div className="absolute inset-y-0 left-0 w-[20%] cursor-pointer z-10" onClick={() => setCurrentPage(p => Math.max(0, p - 1))} />
+            <div className="absolute inset-y-0 right-0 w-[20%] cursor-pointer z-10" onClick={() => setCurrentPage(p => Math.min(pages.length - 1, p + 1))} />
+          </div>
+        )}
+      </main>
+
+      {/* Floating Slim Navigation Bar */}
+      <AnimatePresence>
+        {showControls && (
+          <motion.div 
+            initial={{ y: 50, opacity: 0 }} 
+            animate={{ y: 0, opacity: 1 }} 
+            exit={{ y: 50, opacity: 0 }}
+            className="fixed bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-2 md:gap-3 bg-black/50 backdrop-blur-3xl border border-white/10 px-6 md:px-8 py-3 md:py-4 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
+          >
+            <div className="flex items-center gap-3 md:gap-4 text-white/40">
+              <button onClick={() => setCurrentPage(p => Math.max(0, p - 1))} className="hover:text-white transition-colors"><ChevronLeft size={18}/></button>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] md:text-[11px] font-black tracking-widest text-white">{currentPage + 1}</span>
+                <span className="text-[9px] md:text-[10px] opacity-10">/</span>
+                <span className="text-[10px] md:text-[11px] font-black tracking-widest text-white/30">{totalPages}</span>
+              </div>
+              <button onClick={() => setCurrentPage(p => Math.min(pages.length - 1, p + 1))} className="hover:text-white transition-colors"><ChevronRight size={18}/></button>
+            </div>
+            
+            <div className="w-[1px] h-3 bg-white/10 mx-1.5" />
+            
+            <div className="flex items-center gap-3 md:gap-5">
+              <div className="flex flex-col min-w-[70px] md:min-w-[100px]">
+                <div className="flex justify-between items-center mb-0.5 md:mb-1">
+                  <span className="text-[7px] md:text-[8px] font-black uppercase opacity-20 tracking-widest">{t.nextStar.split(' ')[0]}</span>
+                  <span className="text-[8px] md:text-[9px] font-black text-[#ff0000]">{minsToNextStar}m</span>
+                </div>
+                <div className="w-full h-0.5 md:h-1 bg-white/5 rounded-full overflow-hidden">
+                  <motion.div animate={{ width: `${starProgress}%` }} className="h-full bg-[#ff0000]" />
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Trophy size={12} className="text-yellow-500 opacity-50" />
+                <span className="text-[10px] md:text-xs font-black text-white">{book.stars}</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Persistent Page Progress Line */}
+      <div className="fixed bottom-0 left-0 right-0 h-0.5 md:h-1 bg-white/5 z-[1002]">
+        <motion.div className="h-full bg-[#ff0000]/40" animate={{ width: `${progress}%` }} />
+      </div>
+
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+    </div>
+  );
+};
