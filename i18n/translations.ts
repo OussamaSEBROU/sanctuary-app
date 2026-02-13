@@ -62,7 +62,9 @@ export const translations = {
     shelfEvolution: 'Knowledge Expansion (Linear)',
     peakPerformance: 'Peak Performance Periods',
     lowPerformance: 'Minimal Output Periods',
-    shelfComparison: 'Collection Benchmarking',
+    shelfComparison: 'Collection Benchmarking (Vertical)',
+    bookRanking: 'Manuscript Mastery Ranking',
+    shelfEfficiency: 'Shelf Intensity (Min/Book)',
     deleteShelf: 'Wipe Collection',
     confirmShelfDelete: 'Warning: This will dissolve the collection and its historical associations.',
     loadingMessages: [
@@ -136,7 +138,9 @@ export const translations = {
     shelfEvolution: 'تطور المعرفة (منحنى خطي)',
     peakPerformance: 'فترات الأداء الأقصى',
     lowPerformance: 'فترات الأداء الأدنى',
-    shelfComparison: 'مقارنة المجموعات',
+    shelfComparison: 'مقارنة المجموعات (منحنى عمودي)',
+    bookRanking: 'تصنيف إتقان المخطوطات',
+    shelfEfficiency: 'كثافة الرف (دقيقة/كتاب)',
     deleteShelf: 'مسح الرف',
     confirmShelfDelete: 'تحذير: سيتم حذف الرف وجميع الارتباطات التاريخية الخاصة به.',
     loadingMessages: [
