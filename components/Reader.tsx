@@ -9,7 +9,7 @@ import {
   ChevronLeft, ChevronRight, Maximize2, Highlighter, 
   PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
   ListOrdered, Minimize2, Star, Trophy, Info, Bookmark, Clock, Hash, Zap, PauseCircle,
-  Volume2, CloudLightning, Waves, Droplets, Moon, Bird, Flame
+  Volume2, CloudLightning, Waves, Droplets, Moon, Bird, Flame, Save, ArrowLeft
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -32,12 +32,12 @@ const COLORS = [
 
 const SOUNDS = [
   { id: 'none', icon: Volume2, url: '' },
-  { id: 'rain', icon: CloudLightning, url: 'https://www.soundjay.com/nature/rain-07.mp3' },
-  { id: 'sea', icon: Waves, url: 'https://www.soundjay.com/nature/ocean-wave-1.mp3' },
-  { id: 'river', icon: Droplets, url: 'https://www.soundjay.com/nature/river-1.mp3' },
-  { id: 'night', icon: Moon, url: 'https://www.soundjay.com/nature/cricket-chirping-1.mp3' },
-  { id: 'birds', icon: Bird, url: 'https://www.soundjay.com/nature/birds-chirping-7.mp3' },
-  { id: 'fire', icon: Flame, url: 'https://www.soundjay.com/nature/fire-1.mp3' }
+  { id: 'rain', icon: CloudLightning, url: 'https://actions.google.com/sounds/v1/weather/thunder_storm.ogg' },
+  { id: 'sea', icon: Waves, url: 'https://actions.google.com/sounds/v1/water/waves_crashing_on_shore.ogg' },
+  { id: 'river', icon: Droplets, url: 'https://actions.google.com/sounds/v1/water/river_stream.ogg' },
+  { id: 'night', icon: Moon, url: 'https://actions.google.com/sounds/v1/ambient/night_ambience.ogg' },
+  { id: 'birds', icon: Bird, url: 'https://actions.google.com/sounds/v1/ambient/morning_birds.ogg' },
+  { id: 'fire', icon: Flame, url: 'https://actions.google.com/sounds/v1/ambient/fire_crackle.ogg' }
 ];
 
 export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdate }) => {
@@ -46,6 +46,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [pages, setPages] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(book.lastPage || 0);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   
   const [activeTool, setActiveTool] = useState<Tool>('view');
@@ -82,6 +83,16 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const starProgress = (secondsTowardsNextStar / starThreshold) * 100;
   const minsToNextStar = Math.ceil((starThreshold - secondsTowardsNextStar) / 60);
 
+  // تحديث رسائل التحميل كل 2.5 ثانية
+  useEffect(() => {
+    if (isLoading) {
+      const msgInterval = setInterval(() => {
+        setLoadingMsgIndex(prev => (prev + 1) % t.loadingMessages.length);
+      }, 2500);
+      return () => clearInterval(msgInterval);
+    }
+  }, [isLoading, t.loadingMessages.length]);
+
   useEffect(() => {
     const handleVisibilityChange = () => {
       const isActive = document.visibilityState === 'visible';
@@ -96,6 +107,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [activeSoundId]);
 
+  // محرك تشغيل الصوت المحسن
   useEffect(() => {
     if (audioRef.current) {
       if (activeSoundId === 'none') {
@@ -105,10 +117,12 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         const sound = SOUNDS.find(s => s.id === activeSoundId);
         if (sound && sound.url) {
           audioRef.current.src = sound.url;
-          audioRef.current.volume = 0.9; 
+          audioRef.current.volume = 1.0; // أعلى مستوى صوت ممكن
           audioRef.current.load();
           if (isWindowActive) {
-            audioRef.current.play().catch(error => console.warn("Audio failed:", error));
+            audioRef.current.play().catch(error => {
+              console.warn("Audio Context error:", error);
+            });
           }
         }
       }
@@ -130,7 +144,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
           cv.height = vp.height; cv.width = vp.width;
           await p.render({ canvasContext: cv.getContext('2d')!, viewport: vp }).promise;
           setPages(prev => [...prev, cv.toDataURL('image/jpeg', 0.8)]);
-          if (i === 1) setIsLoading(false);
+          if (i === 1) {
+            // إضافة تأخير بسيط للتحميل السينمائي ليرى المستخدم الرسائل
+            setTimeout(() => setIsLoading(false), 3000);
+          }
         }
       } catch (err) { console.error(err); }
     };
@@ -292,7 +309,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   return (
     <div ref={containerRef} className={`h-screen flex flex-col bg-black overflow-hidden select-none relative ${fontClass}`} dir={isRTL ? 'rtl' : 'ltr'}>
-      <audio ref={audioRef} loop />
+      <audio ref={audioRef} loop crossOrigin="anonymous" />
       
       <div className="fixed inset-0 pointer-events-none z-0">
          <motion.div 
@@ -302,6 +319,96 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
          />
       </div>
 
+      {/* لوحة تعديلات احترافية مدمجة (Side Drawer) */}
+      <AnimatePresence>
+        {editingAnnoId && (
+          <motion.div 
+            initial={{ opacity: 0, x: isRTL ? 100 : -100 }} 
+            animate={{ opacity: 1, x: 0 }} 
+            exit={{ opacity: 0, x: isRTL ? 100 : -100 }} 
+            className={`fixed inset-y-0 ${isRTL ? 'right-0' : 'left-0'} w-full md:w-[350px] z-[4000] bg-black/80 backdrop-blur-3xl border-${isRTL ? 'l' : 'r'} border-white/10 shadow-2xl p-8 flex flex-col`}
+          >
+            <div className="flex items-center justify-between mb-10">
+              <button onClick={() => setEditingAnnoId(null)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/10 transition-all text-white/50 flex items-center gap-2 group">
+                <ArrowLeft size={18} className={isRTL ? "rotate-180" : ""} />
+                <span className="text-[10px] font-black uppercase tracking-widest hidden group-hover:inline">{t.back}</span>
+              </button>
+              <h3 className="text-xs font-black uppercase tracking-[0.3em] text-[#ff0000]">{t.editDetails}</h3>
+              <button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} className="p-2.5 bg-red-600/10 text-red-600 rounded-full hover:bg-red-600 hover:text-white transition-all"><Trash2 size={18}/></button>
+            </div>
+
+            <div className="flex-1 space-y-8 overflow-y-auto custom-scroll pr-2">
+              <div className="space-y-2">
+                <label className="text-[9px] font-black uppercase tracking-widest opacity-20 ml-2">{t.modTitle}</label>
+                <input autoFocus className="w-full bg-white/5 border border-white/5 p-4 rounded-2xl text-xs font-bold text-white outline-none focus:border-[#ff0000]/30 transition-all" value={annotations.find(a => a.id === editingAnnoId)?.title || ''} onChange={(e) => setAnnotations(annotations.map(a => a.id === editingAnnoId ? {...a, title: e.target.value} : a))} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[9px] font-black uppercase tracking-widest opacity-20 ml-2">{t.chapterName}</label>
+                <input className="w-full bg-white/5 border border-white/5 p-4 rounded-2xl text-xs font-bold text-white outline-none focus:border-[#ff0000]/30 transition-all" value={annotations.find(a => a.id === editingAnnoId)?.chapter || ''} onChange={(e) => setAnnotations(annotations.map(a => a.id === editingAnnoId ? {...a, chapter: e.target.value} : a))} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[9px] font-black uppercase tracking-widest opacity-20 ml-2">Reflection / حكمة</label>
+                <textarea className="w-full bg-white/5 border border-white/5 p-4 rounded-2xl text-[11px] font-medium text-white/80 outline-none focus:border-[#ff0000]/30 h-40 resize-none custom-scroll" value={annotations.find(a => a.id === editingAnnoId)?.text || ''} onChange={(e) => setAnnotations(annotations.map(a => a.id === editingAnnoId ? {...a, text: e.target.value} : a))} />
+              </div>
+              <div className="flex items-center gap-2 pt-4">
+                 {COLORS.map(c => (
+                   <button 
+                     key={c.hex} 
+                     onClick={() => setAnnotations(annotations.map(a => a.id === editingAnnoId ? {...a, color: c.hex} : a))}
+                     className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${annotations.find(a => a.id === editingAnnoId)?.color === c.hex ? 'border-white' : 'border-transparent'}`}
+                     style={{ backgroundColor: c.hex }}
+                   />
+                 ))}
+              </div>
+            </div>
+
+            <button onClick={() => setEditingAnnoId(null)} className="mt-8 w-full py-5 bg-[#ff0000] text-white font-black uppercase text-[11px] tracking-[0.4em] rounded-[1.5rem] flex items-center justify-center gap-3 shadow-2xl shadow-red-900/20 active:scale-95 transition-all">
+              <Save size={16} /> {t.save}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* شاشة الانتظار السينمائية */}
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-[5000] bg-black flex flex-col items-center justify-center p-10"
+          >
+            <motion.div 
+              animate={{ rotate: 360 }} 
+              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+              className="w-16 h-16 border-b-2 border-[#ff0000] rounded-full shadow-[0_0_30px_rgba(255,0,0,0.4)] mb-12"
+            />
+            <div className="text-center space-y-4 max-w-sm">
+              <AnimatePresence mode="wait">
+                <motion.p 
+                  key={loadingMsgIndex}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="text-[10px] md:text-xs font-black uppercase tracking-[0.5em] text-white/50 min-h-[1.5em]"
+                >
+                  {t.loadingMessages[loadingMsgIndex]}
+                </motion.p>
+              </AnimatePresence>
+              <div className="w-48 h-[1px] bg-white/5 rounded-full mx-auto relative overflow-hidden">
+                 <motion.div 
+                   initial={{ x: '-100%' }}
+                   animate={{ x: '100%' }}
+                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                   className="absolute inset-0 bg-[#ff0000]"
+                 />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* المؤقت الأحمر الذكي */}
       <div className={`fixed bottom-2 left-1/2 -translate-x-1/2 z-[1005] transition-opacity duration-1000 ${showControls ? 'opacity-80' : 'opacity-20'}`}>
         <div className={`flex items-center gap-1.5 bg-black/60 px-4 py-1.5 rounded-full border ${isWindowActive ? 'border-[#ff0000]/30' : 'border-white/5 shadow-2xl shadow-red-900/10'}`}>
           {isWindowActive ? (
@@ -390,37 +497,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       </AnimatePresence>
 
       <AnimatePresence>
-        {editingAnnoId && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3000] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl">
-             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-[#0f0f0f] border border-white/10 p-8 md:p-10 rounded-[3rem] w-full max-w-lg shadow-2xl relative">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-xl md:text-2xl font-black italic uppercase flex items-center gap-3"><Bookmark size={24} className="text-[#ff0000]" /> {t.editDetails}</h3>
-                  <div className="text-[10px] font-black uppercase px-4 py-1.5 bg-white/5 rounded-full opacity-40 tracking-widest">{t.page} {annotations.find(a => a.id === editingAnnoId)?.pageIndex! + 1}</div>
-                </div>
-                <div className="space-y-5">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 ml-2">{t.modTitle}</label>
-                    <input autoFocus className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-white font-bold outline-none focus:border-[#ff0000]/50" value={annotations.find(a => a.id === editingAnnoId)?.title || ''} onChange={(e) => setAnnotations(annotations.map(a => a.id === editingAnnoId ? {...a, title: e.target.value} : a))} />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 ml-2">{t.chapterName}</label>
-                    <input className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-white font-bold outline-none focus:border-[#ff0000]/50" value={annotations.find(a => a.id === editingAnnoId)?.chapter || ''} onChange={(e) => setAnnotations(annotations.map(a => a.id === editingAnnoId ? {...a, chapter: e.target.value} : a))} />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 ml-2">Reflections</label>
-                    <textarea className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-white font-medium text-sm outline-none focus:border-[#ff0000]/50 h-32 custom-scroll resize-none" value={annotations.find(a => a.id === editingAnnoId)?.text || ''} onChange={(e) => setAnnotations(annotations.map(a => a.id === editingAnnoId ? {...a, text: e.target.value} : a))} />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between mt-8 pt-8 border-t border-white/5">
-                  <button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} className="p-4 bg-red-600/10 text-red-600 hover:bg-red-600 hover:text-white transition-all rounded-2xl"><Trash2 size={20} /></button>
-                  <button onClick={() => setEditingAnnoId(null)} className="px-10 py-5 bg-[#ff0000] text-white font-black uppercase text-xs tracking-[0.3em] rounded-2xl shadow-xl">{t.save}</button>
-                </div>
-             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
         {showControls && (
           <motion.header initial={{ y: -100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -100, opacity: 0 }} className="fixed top-0 left-0 right-0 flex flex-col gap-2 p-2 md:p-6 bg-gradient-to-b from-black/90 to-transparent z-[1001]">
             <div className="flex items-center justify-between w-full">
@@ -449,10 +525,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       </AnimatePresence>
 
       <main className={`flex-1 relative flex items-center justify-center overflow-hidden bg-black transition-all duration-1000 ${isZenMode ? 'p-0' : 'p-2 md:p-10'} ${!isWindowActive ? 'grayscale-[0.5] opacity-50' : ''}`} onTouchStart={(e) => { if (activeTool === 'view') touchStartRef.current = e.touches[0].clientX; }} onTouchEnd={(e) => { if (activeTool === 'view' && touchStartRef.current !== null) { const diff = e.changedTouches[0].clientX - touchStartRef.current; if (Math.abs(diff) > 50) { if (isRTL) diff > 0 ? handlePageChange(currentPage + 1) : handlePageChange(currentPage - 1); else diff > 0 ? handlePageChange(currentPage - 1) : handlePageChange(currentPage + 1); } touchStartRef.current = null; } }}>
-        {isLoading ? (
-          <div className="flex flex-col items-center gap-6"><div className="w-12 h-12 border-2 border-[#ff0000]/20 border-t-[#ff0000] rounded-full animate-spin" /></div>
-        ) : (
-          <div className="relative h-full w-full flex items-center justify-center z-10">
+        <div className="relative h-full w-full flex items-center justify-center z-10">
+          {!isLoading && (
             <div ref={pageRef} onMouseDown={(e) => handleStart(e.clientX, e.clientY)} onMouseMove={(e) => handleMove(e.clientX, e.clientY)} onMouseUp={() => handleEnd()} onTouchStart={(e) => { if(activeTool !== 'view') e.preventDefault(); handleStart(e.touches[0].clientX, e.touches[0].clientY, true); }} onTouchMove={(e) => { if(activeTool !== 'view') e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); }} onTouchEnd={(e) => handleEnd(e.changedTouches[0].clientX)} className={`relative shadow-2xl border border-white/5 overflow-hidden transition-all duration-700 touch-none ${activeTool === 'view' ? 'cursor-default' : 'cursor-crosshair'} ${isZenMode ? 'h-full w-auto' : 'max-h-[85vh] h-full w-auto aspect-[1/1.41] bg-white'}`}>
               <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none" alt="Page" />
               
@@ -482,8 +556,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 </div>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </main>
 
       <AnimatePresence>
