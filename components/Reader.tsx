@@ -233,11 +233,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   return (
     <div ref={containerRef} className={`h-screen flex flex-col bg-black overflow-hidden select-none relative ${fontClass}`} dir={isRTL ? 'rtl' : 'ltr'}>
       
-      {/* Permanent Dim Session Timer */}
-      <div className={`fixed top-4 ${isRTL ? 'left-4' : 'right-4'} z-[1005] transition-opacity duration-1000 ${showControls ? 'opacity-20' : 'opacity-10'}`}>
-        <div className="flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-          <Clock size={10} className="text-white/40" />
-          <span className="text-[10px] font-black tracking-widest text-white/40">
+      {/* Red Dim Session Timer - Small & Always Visible at Bottom */}
+      <div className={`fixed bottom-2 left-1/2 -translate-x-1/2 z-[1005] transition-opacity duration-1000 ${showControls ? 'opacity-40' : 'opacity-20'}`}>
+        <div className="flex items-center gap-1.5 px-2 py-1">
+          <Clock size={8} className="text-[#ff0000]" />
+          <span className="text-[9px] font-black tracking-widest text-[#ff0000] uppercase">
             {sessionMinutes}{lang === 'ar' ? ' د' : 'm'}
           </span>
         </div>
@@ -495,27 +495,27 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </main>
 
-      {/* Floating Bottom Navigation */}
+      {/* Optimized Floating Bottom Navigation for Mobile */}
       <AnimatePresence>
         {showControls && (
           <motion.div 
             initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
-            className="fixed bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-3 bg-black/50 backdrop-blur-3xl border border-white/10 px-6 py-3 rounded-full shadow-2xl"
+            className="fixed bottom-10 md:bottom-10 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-2 md:gap-3 bg-black/50 backdrop-blur-3xl border border-white/10 px-4 md:px-6 py-2 md:py-3 rounded-full shadow-2xl scale-90 md:scale-100"
           >
-            <div className="flex items-center gap-4 text-white/40">
-              <button onClick={() => handlePageChange(currentPage - 1)} className="hover:text-white p-1"><ChevronLeft size={18}/></button>
-              <div className="flex items-center gap-1.5 font-black text-[10px] tracking-widest text-white">
+            <div className="flex items-center gap-2 md:gap-4 text-white/40">
+              <button onClick={() => handlePageChange(currentPage - 1)} className="hover:text-white p-1"><ChevronLeft size={16}/></button>
+              <div className="flex items-center gap-1 font-black text-[9px] md:text-[10px] tracking-widest text-white">
                 <span>{currentPage + 1}</span><span className="opacity-10">/</span><span className="opacity-30">{totalPages}</span>
               </div>
-              <button onClick={() => handlePageChange(currentPage + 1)} className="hover:text-white p-1"><ChevronRight size={18}/></button>
+              <button onClick={() => handlePageChange(currentPage + 1)} className="hover:text-white p-1"><ChevronRight size={16}/></button>
             </div>
-            <div className="w-[1px] h-3 bg-white/10" />
-            <div className="flex items-center gap-4">
-              <div className="flex flex-col min-w-[80px]">
-                <div className="flex justify-between items-center mb-0.5"><span className="text-[7px] font-black uppercase opacity-20">{t.nextStar.split(' ')[0]}</span><span className="text-[8px] font-black text-[#ff0000]">{minsToNextStar}m</span></div>
+            <div className="w-[1px] h-3 bg-white/10 mx-1" />
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="flex flex-col min-w-[60px] md:min-w-[80px]">
+                <div className="flex justify-between items-center mb-0.5"><span className="text-[6px] md:text-[7px] font-black uppercase opacity-20">{t.nextStar.split(' ')[0]}</span><span className="text-[7px] md:text-[8px] font-black text-[#ff0000]">{minsToNextStar}m</span></div>
                 <div className="w-full h-0.5 bg-white/5 rounded-full overflow-hidden"><motion.div animate={{ width: `${starProgress}%` }} className="h-full bg-[#ff0000]" /></div>
               </div>
-              <div className="flex items-center gap-1.5"><Trophy size={12} className="text-yellow-500 opacity-50" /><span className="text-[10px] font-black text-white">{book.stars}</span></div>
+              <div className="flex items-center gap-1"><Trophy size={10} className="text-yellow-500 opacity-50" /><span className="text-[9px] md:text-[10px] font-black text-white">{book.stars}</span></div>
             </div>
           </motion.div>
         )}
