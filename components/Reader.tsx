@@ -37,12 +37,12 @@ const COLORS = [
 
 const SOUNDS = [
   { id: 'none', icon: VolumeX, url: '' },
-  { id: 'rain', icon: CloudLightning, url: 'https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3' },
-  { id: 'sea', icon: Waves, url: 'https://assets.mixkit.co/active_storage/sfx/1110/1110-preview.mp3' },
-  { id: 'river', icon: Droplets, url: 'https://assets.mixkit.co/active_storage/sfx/2437/2437-preview.mp3' },
-  { id: 'night', icon: Moon, url: 'https://assets.mixkit.co/active_storage/sfx/2569/2569-preview.mp3' },
-  { id: 'birds', icon: Bird, url: 'https://assets.mixkit.co/active_storage/sfx/21/21-preview.mp3' },
-  { id: 'fire', icon: Flame, url: 'https://assets.mixkit.co/active_storage/sfx/2539/2539-preview.mp3' }
+  { id: 'rain', icon: CloudLightning, url: '/assets/sounds/rain.mp3' },
+  { id: 'sea', icon: Waves, url: '/assets/sounds/sea.mp3' },
+  { id: 'river', icon: Droplets, url: '/assets/sounds/river.mp3' },
+  { id: 'night', icon: Moon, url: '/assets/sounds/night.mp3' },
+  { id: 'birds', icon: Bird, url: '/assets/sounds/birds.mp3' },
+  { id: 'fire', icon: Flame, url: '/assets/sounds/fire.mp3' }
 ];
 
 const TOOL_ICONS = {
@@ -161,7 +161,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   const triggerCelebration = () => {
     if (celebrationAudioRef.current) {
-      celebrationAudioRef.current.src = 'https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3';
+      celebrationAudioRef.current.src = '/assets/sounds/celebration.mp3';
       celebrationAudioRef.current.play().catch(() => {});
       setTimeout(() => {
         if (celebrationAudioRef.current) {
@@ -521,60 +521,67 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       </div>
 
       <AnimatePresence>
-        {/* Wisdom Index - Glassmorphism Flashcard Redesign */}
+        {/* Wisdom Index - Ultra-Modern Glassmorphism Flashcard Redesign */}
         {isArchiveOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/40 backdrop-blur-3xl p-4 md:p-12 flex items-center justify-center overflow-hidden">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/40 backdrop-blur-[60px] p-4 md:p-12 flex items-center justify-center overflow-hidden">
              <motion.div 
-               initial={{ y: 50, opacity: 0 }} 
-               animate={{ y: 0, opacity: 1 }} 
-               className="w-full max-w-6xl h-[90vh] bg-white/5 border border-white/10 rounded-[4rem] flex flex-col shadow-[0_0_120px_rgba(0,0,0,0.8)] overflow-hidden backdrop-blur-2xl"
+               initial={{ y: 50, opacity: 0, scale: 0.95 }} 
+               animate={{ y: 0, opacity: 1, scale: 1 }} 
+               className="w-full max-w-6xl h-[90vh] bg-white/[0.03] border border-white/[0.08] rounded-[5rem] flex flex-col shadow-[0_0_150px_rgba(0,0,0,0.9)] overflow-hidden backdrop-blur-3xl"
              >
-                <div className="p-8 md:p-14 border-b border-white/5 flex items-center justify-between shrink-0 bg-white/5 backdrop-blur-md">
-                   <div className="flex items-center gap-6">
-                     <div className="w-16 h-16 rounded-3xl bg-[#ff0000]/20 flex items-center justify-center text-[#ff0000] shadow-[0_0_30px_#ff000033]">
-                        <Layers size={32} />
+                <div className="p-10 md:p-16 border-b border-white/[0.05] flex items-center justify-between shrink-0 bg-white/[0.02] backdrop-blur-3xl">
+                   <div className="flex items-center gap-8">
+                     <div className="w-20 h-20 rounded-[2.5rem] bg-gradient-to-br from-[#ff0000] to-[#990000] flex items-center justify-center text-white shadow-[0_20px_50px_rgba(255,0,0,0.3)] border border-white/20">
+                        <Layers size={36} />
                      </div>
                      <div>
-                       <h2 className="text-2xl md:text-5xl font-black italic uppercase text-white leading-none tracking-tighter">{t.wisdomIndex}</h2>
-                       <p className="text-[10px] uppercase font-bold tracking-[0.4em] opacity-30 mt-2">Neural Extraction Archive</p>
+                       <h2 className="text-3xl md:text-6xl font-black italic uppercase text-white leading-none tracking-tighter drop-shadow-2xl">{t.wisdomIndex}</h2>
+                       <p className="text-[12px] uppercase font-bold tracking-[0.5em] text-[#ff0000] mt-3 opacity-60">Cognitive Neural Archive</p>
                      </div>
                    </div>
-                   <button onClick={() => setIsArchiveOpen(false)} className="w-16 h-16 flex items-center justify-center bg-white/10 rounded-full hover:bg-white/20 text-white shadow-xl transition-all active:scale-90 border border-white/10">
-                      <LogOut size={28} className={isRTL ? "rotate-180" : ""} />
+                   <button onClick={() => setIsArchiveOpen(false)} className="w-20 h-20 flex items-center justify-center bg-white/[0.05] rounded-full hover:bg-[#ff0000] text-white shadow-2xl transition-all active:scale-90 border border-white/[0.1] group">
+                      <LogOut size={32} className={`group-hover:scale-110 transition-transform ${isRTL ? "rotate-180" : ""}`} />
                    </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto custom-scroll p-8 md:p-16 space-y-12">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="flex-1 overflow-y-auto custom-scroll p-10 md:p-20 space-y-16 bg-gradient-to-br from-transparent via-[#ff0000]/[0.02] to-transparent">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
                     {annotations.length === 0 ? (
-                      <div className="col-span-full py-48 text-center opacity-10 flex flex-col items-center">
-                        <Sparkles size={90} className="mb-4" />
-                        <span className="text-sm font-black uppercase tracking-widest">{t.noAnnotations}</span>
+                      <div className="col-span-full py-60 text-center opacity-10 flex flex-col items-center">
+                        <Sparkles size={120} className="mb-6 animate-pulse" />
+                        <span className="text-xl font-black uppercase tracking-[0.6em]">{t.noAnnotations}</span>
                       </div>
                     ) : annotations.map(anno => (
                       <motion.div 
                         key={anno.id} 
-                        whileHover={{ y: -10, scale: 1.02 }}
+                        whileHover={{ y: -15, scale: 1.03, backgroundColor: 'rgba(255,255,255,0.06)' }}
                         onClick={() => { handlePageChange(anno.pageIndex); setIsArchiveOpen(false); }} 
-                        className="relative p-10 bg-white/5 rounded-[3rem] border border-white/10 flex flex-col gap-6 group hover:bg-white/10 transition-all cursor-pointer overflow-hidden shadow-2xl"
+                        className="relative p-12 bg-white/[0.03] rounded-[4rem] border border-white/[0.08] flex flex-col gap-8 group hover:border-[#ff0000]/30 transition-all duration-500 cursor-pointer overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.6)]"
                       >
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+                        {/* Elegant background highlight */}
+                        <div className="absolute -top-10 -right-10 w-48 h-48 bg-[#ff0000]/10 rounded-full blur-[80px] group-hover:bg-[#ff0000]/20 transition-all pointer-events-none" />
                         
-                        <div className="flex items-center justify-between z-10">
-                           <div className="px-5 py-2 bg-red-600/10 text-red-500 text-[11px] font-black rounded-full uppercase border border-red-500/20">{t.page} {anno.pageIndex + 1}</div>
+                        <div className="flex items-center justify-between z-10 relative">
+                           <div className="px-6 py-2.5 bg-[#ff0000]/10 text-[#ff0000] text-[12px] font-black rounded-full uppercase border border-[#ff0000]/20 tracking-widest">{t.page} {anno.pageIndex + 1}</div>
                            <button 
                              onClick={(e) => { e.stopPropagation(); setAnnotations(annotations.filter(a => a.id !== anno.id)); }} 
-                             className="text-white/5 hover:text-red-600 transition-colors p-2"
+                             className="text-white/5 hover:text-[#ff0000] transition-all p-3 bg-white/[0.03] rounded-full hover:scale-110"
                            >
-                             <Trash2 size={20}/>
+                             <Trash2 size={24}/>
                            </button>
                         </div>
                         
-                        <h4 className="text-xl md:text-2xl text-blue-400 font-black italic uppercase leading-tight tracking-tighter z-10">{anno.title || 'Inscribed Thought'}</h4>
-                        <p className="text-xs md:text-sm text-white/50 line-clamp-6 leading-relaxed font-bold italic z-10">"{anno.text || 'Insight extracted without literal transcription...'}"</p>
+                        <h4 className="text-2xl md:text-3xl text-blue-400 font-black italic uppercase leading-tight tracking-tighter z-10 drop-shadow-lg group-hover:text-white transition-colors">
+                          {anno.title || 'Inscribed Truth'}
+                        </h4>
+                        <p className="text-sm md:text-base text-white/40 line-clamp-6 leading-relaxed font-bold italic z-10 group-hover:text-white/70 transition-colors">
+                          "{anno.text || 'Observation recorded without literal transcription...'}"
+                        </p>
                         
-                        <div className="mt-auto pt-6 border-t border-white/5 flex justify-end z-10">
-                           <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-20 group-hover:opacity-100 group-hover:text-red-600 transition-all">Recall Origin &rarr;</span>
+                        <div className="mt-auto pt-8 border-t border-white/5 flex justify-end z-10 relative">
+                           <span className="text-[10px] font-black uppercase tracking-[0.4em] text-[#ff0000] opacity-40 group-hover:opacity-100 group-hover:translate-x-2 transition-all flex items-center gap-4">
+                             RECALL SOURCE <ChevronRight size={18} />
+                           </span>
                         </div>
                       </motion.div>
                     ))}
@@ -586,36 +593,36 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
         {/* Celebration Overlay */}
         {showStarAchievement && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3000] bg-black/98 backdrop-blur-3xl flex items-center justify-center p-6 overflow-hidden">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3000] bg-black/98 backdrop-blur-[100px] flex items-center justify-center p-6 overflow-hidden">
              <div className="absolute inset-0 pointer-events-none">
-                {[...Array(40)].map((_, i) => (
+                {[...Array(50)].map((_, i) => (
                   <motion.div 
                     key={i} 
                     initial={{ x: 0, y: 0, scale: 0, opacity: 1 }} 
                     animate={{ 
-                      x: (Math.random() - 0.5) * window.innerWidth * 1.5, 
-                      y: (Math.random() - 0.5) * window.innerHeight * 1.5, 
-                      scale: Math.random() * 2 + 1, 
+                      x: (Math.random() - 0.5) * window.innerWidth * 2, 
+                      y: (Math.random() - 0.5) * window.innerHeight * 2, 
+                      scale: Math.random() * 3 + 1, 
                       opacity: 0 
                     }} 
-                    transition={{ duration: 4, repeat: Infinity, repeatDelay: 0.1 }} 
+                    transition={{ duration: 5, repeat: Infinity, repeatDelay: 0.1, ease: "easeOut" }} 
                     className="absolute top-1/2 left-1/2"
                   >
                     <PartyPopper size={24} className="text-[#ff0000]" />
                   </motion.div>
                 ))}
              </div>
-             <motion.div initial={{ scale: 0.5, y: 100 }} animate={{ scale: 1, y: 0 }} className="flex flex-col items-center text-center max-w-lg z-10">
-                <div className="relative mb-12">
-                  <div className="relative p-14 bg-[#ff0000]/10 rounded-full border border-[#ff0000]/30 shadow-[0_0_120px_rgba(255,0,0,0.6)]">
-                    <Award size={100} className="text-[#ff0000] drop-shadow-[0_0_30px_#ff0000]" />
+             <motion.div initial={{ scale: 0.5, y: 100 }} animate={{ scale: 1, y: 0 }} className="flex flex-col items-center text-center max-w-2xl z-10">
+                <div className="relative mb-16">
+                  <div className="relative p-20 bg-[#ff0000]/10 rounded-full border border-[#ff0000]/30 shadow-[0_0_200px_rgba(255,0,0,0.8)] animate-pulse">
+                    <Award size={150} className="text-[#ff0000] drop-shadow-[0_0_50px_#ff0000]" />
                   </div>
                 </div>
-                <h2 className="text-5xl md:text-8xl font-black italic uppercase text-white mb-8 leading-none drop-shadow-[0_0_50px_#ff0000]">{t.starAchieved}</h2>
-                <p className="text-sm md:text-xl text-red-500 font-bold uppercase tracking-[0.4em] mb-16 max-w-md mx-auto">{t.starMotivation}</p>
+                <h2 className="text-6xl md:text-9xl font-black italic uppercase text-white mb-10 leading-none drop-shadow-[0_0_80px_#ff0000] tracking-tighter">{t.starAchieved}</h2>
+                <p className="text-base md:text-2xl text-red-500 font-bold uppercase tracking-[0.5em] mb-20 max-w-xl mx-auto leading-relaxed">{t.starMotivation}</p>
                 <button 
                   onClick={() => setShowStarAchievement(false)} 
-                  className="px-16 py-7 bg-white text-black rounded-full font-black uppercase text-sm hover:bg-[#ff0000] hover:text-white transition-all shadow-3xl active:scale-95 border-b-4 border-black/10"
+                  className="px-24 py-10 bg-white text-black rounded-full font-black uppercase text-lg hover:bg-[#ff0000] hover:text-white transition-all shadow-[0_30px_80px_rgba(255,0,0,0.5)] active:scale-95 border-b-8 border-black/20"
                 >
                   {t.continueJourney}
                 </button>
@@ -625,23 +632,23 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
         {isSoundPickerOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4">
-            <div className="bg-[#0b140b] border border-white/10 p-10 rounded-[3rem] w-full max-w-md shadow-3xl overflow-hidden flex flex-col max-h-[80vh]">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-2xl font-black uppercase italic tracking-tighter">{t.soundscape}</h3>
-                <button onClick={() => setIsSoundPickerOpen(false)} className="p-2 text-white/40 hover:text-white transition-colors"><X size={24}/></button>
+            <div className="bg-[#0b140b] border border-white/10 p-10 rounded-[4rem] w-full max-w-md shadow-3xl overflow-hidden flex flex-col max-h-[80vh]">
+              <div className="flex items-center justify-between mb-10">
+                <h3 className="text-3xl font-black uppercase italic tracking-tighter">{t.soundscape}</h3>
+                <button onClick={() => setIsSoundPickerOpen(false)} className="p-3 text-white/40 hover:text-white transition-all"><X size={32}/></button>
               </div>
-              <div className="grid gap-3 overflow-y-auto no-scrollbar pb-6">
+              <div className="grid gap-4 overflow-y-auto no-scrollbar pb-8">
                 {SOUNDS.map(sound => (
                   <button 
                     key={sound.id} 
                     onClick={() => playSound(sound)} 
-                    className={`flex items-center justify-between p-5 rounded-2xl border transition-all ${activeSoundId === sound.id ? 'bg-[#ff0000]/10 border-[#ff0000]/30 text-white shadow-inner' : 'bg-white/5 border-transparent text-white/20 hover:bg-white/10'}`}
+                    className={`flex items-center justify-between p-6 rounded-[2rem] border transition-all duration-300 ${activeSoundId === sound.id ? 'bg-[#ff0000]/20 border-[#ff0000]/50 text-white shadow-[0_15px_30px_rgba(255,0,0,0.2)]' : 'bg-white/5 border-transparent text-white/30 hover:bg-white/10 hover:border-white/10'}`}
                   >
-                    <div className="flex items-center gap-4">
-                      <sound.icon size={20} className={activeSoundId === sound.id ? "text-[#ff0000]" : ""} />
-                      <span className={`text-[11px] font-black uppercase tracking-widest ${activeSoundId === sound.id ? "text-white" : ""}`}>{t[sound.id as keyof typeof t] || sound.id}</span>
+                    <div className="flex items-center gap-5">
+                      <sound.icon size={24} className={activeSoundId === sound.id ? "text-[#ff0000]" : ""} />
+                      <span className={`text-[12px] font-black uppercase tracking-[0.2em] ${activeSoundId === sound.id ? "text-white" : ""}`}>{t[sound.id as keyof typeof t] || sound.id}</span>
                     </div>
-                    {activeSoundId === sound.id && <div className="w-2 h-2 rounded-full bg-[#ff0000] shadow-[0_0_10px_#ff0000]" />}
+                    {activeSoundId === sound.id && <div className="w-3 h-3 rounded-full bg-[#ff0000] shadow-[0_0_15px_#ff0000]" />}
                   </button>
                 ))}
               </div>
@@ -651,13 +658,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
         {isGoToPageOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-10 rounded-[2.5rem] w-full max-w-sm text-center">
-              <h3 className="text-xl font-black uppercase italic mb-8">{t.goToPage}</h3>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-12 rounded-[4rem] w-full max-w-md text-center shadow-[0_50px_100px_rgba(0,0,0,0.8)]">
+              <h3 className="text-2xl font-black uppercase italic mb-10 tracking-widest">{t.goToPage}</h3>
               <form onSubmit={jumpToPage}>
-                <input autoFocus type="number" value={targetPageInput} onChange={(e) => setTargetPageInput(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-2xl font-black text-center text-white outline-none focus:border-[#ff0000]/50 mb-8" placeholder={`1 - ${totalPages}`} />
-                <div className="flex gap-4">
-                  <button type="button" onClick={() => setIsGoToPageOpen(false)} className="flex-1 bg-white/5 py-4 rounded-2xl font-black uppercase text-[10px] text-white/30">{t.discard}</button>
-                  <button type="submit" className="flex-1 bg-[#ff0000] py-4 rounded-2xl font-black uppercase text-[10px] text-white shadow-xl">{t.jump}</button>
+                <input autoFocus type="number" value={targetPageInput} onChange={(e) => setTargetPageInput(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-3xl p-8 text-4xl font-black text-center text-white outline-none focus:border-[#ff0000]/50 mb-10 shadow-inner" placeholder={`1 - ${totalPages}`} />
+                <div className="flex gap-6">
+                  <button type="button" onClick={() => setIsGoToPageOpen(false)} className="flex-1 bg-white/5 py-5 rounded-3xl font-black uppercase text-xs tracking-widest text-white/30 hover:bg-white/10 transition-all">{t.discard}</button>
+                  <button type="submit" className="flex-1 bg-[#ff0000] py-5 rounded-3xl font-black uppercase text-xs tracking-widest text-white shadow-[0_20px_40px_rgba(255,0,0,0.3)] hover:scale-105 transition-all">{t.jump}</button>
                 </div>
               </form>
             </motion.div>
@@ -666,13 +673,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
         {editingAnnoId && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2100] bg-black/98 flex items-center justify-center p-6">
-            <div className="bg-[#0b140b] border border-white/10 p-8 md:p-10 rounded-[3rem] w-full max-w-xl shadow-4xl">
-              <div className="flex items-center justify-between mb-8"><h3 className="text-xl font-black uppercase italic flex items-center gap-3"><Edit3 size={24} className="text-[#ff0000]" /> {t.editDetails}</h3><button onClick={() => setEditingAnnoId(null)} className="p-2 hover:text-[#ff0000]"><X size={24}/></button></div>
-              <div className="space-y-4">
-                <input autoFocus type="text" placeholder={lang === 'ar' ? 'عنوان التعديل...' : 'Mod Title...'} value={annotations.find(a => a.id === editingAnnoId)?.title || ''} onChange={(e) => setAnnotations(annotations.map(a => a.id === editingAnnoId ? { ...a, title: e.target.value } : a))} className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-white font-bold outline-none focus:border-[#ff0000]/40" />
-                <textarea value={annotations.find(a => a.id === editingAnnoId)?.text || ''} onChange={(e) => setAnnotations(annotations.map(a => a.id === editingAnnoId ? { ...a, text: e.target.value } : a))} className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-5 text-white outline-none focus:border-[#ff0000]/30 resize-none" placeholder={lang === 'ar' ? 'اكتب حكمتك هنا...' : 'Inscribe your wisdom...'} />
+            <div className="bg-[#0b140b] border border-white/10 p-10 md:p-14 rounded-[4rem] w-full max-w-2xl shadow-4xl">
+              <div className="flex items-center justify-between mb-10"><h3 className="text-2xl font-black uppercase italic flex items-center gap-4"><Edit3 size={32} className="text-[#ff0000]" /> {t.editDetails}</h3><button onClick={() => setEditingAnnoId(null)} className="p-3 hover:text-[#ff0000] transition-colors"><X size={32}/></button></div>
+              <div className="space-y-6">
+                <input autoFocus type="text" placeholder={lang === 'ar' ? 'عنوان التعديل...' : 'Mod Title...'} value={annotations.find(a => a.id === editingAnnoId)?.title || ''} onChange={(e) => setAnnotations(annotations.map(a => a.id === editingAnnoId ? { ...a, title: e.target.value } : a))} className="w-full bg-white/5 border border-white/10 rounded-3xl p-7 text-white font-bold outline-none focus:border-[#ff0000]/40 text-lg shadow-inner" />
+                <textarea value={annotations.find(a => a.id === editingAnnoId)?.text || ''} onChange={(e) => setAnnotations(annotations.map(a => a.id === editingAnnoId ? { ...a, text: e.target.value } : a))} className="w-full h-48 bg-white/5 border border-white/10 rounded-3xl p-7 text-white outline-none focus:border-[#ff0000]/30 resize-none text-lg shadow-inner" placeholder={lang === 'ar' ? 'اكتب حكمتك هنا...' : 'Inscribe your wisdom...'} />
               </div>
-              <div className="flex gap-4 mt-8"><button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} className="flex-1 bg-red-600/10 text-red-600 py-4 rounded-[1.5rem] font-black uppercase text-[10px]">{t.discard}</button><button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-4 rounded-[1.5rem] font-black uppercase text-[10px]">{t.save}</button></div>
+              <div className="flex gap-6 mt-12"><button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} className="flex-1 bg-red-600/10 text-red-600 py-6 rounded-[2rem] font-black uppercase text-xs tracking-[0.2em]">{t.discard}</button><button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-6 rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all">{t.save}</button></div>
             </div>
           </motion.div>
         )}
