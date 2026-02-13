@@ -91,7 +91,8 @@ const App: React.FC = () => {
       content: "[VISUAL_PDF_MODE]",
       timeSpentSeconds: 0,
       stars: 0,
-      addedAt: Date.now()
+      addedAt: Date.now(),
+      lastPage: 0
     };
     const updated = [newBook, ...books];
     setBooks(updated);
@@ -176,7 +177,7 @@ const App: React.FC = () => {
                     </div>
                     <div className="flex flex-col items-start">
                       <span className="text-xs font-black uppercase tracking-widest group-hover:text-white">{t.dashboard}</span>
-                      <span className="text-[9px] uppercase font-black opacity-30 group-hover:opacity-60 group-hover:text-white">Cognitive Metrics</span>
+                      <span className="text-[9px] uppercase font-black opacity-30 group-hover:opacity-60 group-hover:text-white">{t.cognitiveMetrics}</span>
                     </div>
                   </button>
 
@@ -205,7 +206,7 @@ const App: React.FC = () => {
                     <div className="flex items-center justify-between px-2">
                       <div className="flex items-center gap-3 opacity-20">
                         <Library size={14} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{lang === 'ar' ? 'المجموعات' : 'Collections'}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">{t.collections}</span>
                       </div>
                       <button onClick={() => setIsAddingShelf(true)} className="p-1.5 bg-[#ff0000]/20 rounded-full text-[#ff0000] hover:scale-110 transition-transform">
                         <Plus size={14}/>
@@ -240,8 +241,8 @@ const App: React.FC = () => {
                   <div className="flex items-center gap-4">
                     <Activity size={20} className="text-[#ff0000]" />
                     <div>
-                      <span className="text-[9px] font-black uppercase tracking-widest opacity-20 leading-none mb-1 block">Status</span>
-                      <span className="text-xs font-black uppercase tracking-tighter">Deciphering Active</span>
+                      <span className="text-[9px] font-black uppercase tracking-widest opacity-20 leading-none mb-1 block">{t.status}</span>
+                      <span className="text-xs font-black uppercase tracking-tighter">{t.activeSession}</span>
                     </div>
                   </div>
                 </div>
@@ -276,10 +277,12 @@ const App: React.FC = () => {
             {view === ViewState.SHELF && (
               <motion.div key="shelf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">
                 <header className="flex flex-col items-center text-center pt-24 pb-8 shrink-0">
-                  <h1 className="text-6xl md:text-9xl font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[0.8]">
+                  {/* Responsive Title using Clamp */}
+                  <h1 className="text-[clamp(3.5rem,15vw,10rem)] font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[0.8]">
                     {t.title}
                   </h1>
-                  <p className="text-[10px] md:text-xs font-bold text-[#ff0000] mt-8 uppercase px-12 max-w-2xl italic tracking-[0.4em] leading-relaxed opacity-60">
+                  {/* Philosophy Text with Shining Effect */}
+                  <p className="shining-text text-[11px] md:text-sm font-bold mt-8 px-12 max-w-2xl tracking-[0.3em] md:tracking-[0.4em] leading-relaxed opacity-80">
                     {t.philosophy}
                   </p>
                 </header>
@@ -317,7 +320,7 @@ const App: React.FC = () => {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/98 backdrop-blur-3xl">
               <motion.div initial={{ scale: 0.95, y: 30 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/5 p-12 rounded-[4rem] w-full max-w-xl shadow-[0_50px_100px_rgba(0,0,0,1)] relative">
                 <button onClick={() => setIsAddingBook(false)} className="absolute top-10 right-10 p-2 rounded-full bg-white/5 text-white/20 hover:text-white transition-colors"><X size={24} /></button>
-                <h2 className="text-3xl font-black mb-12 text-white uppercase italic flex items-center gap-5 leading-none"><BookOpen size={44} className="text-[#ff0000]" /> {lang === 'ar' ? 'إدخال جديد' : 'New Intake'}</h2>
+                <h2 className="text-3xl font-black mb-12 text-white uppercase italic flex items-center gap-5 leading-none"><BookOpen size={44} className="text-[#ff0000]" /> {t.newIntake}</h2>
                 <div className="space-y-8">
                   <div onClick={() => !isExtracting && fileInputRef.current?.click()} className="w-full aspect-video border-2 border-dashed border-white/10 rounded-[3rem] flex flex-col items-center justify-center gap-6 cursor-pointer hover:border-[#ff0000]/30 transition-all bg-white/5 group">
                     <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".pdf" />
@@ -340,7 +343,7 @@ const App: React.FC = () => {
               <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-12 rounded-[4rem] w-full max-w-md shadow-2xl text-center">
                 <h3 className="text-3xl font-black uppercase italic text-white mb-10">{lang === 'ar' ? 'إنشاء رف' : 'New Shelf'}</h3>
                 <input autoFocus type="text" value={newShelfName} onChange={e => setNewShelfName(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm font-bold text-white outline-none mb-10 focus:border-[#ff0000]/50" placeholder={lang === 'ar' ? 'اسم الرف...' : 'Shelf Name...'} />
-                <button onClick={handleAddShelf} className="w-full bg-[#ff0000] py-6 rounded-[2rem] font-black text-xs uppercase shadow-2xl hover:scale-105 transition-transform text-white tracking-[0.4em]">Establish</button>
+                <button onClick={handleAddShelf} className="w-full bg-[#ff0000] py-6 rounded-[2rem] font-black text-xs uppercase shadow-2xl hover:scale-105 transition-transform text-white tracking-[0.4em]">{t.establish}</button>
               </motion.div>
             </motion.div>
           )}
