@@ -8,7 +8,7 @@ import { pdfStorage } from '../services/pdfStorage';
 import { 
   ChevronLeft, ChevronRight, Maximize2, Highlighter, 
   PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
-  ListOrdered, Minimize2, Star, Trophy, Info, Bookmark, Clock, Hash, Zap
+  ListOrdered, Minimize2, Star, Trophy, Info, Bookmark, Clock, Hash, Zap, PauseCircle
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -50,6 +50,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [targetPageInput, setTargetPageInput] = useState('');
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [isFlowActive, setIsFlowActive] = useState(false);
+  const [isWindowActive, setIsWindowActive] = useState(true);
 
   const touchStartRef = useRef<number | null>(null);
   const timerRef = useRef<number | null>(null);
@@ -66,6 +67,27 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const secondsTowardsNextStar = totalSeconds % starThreshold;
   const starProgress = (secondsTowardsNextStar / starThreshold) * 100;
   const minsToNextStar = Math.ceil((starThreshold - secondsTowardsNextStar) / 60);
+
+  // خوارزمية تتبع حالة ظهور النافذة (Visibility & Focus)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const isActive = document.visibilityState === 'visible';
+      setIsWindowActive(isActive);
+    };
+
+    const handleBlur = () => setIsWindowActive(false);
+    const handleFocus = () => setIsWindowActive(true);
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   useEffect(() => {
     const loadPdfVisuals = async () => {
@@ -89,9 +111,12 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     loadPdfVisuals();
 
     timerRef.current = window.setInterval(() => {
-      setSessionSeconds(s => s + 1);
-      storageService.updateBookStats(book.id, 1);
-      onStatsUpdate();
+      // التحقق من أن النافذة نشطة قبل احتساب الوقت
+      if (document.visibilityState === 'visible') {
+        setSessionSeconds(s => s + 1);
+        storageService.updateBookStats(book.id, 1);
+        onStatsUpdate();
+      }
     }, 1000);
 
     return () => { 
@@ -104,9 +129,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     storageService.updateBookAnnotations(book.id, annotations);
   }, [annotations]);
 
-  // خوارزمية تتبع حالة "التدفق" (Flow State Detection)
   useEffect(() => {
-    if (sessionSeconds > 300) { // بعد 5 دقائق من القراءة المستمرة
+    if (sessionSeconds > 300) { 
       setIsFlowActive(true);
     }
   }, [sessionSeconds]);
@@ -136,7 +160,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         if (!isArchiveOpen && editingAnnoId === null && !isGoToPageOpen) {
           setShowControls(false);
         }
-      }, isFlowActive ? 3000 : 5000); // تسريع التلاشي في وضع التدفق
+      }, isFlowActive ? 3000 : 5000); 
     };
 
     window.addEventListener('mousemove', handleActivity);
@@ -245,22 +269,27 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   return (
     <div ref={containerRef} className={`h-screen flex flex-col bg-black overflow-hidden select-none relative ${fontClass}`} dir={isRTL ? 'rtl' : 'ltr'}>
       
-      {/* خوارزمية النبض البصري (Biometric Sync) */}
+      {/* خوارزمية النبض البصري */}
       <div className="fixed inset-0 pointer-events-none z-0">
          <motion.div 
-            animate={{ opacity: [0.02, 0.05, 0.02] }} 
+            animate={{ opacity: isWindowActive ? [0.02, 0.05, 0.02] : 0.01 }} 
             transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
             className="w-full h-full bg-[#ff0000]/10 blur-[120px]"
          />
       </div>
 
-      {/* المؤقت الأحمر الخافت */}
+      {/* المؤقت الأحمر الذكي */}
       <div className={`fixed bottom-2 left-1/2 -translate-x-1/2 z-[1005] transition-opacity duration-1000 ${showControls ? 'opacity-50' : 'opacity-20'}`}>
-        <div className="flex items-center gap-1.5 bg-black/40 px-3 py-1 rounded-full border border-[#ff0000]/10">
-          <Clock size={8} className={`${isFlowActive ? 'text-[#ff0000] animate-pulse' : 'text-white/40'}`} />
-          <span className={`text-[8px] md:text-[10px] font-black tracking-widest uppercase ${isFlowActive ? 'text-[#ff0000]' : 'text-white/40'}`}>
+        <div className={`flex items-center gap-1.5 bg-black/40 px-3 py-1 rounded-full border ${isWindowActive ? 'border-[#ff0000]/10' : 'border-white/5'}`}>
+          {isWindowActive ? (
+            <Clock size={8} className={`${isFlowActive ? 'text-[#ff0000] animate-pulse' : 'text-white/40'}`} />
+          ) : (
+            <PauseCircle size={8} className="text-white/20" />
+          )}
+          <span className={`text-[8px] md:text-[10px] font-black tracking-widest uppercase ${isWindowActive ? (isFlowActive ? 'text-[#ff0000]' : 'text-white/40') : 'text-white/20'}`}>
             {sessionMinutes}{lang === 'ar' ? ' د' : 'm'}
-            {isFlowActive && <Zap size={8} className="inline ml-1 mb-0.5" />}
+            {isFlowActive && isWindowActive && <Zap size={8} className="inline ml-1 mb-0.5" />}
+            {!isWindowActive && <span className="ml-1 opacity-50 italic">Paused</span>}
           </span>
         </div>
       </div>
@@ -308,7 +337,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </AnimatePresence>
 
-      {/* Detail Editor Modal */}
       <AnimatePresence>
         {editingAnnoId && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3000] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl">
@@ -365,7 +393,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </AnimatePresence>
 
-      <main className={`flex-1 relative flex items-center justify-center overflow-hidden bg-black transition-all duration-1000 ${isZenMode ? 'p-0' : 'p-2 md:p-10'}`} onTouchStart={(e) => { if (activeTool === 'view') touchStartRef.current = e.touches[0].clientX; }} onTouchEnd={(e) => { if (activeTool === 'view' && touchStartRef.current !== null) { const diff = e.changedTouches[0].clientX - touchStartRef.current; if (Math.abs(diff) > 50) { if (isRTL) diff > 0 ? handlePageChange(currentPage + 1) : handlePageChange(currentPage - 1); else diff > 0 ? handlePageChange(currentPage - 1) : handlePageChange(currentPage + 1); } touchStartRef.current = null; } }}>
+      <main className={`flex-1 relative flex items-center justify-center overflow-hidden bg-black transition-all duration-1000 ${isZenMode ? 'p-0' : 'p-2 md:p-10'} ${!isWindowActive ? 'grayscale-[0.5] opacity-50' : ''}`} onTouchStart={(e) => { if (activeTool === 'view') touchStartRef.current = e.touches[0].clientX; }} onTouchEnd={(e) => { if (activeTool === 'view' && touchStartRef.current !== null) { const diff = e.changedTouches[0].clientX - touchStartRef.current; if (Math.abs(diff) > 50) { if (isRTL) diff > 0 ? handlePageChange(currentPage + 1) : handlePageChange(currentPage - 1); else diff > 0 ? handlePageChange(currentPage - 1) : handlePageChange(currentPage + 1); } touchStartRef.current = null; } }}>
         {isLoading ? (
           <div className="flex flex-col items-center gap-6"><div className="w-12 h-12 border-2 border-[#ff0000]/20 border-t-[#ff0000] rounded-full animate-spin" /></div>
         ) : (
@@ -373,8 +401,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             <div ref={pageRef} onMouseDown={(e) => handleStart(e.clientX, e.clientY)} onMouseMove={(e) => handleMove(e.clientX, e.clientY)} onMouseUp={() => handleEnd()} onTouchStart={(e) => { if(activeTool !== 'view') e.preventDefault(); handleStart(e.touches[0].clientX, e.touches[0].clientY, true); }} onTouchMove={(e) => { if(activeTool !== 'view') e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); }} onTouchEnd={(e) => handleEnd(e.changedTouches[0].clientX)} className={`relative shadow-2xl border border-white/5 overflow-hidden transition-all duration-700 touch-none ${activeTool === 'view' ? 'cursor-default' : 'cursor-crosshair'} ${isZenMode ? 'h-full w-auto' : 'max-h-[85vh] h-full w-auto aspect-[1/1.41] bg-white'}`}>
               <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none" alt="Page" />
               
-              {/* Cognitive Pacer - خط أحمر خافت جداً للمساعدة على القراءة */}
-              {isFlowActive && !isDrawing && activeTool === 'view' && (
+              {isFlowActive && !isDrawing && activeTool === 'view' && isWindowActive && (
                 <motion.div 
                    animate={{ y: ["0%", "100%", "0%"] }}
                    transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
@@ -390,6 +417,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 ))}
                 {currentRect && <div className="absolute border-2 border-dashed" style={{ left: `${currentRect.x}%`, top: `${currentRect.y}%`, width: `${currentRect.w}%`, height: activeTool === 'underline' ? '2px' : `${currentRect.h}%`, backgroundColor: activeTool === 'highlight' ? `${activeColor}22` : 'transparent', borderColor: activeColor }} />}
               </div>
+
+              {!isWindowActive && (
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+                  <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-black/80 border border-white/10 px-8 py-4 rounded-full flex items-center gap-4">
+                    <PauseCircle className="text-[#ff0000]" size={24} />
+                    <span className="text-xs font-black uppercase tracking-widest text-white/60">Session Paused - Return to Focus</span>
+                  </motion.div>
+                </div>
+              )}
             </div>
           </div>
         )}
