@@ -527,7 +527,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
              <motion.div 
                initial={{ y: 50, opacity: 0, scale: 0.95 }} 
                animate={{ y: 0, opacity: 1, scale: 1 }} 
-               className="w-full max-w-6xl h-[90vh] bg-white/[0.03] border border-white/[0.08] rounded-[5rem] flex flex-col shadow-[0_0_150px_rgba(0,0,0,0.9)] overflow-hidden backdrop-blur-3xl"
+               className="w-full max-w-6xl h-[90vh] bg-white/[0.03] border border-white/[0.08] rounded-[4rem] flex flex-col shadow-[0_0_150px_rgba(0,0,0,0.9)] overflow-hidden backdrop-blur-3xl"
              >
                 <div className="p-10 md:p-16 border-b border-white/[0.05] flex items-center justify-between shrink-0 bg-white/[0.02] backdrop-blur-3xl">
                    <div className="flex items-center gap-8">
