@@ -1,6 +1,6 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -25,7 +25,6 @@
         .font-en { font-family: 'Montserrat', sans-serif; }
         .font-ar { font-family: 'Tajawal', sans-serif; }
         
-        /* Radiant Red Small Title */
         .text-glow-red {
             color: var(--accent-red);
             text-shadow: 0 0 10px rgba(255, 0, 0, 0.8), 0 0 20px rgba(255, 0, 0, 0.4);
@@ -34,6 +33,24 @@
             color: #ffffff;
             text-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
+        
+        /* Shining Effect for Philosophy Text */
+        .shining-text {
+            background: linear-gradient(90deg, rgba(255,0,0,0.2), #ff0000, rgba(255,0,0,0.2));
+            background-size: 200% auto;
+            color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            animation: shine 3s linear infinite;
+            font-style: italic;
+        }
+
+        @keyframes shine {
+            to {
+                background-position: 200% center;
+            }
+        }
+
         ::-webkit-scrollbar {
             width: 4px;
         }
@@ -51,7 +68,6 @@
           scrollbar-width: thin;
           scrollbar-color: var(--accent-red) #001a00;
         }
-        /* Fix for mobile height issues */
         .h-screen-safe {
             height: 100vh;
             height: 100dvh;
@@ -60,19 +76,20 @@
 <script type="importmap">
 {
   "imports": {
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
-    "framer-motion": "https://esm.sh/framer-motion@^12.34.0",
-    "react/": "https://esm.sh/react@^19.2.4/",
     "react": "https://esm.sh/react@^19.2.4",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.41.0"
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "framer-motion": "https://esm.sh/framer-motion@^12.34.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.564.0",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4"
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body>
     <div id="root"></div>
-<script type="module" src="/index.tsx"></script>
+    <!-- نقطة الدخول الرئيسية للتطبيق -->
+    <script type="module" src="/index.tsx"></script>
 </body>
 </html>
