@@ -9,7 +9,8 @@ import {
   ChevronLeft, ChevronRight, Maximize2, Highlighter, 
   PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
   ListOrdered, Minimize2, Star, Trophy, Info, Clock, Hash, Zap, PauseCircle,
-  Volume2, CloudLightning, Waves, Droplets, Moon, Bird, Flame, Save, ArrowLeft, VolumeX
+  Volume2, CloudLightning, Waves, Droplets, Moon, Bird, Flame, Save, ArrowLeft, VolumeX,
+  Sparkles
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -30,15 +31,18 @@ const COLORS = [
   { name: 'Purple', hex: '#a855f7' }
 ];
 
+// روابط صوتية مباشرة ومستقرة
 const SOUNDS = [
   { id: 'none', icon: VolumeX, url: '' },
-  { id: 'rain', icon: CloudLightning, url: 'https://actions.google.com/sounds/v1/weather/thunder_storm.ogg' },
-  { id: 'sea', icon: Waves, url: 'https://actions.google.com/sounds/v1/water/waves_crashing_on_shore.ogg' },
-  { id: 'river', icon: Droplets, url: 'https://actions.google.com/sounds/v1/water/river_stream.ogg' },
-  { id: 'night', icon: Moon, url: 'https://actions.google.com/sounds/v1/ambient/night_ambience.ogg' },
-  { id: 'birds', icon: Bird, url: 'https://actions.google.com/sounds/v1/ambient/morning_birds.ogg' },
-  { id: 'fire', icon: Flame, url: 'https://actions.google.com/sounds/v1/ambient/fire_crackle.ogg' }
+  { id: 'rain', icon: CloudLightning, url: 'https://www.soundjay.com/nature/rain-01.mp3' },
+  { id: 'sea', icon: Waves, url: 'https://www.soundjay.com/nature/ocean-wave-1.mp3' },
+  { id: 'river', icon: Droplets, url: 'https://www.soundjay.com/nature/river-1.mp3' },
+  { id: 'night', icon: Moon, url: 'https://www.soundjay.com/nature/cricket-chirping-01.mp3' },
+  { id: 'birds', icon: Bird, url: 'https://www.soundjay.com/nature/canary-singing-01.mp3' },
+  { id: 'fire', icon: Flame, url: 'https://www.soundjay.com/ambient/fire-crackling-01.mp3' }
 ];
+
+const CELEBRATION_SOUND_URL = 'https://www.soundjay.com/human/applause-01.mp3';
 
 export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdate }) => {
   const [isZenMode, setIsZenMode] = useState(false);
@@ -61,11 +65,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [isGoToPageOpen, setIsGoToPageOpen] = useState(false);
   const [isSoundPickerOpen, setIsSoundPickerOpen] = useState(false);
   const [activeSoundId, setActiveSoundId] = useState('none');
-  const [volume, setVolume] = useState(0.5); // Range 0 to 1, maps to 0-4x boost
+  const [volume, setVolume] = useState(0.5);
   const [targetPageInput, setTargetPageInput] = useState('');
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [isFlowActive, setIsFlowActive] = useState(false);
   const [isWindowActive, setIsWindowActive] = useState(true);
+
+  // نظام النجوم
+  const [showStarCelebration, setShowStarCelebration] = useState(false);
+  const prevStarsRef = useRef(book.stars);
 
   const touchStartRef = useRef<number | null>(null);
   const timerRef = useRef<number | null>(null);
@@ -73,11 +81,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const pageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Advanced Audio System for persistent looping and volume boost
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const celebrationAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
-  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
 
   const t = translations[lang];
   const isRTL = lang === 'ar';
@@ -89,7 +96,18 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const starProgress = (secondsTowardsNextStar / starThreshold) * 100;
   const minsToNextStar = Math.ceil((starThreshold - secondsTowardsNextStar) / 60);
 
-  // Initialize Web Audio API on first user interaction
+  // مراقبة تحصيل النجوم للاحتفال
+  useEffect(() => {
+    if (book.stars > prevStarsRef.current) {
+      setShowStarCelebration(true);
+      if (celebrationAudioRef.current) {
+        celebrationAudioRef.current.volume = 0.7;
+        celebrationAudioRef.current.play().catch(e => console.warn("Celebration audio blocked", e));
+      }
+      prevStarsRef.current = book.stars;
+    }
+  }, [book.stars]);
+
   const initAudioEngine = () => {
     if (!audioContextRef.current && audioRef.current) {
       try {
@@ -97,7 +115,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         const ctx = new AudioContextClass();
         const gain = ctx.createGain();
         
-        // Essential for CORS compatibility with cross-domain audio links
         audioRef.current.crossOrigin = "anonymous";
         const source = ctx.createMediaElementSource(audioRef.current);
         
@@ -106,16 +123,14 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         
         audioContextRef.current = ctx;
         gainNodeRef.current = gain;
-        sourceNodeRef.current = source;
 
-        // Apply initial volume boost (4.0 means 400% boost)
+        // تطبيق التضخيم (Gain)
         gain.gain.setValueAtTime(volume * 4, ctx.currentTime);
       } catch (e) {
-        console.error("Audio Context Initialization Failed", e);
+        console.error("Audio Context Init Failed", e);
       }
     }
     
-    // Resume context if suspended (common browser behavior)
     if (audioContextRef.current?.state === 'suspended') {
       audioContextRef.current.resume();
     }
@@ -130,7 +145,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     }
   }, [isLoading, t.loadingMessages.length]);
 
-  // Handle Visibility and Audio Suspension
   useEffect(() => {
     const handleVisibilityChange = () => {
       const isActive = document.visibilityState === 'visible';
@@ -145,14 +159,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [activeSoundId]);
 
-  // Update GainNode Volume (Boost up to 400%)
   useEffect(() => {
     if (gainNodeRef.current && audioContextRef.current) {
       gainNodeRef.current.gain.setTargetAtTime(volume * 4, audioContextRef.current.currentTime, 0.1);
     }
   }, [volume]);
 
-  // Change Audio Source and Play
+  // تشغيل الصوت وتكراره
   useEffect(() => {
     if (audioRef.current) {
       if (activeSoundId === 'none') {
@@ -163,15 +176,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         if (sound && sound.url) {
           initAudioEngine();
           audioRef.current.src = sound.url;
-          audioRef.current.loop = true; // Continuous loop
+          audioRef.current.loop = true; // التكرار دائماً
           audioRef.current.load();
           if (isWindowActive) {
-            const playPromise = audioRef.current.play();
-            if (playPromise !== undefined) {
-              playPromise.catch(error => {
-                console.warn("Audio Playback Blocked by Browser Policy:", error);
-              });
-            }
+            audioRef.current.play().catch(e => console.warn("Playback failed", e));
           }
         }
       }
@@ -194,7 +202,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
           await p.render({ canvasContext: cv.getContext('2d')!, viewport: vp }).promise;
           setPages(prev => [...prev, cv.toDataURL('image/jpeg', 0.8)]);
           if (i === 1) {
-            // Keep loading screen a bit longer for cinematic effect
             setTimeout(() => setIsLoading(false), 4000);
           }
         }
@@ -248,7 +255,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       setShowControls(true);
       if (controlTimeoutRef.current) clearTimeout(controlTimeoutRef.current);
       controlTimeoutRef.current = window.setTimeout(() => {
-        if (!isArchiveOpen && editingAnnoId === null && !isGoToPageOpen && !isSoundPickerOpen) {
+        if (!isArchiveOpen && editingAnnoId === null && !isGoToPageOpen && !isSoundPickerOpen && !showStarCelebration) {
           setShowControls(false);
         }
       }, isFlowActive ? 3000 : 5000); 
@@ -260,7 +267,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       window.removeEventListener('mousemove', handleActivity);
       window.removeEventListener('touchstart', handleActivity);
     };
-  }, [isArchiveOpen, editingAnnoId, isGoToPageOpen, isFlowActive, isSoundPickerOpen]);
+  }, [isArchiveOpen, editingAnnoId, isGoToPageOpen, isFlowActive, isSoundPickerOpen, showStarCelebration]);
 
   const toggleZenMode = async () => {
     const nextState = !isZenMode;
@@ -282,7 +289,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   };
 
   const handleStart = (clientX: number, clientY: number, isTouch = false) => {
-    // Crucial: Unlock audio engine on interaction
     initAudioEngine();
     
     if (activeTool === 'view') {
@@ -361,10 +367,59 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   return (
     <div ref={containerRef} className={`h-screen flex flex-col bg-black overflow-hidden select-none relative ${fontClass}`} dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Native audio element used as source for Web Audio API */}
       <audio ref={audioRef} crossOrigin="anonymous" hidden />
+      <audio ref={celebrationAudioRef} src={CELEBRATION_SOUND_URL} crossOrigin="anonymous" hidden />
       
-      {/* Atmospheric Cinematic Glow */}
+      {/* واجهة الاحتفال بالفوز بنجمة */}
+      <AnimatePresence>
+        {showStarCelebration && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-[6000] bg-black/98 backdrop-blur-3xl flex flex-col items-center justify-center p-10 text-center"
+          >
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+               {[...Array(30)].map((_, i) => (
+                 <motion.div
+                   key={i}
+                   initial={{ x: '50%', y: '100%', opacity: 1 }}
+                   animate={{ 
+                     x: `${Math.random() * 100}%`, 
+                     y: `${Math.random() * -20}%`,
+                     rotate: 360,
+                     opacity: 0 
+                   }}
+                   transition={{ duration: 2 + Math.random() * 2, repeat: Infinity, delay: i * 0.1 }}
+                   className="absolute w-1 h-8 bg-gradient-to-t from-red-600 to-transparent"
+                 />
+               ))}
+            </div>
+
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', damping: 12, stiffness: 100 }}
+              className="relative mb-12"
+            >
+               <div className="absolute inset-0 bg-red-600 blur-[100px] opacity-50 animate-pulse" />
+               <Star size={180} className="text-[#ff0000] fill-[#ff0000] drop-shadow-[0_0_50px_rgba(255,0,0,1)] relative z-10" />
+            </motion.div>
+
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}>
+               <h2 className="text-4xl md:text-7xl font-black italic text-white uppercase tracking-tighter mb-6">{t.starAchieved}</h2>
+               <p className="text-lg md:text-2xl font-bold text-white/70 max-w-2xl leading-relaxed italic mb-12">"{t.starMotivation}"</p>
+               <button 
+                 onClick={() => setShowStarCelebration(false)}
+                 className="px-16 py-6 bg-red-600 text-white font-black uppercase text-xs tracking-[0.6em] rounded-full shadow-[0_0_40px_rgba(255,0,0,0.5)] hover:scale-110 active:scale-95 transition-all flex items-center gap-4 mx-auto"
+               >
+                 <Sparkles size={18} /> {t.continueJourney}
+               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="fixed inset-0 pointer-events-none z-0">
          <motion.div 
             animate={{ opacity: isWindowActive ? [0.03, 0.07, 0.03] : 0.01 }} 
@@ -373,7 +428,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
          />
       </div>
 
-      {/* Modern Annotation Side Drawer */}
       <AnimatePresence>
         {editingAnnoId && (
           <motion.div 
@@ -423,7 +477,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </AnimatePresence>
 
-      {/* Cinematic Loading Overlay */}
       <AnimatePresence>
         {isLoading && (
           <motion.div 
@@ -470,7 +523,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </AnimatePresence>
 
-      {/* Intelligent Pulse Timer */}
       <div className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[1005] transition-opacity duration-1000 ${showControls ? 'opacity-100' : 'opacity-25'}`}>
         <div className={`flex items-center gap-3 bg-black/70 px-6 py-2.5 rounded-full border shadow-2xl ${isWindowActive ? 'border-[#ff0000]/40' : 'border-white/10 shadow-none'}`}>
           {isWindowActive ? (
@@ -485,7 +537,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         </div>
       </div>
 
-      {/* Advanced Sound System Picker with Boost Slider */}
       <AnimatePresence>
         {isSoundPickerOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3500] flex items-center justify-center p-6 bg-black/85 backdrop-blur-2xl">
@@ -496,7 +547,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   <h3 className="text-3xl font-black uppercase italic tracking-tighter">{t.soundscape}</h3>
                 </div>
 
-                {/* PRO VOLUME BOOST SLIDER (Up to 400%) */}
                 <div className="mb-12 px-6 space-y-6 text-left bg-white/5 p-8 rounded-[2.5rem] border border-white/10">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white/40">{t.volume}</span>
@@ -537,7 +587,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </AnimatePresence>
 
-      {/* Reader Header / Controls */}
       <AnimatePresence>
         {showControls && (
           <motion.header initial={{ y: -100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -100, opacity: 0 }} className="fixed top-0 left-0 right-0 flex flex-col gap-2 p-4 md:p-10 bg-gradient-to-b from-black/95 to-transparent z-[1001]">
@@ -568,14 +617,12 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </AnimatePresence>
 
-      {/* Main Interactive Stage */}
       <main className={`flex-1 relative flex items-center justify-center overflow-hidden bg-black transition-all duration-1000 ${isZenMode ? 'p-0' : 'p-4 md:p-14'} ${!isWindowActive ? 'grayscale-[0.7] opacity-30' : ''}`} onMouseDown={initAudioEngine} onTouchStart={initAudioEngine}>
         <div className="relative h-full w-full flex items-center justify-center z-10">
           {!isLoading && (
             <div ref={pageRef} onMouseDown={(e) => handleStart(e.clientX, e.clientY)} onMouseMove={(e) => handleMove(e.clientX, e.clientY)} onMouseUp={() => handleEnd()} onTouchStart={(e) => { if(activeTool !== 'view') e.preventDefault(); handleStart(e.touches[0].clientX, e.touches[0].clientY, true); }} onTouchMove={(e) => { if(activeTool !== 'view') e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); }} onTouchEnd={(e) => handleEnd(e.changedTouches[0].clientX)} className={`relative shadow-[0_50px_100px_rgba(0,0,0,0.8)] border border-white/10 overflow-hidden transition-all duration-1000 touch-none ${activeTool === 'view' ? 'cursor-default' : 'cursor-crosshair'} ${isZenMode ? 'h-full w-auto' : 'max-h-[85vh] h-full w-auto aspect-[1/1.41] bg-white'}`}>
               <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none select-none" alt="Page" />
               
-              {/* Cognitive Flow Scanning Line */}
               {isFlowActive && !isDrawing && activeTool === 'view' && isWindowActive && (
                 <motion.div 
                    animate={{ y: ["0%", "100%", "0%"] }}
@@ -584,7 +631,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 />
               )}
 
-              {/* Dynamic Annotations Layer */}
               <div className="absolute inset-0 pointer-events-none">
                 {currentPageAnnos.map(anno => (
                   <div key={anno.id} className="absolute group pointer-events-auto cursor-pointer" onClick={() => setEditingAnnoId(anno.id)} style={{ left: `${anno.x}%`, top: `${anno.y}%`, width: anno.width ? `${anno.width}%` : 'auto', height: anno.height ? `${anno.height}%` : 'auto', backgroundColor: anno.type === 'highlight' ? `${anno.color}66` : 'transparent', borderBottom: anno.type === 'underline' ? `4px solid ${anno.color}` : 'none', border: anno.type === 'box' ? `2px solid ${anno.color}` : 'none' }}>
@@ -594,7 +640,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 {currentRect && <div className="absolute border-2 border-dashed shadow-[0_0_10px_rgba(255,255,255,0.2)]" style={{ left: `${currentRect.x}%`, top: `${currentRect.y}%`, width: `${currentRect.w}%`, height: activeTool === 'underline' ? '3px' : `${currentRect.h}%`, backgroundColor: activeTool === 'highlight' ? `${activeColor}44` : 'transparent', borderColor: activeColor }} />}
               </div>
 
-              {/* Suspended Focus Overlay */}
               {!isWindowActive && (
                 <div className="absolute inset-0 bg-black/70 backdrop-blur-xl flex items-center justify-center z-50">
                   <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-black/90 border border-white/10 px-12 py-6 rounded-[3rem] flex items-center gap-5 shadow-3xl">
@@ -608,7 +653,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         </div>
       </main>
 
-      {/* Persistent Bottom Navigation */}
       <AnimatePresence>
         {showControls && (
           <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="fixed bottom-12 md:bottom-16 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-4 md:gap-7 bg-black/70 backdrop-blur-3xl border border-white/10 px-8 py-4 rounded-full shadow-3xl scale-[0.85] md:scale-100">
@@ -628,10 +672,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </AnimatePresence>
 
-      {/* Global Reading Progress Line */}
       <div className="fixed bottom-0 left-0 right-0 h-1.5 bg-white/5 z-[1002]"><motion.div className="h-full bg-gradient-to-r from-transparent via-[#ff0000]/70 to-transparent shadow-[0_0_15px_#ff0000]" animate={{ width: `${progress}%` }} /></div>
 
-      {/* Archive Sidebar (Wisdom Index) */}
       <AnimatePresence>
         {isArchiveOpen && (
           <motion.div initial={{ x: isRTL ? '100%' : '-100%' }} animate={{ x: 0 }} exit={{ x: isRTL ? '100%' : '-100%' }} className={`fixed inset-y-0 ${isRTL ? 'right-0' : 'left-0'} w-full md:w-[500px] z-[2000] bg-[#050505]/98 backdrop-blur-3xl border-${isRTL ? 'l' : 'r'} border-white/10 shadow-3xl flex flex-col`}>
@@ -656,7 +698,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </AnimatePresence>
 
-      {/* Navigation Modal */}
       <AnimatePresence>
         {isGoToPageOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3500] flex items-center justify-center p-6 bg-black/90 backdrop-blur-3xl">
