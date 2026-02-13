@@ -38,17 +38,27 @@ export const translations = {
     establish: 'Establish',
     modTitle: 'Modification Title',
     chapterName: 'Chapter / Bab',
-    editDetails: 'Edit Entry Details',
+    editDetails: 'Entry Details',
     goToPage: 'Go to Page',
     jump: 'Jump',
     soundscape: 'Soundscape',
     none: 'None',
-    rain: 'Rain & Thunder',
+    rain: 'Rain & Deep Thunder',
     sea: 'Ocean Waves',
     river: 'River Flow',
     night: 'Forest Night',
     birds: 'Forest Birds',
-    fire: 'Bonfire'
+    fire: 'Bonfire',
+    discard: 'Discard',
+    back: 'Back',
+    loadingMessages: [
+      'Reconstructing neural archives...',
+      'Deciphering logic patterns...',
+      'Calibrating focus parameters...',
+      'Igniting the light of knowledge...',
+      'Mapping manuscript geometry...',
+      'Preparing the Sanctuary...'
+    ]
   },
   ar: {
     title: 'SANCTUARY',
@@ -88,16 +98,26 @@ export const translations = {
     establish: 'إنشاء',
     modTitle: 'عنوان التعديل',
     chapterName: 'اسم الباب / الفصل',
-    editDetails: 'تعديل بيانات الإدخال',
+    editDetails: 'بيانات الإدخال',
     goToPage: 'الذهاب إلى صفحة',
     jump: 'انتقال',
     soundscape: 'الخلفية الصوتية',
     none: 'بلا خلفية',
-    rain: 'مطر ورعد',
+    rain: 'مطر ورعد عميق',
     sea: 'أمواج البحر',
     river: 'خرير المياه',
     night: 'هدوء الليل',
     birds: 'تغريد العصافير',
-    fire: 'وهج النار'
+    fire: 'وهج النار',
+    discard: 'إلغاء',
+    back: 'رجوع',
+    loadingMessages: [
+      'جاري استعادة الأرشيف العصبي...',
+      'فك تشفير أنماط المنطق...',
+      'معايرة معايير التركيز...',
+      'إيقاد شعلة المعرفة...',
+      'رسم هندسة المخطوطة...',
+      'تجهيز المحراب...'
+    ]
   }
 };
