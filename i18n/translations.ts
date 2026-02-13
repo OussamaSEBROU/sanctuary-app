@@ -35,7 +35,10 @@ export const translations = {
     activeSession: 'Deciphering Active',
     cognitiveMetrics: 'Cognitive Metrics',
     newIntake: 'New Intake',
-    establish: 'Establish'
+    establish: 'Establish',
+    modTitle: 'Modification Title',
+    chapterName: 'Chapter / Bab',
+    editDetails: 'Edit Entry Details'
   },
   ar: {
     title: 'SANCTUARY',
@@ -72,6 +75,9 @@ export const translations = {
     activeSession: 'فك التشفير نشط',
     cognitiveMetrics: 'تحليلات معرفية',
     newIntake: 'إدخال جديد',
-    establish: 'إنشاء'
+    establish: 'إنشاء',
+    modTitle: 'عنوان التعديل',
+    chapterName: 'اسم الباب / الفصل',
+    editDetails: 'تعديل بيانات الإدخال'
   }
 };
