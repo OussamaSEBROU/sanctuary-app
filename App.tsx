@@ -332,33 +332,32 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       <audio ref={celebrationAudioRef} src={CELEBRATION_SOUND_URL} crossOrigin="anonymous" hidden />
       <input type="file" ref={soundInputRef} onChange={handleCustomSoundUpload} accept="audio/*" className="hidden" />
       
-      {/* واجهة النجمة والتحصيل */}
       <AnimatePresence>
         {showStarCelebration && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] bg-black/98 backdrop-blur-3xl flex flex-col items-center justify-center p-10 text-center">
-            <Star size={120} className="text-[#ff0000] fill-[#ff0000] drop-shadow-[0_0_50px_rgba(255,0,0,1)] mb-8" />
-            <h2 className="text-4xl md:text-7xl font-black italic text-white uppercase mb-6">{t.starAchieved}</h2>
-            <button onClick={() => setShowStarCelebration(false)} className="px-12 py-5 bg-red-600 text-white font-black uppercase text-xs tracking-[0.4em] rounded-full">{t.continueJourney}</button>
+            <Star size={80} className="text-[#ff0000] fill-[#ff0000] drop-shadow-[0_0_50px_rgba(255,0,0,1)] mb-8 md:size-[120px]" />
+            <h2 className="text-2xl md:text-7xl font-black italic text-white uppercase mb-6">{t.starAchieved}</h2>
+            <button onClick={() => setShowStarCelebration(false)} className="px-10 py-4 bg-red-600 text-white font-black uppercase text-xs tracking-[0.4em] rounded-full">{t.continueJourney}</button>
           </motion.div>
         )}
       </AnimatePresence>
 
       <AnimatePresence>
         {showControls && (
-          <motion.header initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -50, opacity: 0 }} className="fixed top-0 left-0 right-0 flex items-center justify-between p-3 md:p-10 bg-gradient-to-b from-black/95 to-transparent z-[1001]">
-            <div className="flex items-center gap-2 md:gap-5">
-              <button onClick={onBack} className="p-2 md:p-5 bg-white/5 rounded-full text-white/60"><ChevronLeft size={20} className={isRTL ? "rotate-180" : ""} /></button>
-              <button onClick={() => setIsArchiveOpen(true)} className="p-2 md:p-5 bg-white/5 rounded-full text-white/40"><ListOrdered size={20} /></button>
-              <button onClick={() => { setIsSoundPickerOpen(true); initAudioEngine(); }} className="p-2 md:p-5 bg-white/5 rounded-full text-white/40"><Volume2 size={20} /></button>
+          <motion.header initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -50, opacity: 0 }} className="fixed top-0 left-0 right-0 flex items-center justify-between p-2 md:p-10 bg-gradient-to-b from-black/95 to-transparent z-[1001]">
+            <div className="flex items-center gap-1 md:gap-5">
+              <button onClick={onBack} className="p-2 md:p-5 bg-white/5 rounded-full text-white/60"><ChevronLeft size={18} className={`${isRTL ? "rotate-180" : ""} md:size-6`} /></button>
+              <button onClick={() => setIsArchiveOpen(true)} className="p-2 md:p-5 bg-white/5 rounded-full text-white/40"><ListOrdered size={18} className="md:size-6" /></button>
+              <button onClick={() => { setIsSoundPickerOpen(true); initAudioEngine(); }} className="p-2 md:p-5 bg-white/5 rounded-full text-white/40"><Volume2 size={18} className="md:size-6" /></button>
             </div>
-            <div className="flex items-center gap-1 md:gap-2 bg-black/50 p-1.5 rounded-full border border-white/10">
+            <div className="flex items-center gap-1 md:gap-2 bg-black/50 p-1 md:p-1.5 rounded-full border border-white/10 overflow-x-auto no-scrollbar">
               {[{id: 'view', icon: MousePointer2}, {id: 'highlight', icon: Highlighter}, {id: 'underline', icon: PenTool}, {id: 'box', icon: Square}, {id: 'note', icon: MessageSquare}].map(tool => (
-                <button key={tool.id} onClick={() => { setActiveTool(tool.id as Tool); initAudioEngine(); }} className={`p-2 md:p-4 rounded-full transition-all ${activeTool === tool.id ? 'bg-white text-black' : 'text-white/40'}`}><tool.icon size={16}/></button>
+                <button key={tool.id} onClick={() => { setActiveTool(tool.id as Tool); initAudioEngine(); }} className={`p-1.5 md:p-4 rounded-full transition-all ${activeTool === tool.id ? 'bg-white text-black' : 'text-white/40'}`}><tool.icon size={14} className="md:size-5"/></button>
               ))}
             </div>
-            <div className="flex items-center gap-2 md:gap-5">
-              <button onClick={toggleZenMode} className="p-2 md:p-5 bg-white/5 rounded-full text-white/40"><Maximize2 size={20} /></button>
-              <div className="w-10 h-10 md:w-16 md:h-16 flex items-center justify-center bg-white/5 rounded-full border border-[#ff0000]/30"><Star size={18} className="text-[#ff0000] fill-[#ff0000]" /></div>
+            <div className="flex items-center gap-1 md:gap-5">
+              <button onClick={toggleZenMode} className="p-2 md:p-5 bg-white/5 rounded-full text-white/40"><Maximize2 size={18} className="md:size-6" /></button>
+              <div className="w-8 h-8 md:w-16 md:h-16 flex items-center justify-center bg-white/5 rounded-full border border-[#ff0000]/30"><Star size={14} className="text-[#ff0000] fill-[#ff0000] md:size-6" /></div>
             </div>
           </motion.header>
         )}
@@ -371,7 +370,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             <div className="absolute inset-0 pointer-events-none">
               {currentPageAnnos.map(anno => (
                 <div key={anno.id} className="absolute pointer-events-auto" onClick={() => setEditingAnnoId(anno.id)} style={{ left: `${anno.x}%`, top: `${anno.y}%`, width: anno.width ? `${anno.width}%` : 'auto', height: anno.height ? `${anno.height}%` : 'auto', backgroundColor: anno.type === 'highlight' ? `${anno.color}66` : 'transparent', borderBottom: anno.type === 'underline' ? `3px solid ${anno.color}` : 'none', border: anno.type === 'box' ? `2px solid ${anno.color}` : 'none' }}>
-                  {anno.type === 'note' && <div className="w-6 h-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff0000] text-white flex items-center justify-center"><MessageSquare size={10} /></div>}
+                  {anno.type === 'note' && <div className="w-5 h-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff0000] text-white flex items-center justify-center md:size-6"><MessageSquare size={8} className="md:size-4" /></div>}
                 </div>
               ))}
               {currentRect && <div className="absolute border border-dashed" style={{ left: `${currentRect.x}%`, top: `${currentRect.y}%`, width: `${currentRect.w}%`, height: activeTool === 'underline' ? '2px' : `${currentRect.h}%`, backgroundColor: activeTool === 'highlight' ? `${activeColor}44` : 'transparent', borderColor: activeColor }} />}
@@ -382,19 +381,48 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
       <AnimatePresence>
         {showControls && (
-          <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-4 bg-black/80 backdrop-blur-xl border border-white/10 px-5 py-2.5 rounded-full scale-90 md:scale-100">
-            <button onClick={() => handlePageChange(currentPage - 1)} className="text-white/40"><ChevronLeft size={20}/></button>
-            <button onClick={() => setIsGoToPageOpen(true)} className="text-xs font-black tracking-widest text-white whitespace-nowrap">
+          <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-2 bg-black/80 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-full scale-90 md:scale-100 md:bottom-6 md:px-5 md:py-2.5 md:gap-4">
+            <button onClick={() => handlePageChange(currentPage - 1)} className="text-white/40"><ChevronLeft size={18}/></button>
+            <button onClick={() => setIsGoToPageOpen(true)} className="text-[10px] font-black tracking-widest text-white whitespace-nowrap md:text-xs">
               {currentPage + 1} / {totalPages}
             </button>
-            <button onClick={() => handlePageChange(currentPage + 1)} className="text-white/40"><ChevronRight size={20}/></button>
-            <div className="w-[1px] h-4 bg-white/10 mx-2" />
-            <div className="flex items-center gap-2"><Clock size={12} className="text-[#ff0000]" /><span className="text-[10px] font-black">{sessionMinutes}m</span></div>
+            <button onClick={() => handlePageChange(currentPage + 1)} className="text-white/40"><ChevronRight size={18}/></button>
+            <div className="w-[1px] h-3 bg-white/10 mx-1 md:h-4 md:mx-2" />
+            <div className="flex items-center gap-1.5 md:gap-2"><Clock size={10} className="text-[#ff0000] md:size-3" /><span className="text-[9px] font-black md:text-[10px]">{sessionMinutes}m</span></div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="fixed bottom-0 left-0 right-0 h-1 bg-white/5"><motion.div className="h-full bg-[#ff0000]" animate={{ width: `${progress}%` }} /></div>
+      <div className="fixed bottom-0 left-0 right-0 h-0.5 bg-white/5 md:h-1"><motion.div className="h-full bg-[#ff0000]" animate={{ width: `${progress}%` }} /></div>
+      
+      {/* Sound Picker UI - Adjusted for Mobile */}
+      <AnimatePresence>
+        {isSoundPickerOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3500] flex items-center justify-center p-4 bg-black/90 backdrop-blur-2xl">
+             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-[#0f0f0f] border border-white/10 p-6 md:p-12 rounded-[2rem] md:rounded-[4rem] w-full max-w-md shadow-3xl overflow-y-auto max-h-[90vh]">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-xl font-black uppercase tracking-tighter italic">{t.soundscape}</h3>
+                  <button onClick={() => setIsSoundPickerOpen(false)} className="p-2 text-white/30"><X size={20}/></button>
+                </div>
+                <div className="grid gap-3">
+                  {SOUNDS.map(sound => (
+                    <button key={sound.id} onClick={() => { setActiveSoundId(sound.id); setIsSoundPickerOpen(false); }} className={`flex items-center justify-between p-4 rounded-xl border ${activeSoundId === sound.id ? 'bg-[#ff0000]/10 border-[#ff0000]/30 text-white' : 'bg-white/5 border-transparent text-white/40 hover:bg-white/10'}`}>
+                      <div className="flex items-center gap-3">
+                        <sound.icon size={16} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">{(t as any)[sound.id] || sound.id}</span>
+                      </div>
+                      {activeSoundId === sound.id && <div className="w-1.5 h-1.5 rounded-full bg-[#ff0000]" />}
+                    </button>
+                  ))}
+                  <button onClick={() => soundInputRef.current?.click()} className="flex items-center gap-3 p-4 rounded-xl border border-dashed border-white/10 text-white/30 hover:text-white transition-all">
+                    <Music size={16} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">{t.uploadCustomSound}</span>
+                  </button>
+                </div>
+             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
