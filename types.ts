@@ -10,10 +10,12 @@ export interface Annotation {
   type: 'highlight' | 'underline' | 'box' | 'note';
   pageIndex: number;
   x: number; // Percentage
-  y: number; // Percentageض
+  y: number; // Percentage
   width?: number; // Percentage
   height?: number; // Percentage
-  text?: string; // For notes
+  text?: string; // For notes/content
+  title?: string; // Title for the modification
+  chapter?: string; // Chapter / Bab name
   color: string;
 }
 
