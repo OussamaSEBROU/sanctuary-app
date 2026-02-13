@@ -53,6 +53,9 @@ export const translations = {
     back: 'Back',
     volume: 'Volume Boost (Max 400%)',
     loadingNote: 'Note: Reconstructing neural archives. Larger manuscripts may take a few moments.',
+    starAchieved: 'STAR ACHIEVED',
+    starMotivation: 'Your focus is illuminating the sanctuary. The light of knowledge grows stronger.',
+    continueJourney: 'CONTINUE DECIPHERING',
     loadingMessages: [
       'Reconstructing neural archives...',
       'Deciphering logic patterns...',
@@ -115,6 +118,9 @@ export const translations = {
     back: 'رجوع',
     volume: 'تضخيم الصوت (حتى 400%)',
     loadingNote: 'ملاحظة: المخطوطات الكبيرة قد تستغرق بضع لحظات لإعادة البناء من الأرشيف العصبي.',
+    starAchieved: 'تم تحصيل نجمة جديدة',
+    starMotivation: 'تركيزك يضيء المحراب الآن. شعلة المعرفة تزداد اتقاداً بداخلك، استمر في الارتقاء.',
+    continueJourney: 'مواصلة فك التشفير',
     loadingMessages: [
       'جاري استعادة الأرشيف العصبي...',
       'فك تشفير أنماط المنطق...',
