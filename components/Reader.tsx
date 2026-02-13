@@ -9,7 +9,7 @@ import {
   ChevronLeft, ChevronRight, Maximize2, Highlighter, 
   PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
   ListOrdered, Minimize2, Star, Trophy, Info, Bookmark, Clock, Hash, Zap, PauseCircle,
-  Volume2, CloudRain, Waves, Droplets, Moon, Bird, Flame
+  Volume2, CloudLightning, Waves, Droplets, Moon, Bird, Flame
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -32,12 +32,12 @@ const COLORS = [
 
 const SOUNDS = [
   { id: 'none', icon: Volume2, url: '' },
-  { id: 'rain', icon: CloudRain, url: 'https://actions.google.com/sounds/v1/weather/rain_on_roof.ogg' },
-  { id: 'sea', icon: Waves, url: 'https://actions.google.com/sounds/v1/water/waves_crashing_on_shore.ogg' },
-  { id: 'river', icon: Droplets, url: 'https://actions.google.com/sounds/v1/water/river_stream.ogg' },
-  { id: 'night', icon: Moon, url: 'https://actions.google.com/sounds/v1/ambient/night_ambience.ogg' },
-  { id: 'birds', icon: Bird, url: 'https://actions.google.com/sounds/v1/ambient/morning_birds.ogg' },
-  { id: 'fire', icon: Flame, url: 'https://actions.google.com/sounds/v1/ambient/fire_crackle.ogg' }
+  { id: 'rain', icon: CloudLightning, url: 'https://www.soundjay.com/nature/rain-07.mp3' },
+  { id: 'sea', icon: Waves, url: 'https://www.soundjay.com/nature/ocean-wave-1.mp3' },
+  { id: 'river', icon: Droplets, url: 'https://www.soundjay.com/nature/river-1.mp3' },
+  { id: 'night', icon: Moon, url: 'https://www.soundjay.com/nature/cricket-chirping-1.mp3' },
+  { id: 'birds', icon: Bird, url: 'https://www.soundjay.com/nature/birds-chirping-7.mp3' },
+  { id: 'fire', icon: Flame, url: 'https://www.soundjay.com/nature/fire-1.mp3' }
 ];
 
 export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdate }) => {
@@ -82,7 +82,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const starProgress = (secondsTowardsNextStar / starThreshold) * 100;
   const minsToNextStar = Math.ceil((starThreshold - secondsTowardsNextStar) / 60);
 
-  // خوارزمية تتبع حالة ظهور النافذة
   useEffect(() => {
     const handleVisibilityChange = () => {
       const isActive = document.visibilityState === 'visible';
@@ -93,19 +92,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         audioRef.current.play().catch(() => {});
       }
     };
-    const handleBlur = () => setIsWindowActive(false);
-    const handleFocus = () => setIsWindowActive(true);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleFocus);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
-    };
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [activeSoundId]);
 
-  // إدارة الصوت المطورة
   useEffect(() => {
     if (audioRef.current) {
       if (activeSoundId === 'none') {
@@ -115,15 +105,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         const sound = SOUNDS.find(s => s.id === activeSoundId);
         if (sound && sound.url) {
           audioRef.current.src = sound.url;
-          audioRef.current.volume = 0.5; // حجم معتدل للاسترخاء
+          audioRef.current.volume = 0.9; 
           audioRef.current.load();
           if (isWindowActive) {
-            const playPromise = audioRef.current.play();
-            if (playPromise !== undefined) {
-              playPromise.catch(error => {
-                console.warn("Audio playback failed:", error);
-              });
-            }
+            audioRef.current.play().catch(error => console.warn("Audio failed:", error));
           }
         }
       }
@@ -309,7 +294,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     <div ref={containerRef} className={`h-screen flex flex-col bg-black overflow-hidden select-none relative ${fontClass}`} dir={isRTL ? 'rtl' : 'ltr'}>
       <audio ref={audioRef} loop />
       
-      {/* خوارزمية النبض البصري */}
       <div className="fixed inset-0 pointer-events-none z-0">
          <motion.div 
             animate={{ opacity: isWindowActive ? [0.02, 0.05, 0.02] : 0.01 }} 
@@ -318,7 +302,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
          />
       </div>
 
-      {/* المؤقت الأحمر الذكي */}
       <div className={`fixed bottom-2 left-1/2 -translate-x-1/2 z-[1005] transition-opacity duration-1000 ${showControls ? 'opacity-80' : 'opacity-20'}`}>
         <div className={`flex items-center gap-1.5 bg-black/60 px-4 py-1.5 rounded-full border ${isWindowActive ? 'border-[#ff0000]/30' : 'border-white/5 shadow-2xl shadow-red-900/10'}`}>
           {isWindowActive ? (
