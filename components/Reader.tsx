@@ -33,7 +33,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [isZenMode, setIsZenMode] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [pages, setPages] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(0);
+  // Start from book.lastPage or 0
+  const [currentPage, setCurrentPage] = useState(book.lastPage || 0);
   const [isLoading, setIsLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(0);
   
@@ -68,14 +69,14 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       try {
         const pdf = await pdfjsLib.getDocument({ data: fileData }).promise;
         setTotalPages(pdf.numPages);
-        const maxPages = Math.min(pdf.numPages, 100);
+        const maxPages = Math.min(pdf.numPages, 200); // Increased limit slightly
         for (let i = 1; i <= maxPages; i++) {
           const p = await pdf.getPage(i);
-          const vp = p.getViewport({ scale: 2.0 });
+          const vp = p.getViewport({ scale: 1.5 }); // Lower scale for performance on load
           const cv = document.createElement('canvas');
           cv.height = vp.height; cv.width = vp.width;
           await p.render({ canvasContext: cv.getContext('2d')!, viewport: vp }).promise;
-          setPages(prev => [...prev, cv.toDataURL('image/jpeg', 0.85)]);
+          setPages(prev => [...prev, cv.toDataURL('image/jpeg', 0.8)]);
           if (i === 1) setIsLoading(false);
         }
       } catch (err) { console.error(err); }
@@ -97,6 +98,14 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   useEffect(() => {
     storageService.updateBookAnnotations(book.id, annotations);
   }, [annotations]);
+
+  // Handle page change and persistence
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 0 && newPage < totalPages) {
+      setCurrentPage(newPage);
+      storageService.updateBookPage(book.id, newPage);
+    }
+  };
 
   // Handle auto-hide controls
   useEffect(() => {
@@ -220,7 +229,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 annotations.sort((a,b) => a.pageIndex - b.pageIndex).map(anno => (
                   <button 
                     key={anno.id} 
-                    onClick={() => { setCurrentPage(anno.pageIndex); setIsArchiveOpen(false); }} 
+                    onClick={() => { handlePageChange(anno.pageIndex); setIsArchiveOpen(false); }} 
                     className="w-full text-left p-4 md:p-6 bg-white/[0.03] border border-white/5 rounded-3xl hover:bg-white/[0.08] transition-all flex flex-col gap-2 md:gap-3 group"
                   >
                     <div className="flex items-center justify-between">
@@ -250,7 +259,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             className="fixed top-0 left-0 right-0 flex flex-col gap-2 p-2 md:p-6 bg-gradient-to-b from-black/90 to-transparent z-[1001]"
           >
             <div className="flex items-center justify-between w-full">
-                {/* Left side actions */}
                 <div className="flex items-center gap-1.5 md:gap-3">
                   <button onClick={onBack} className="p-2 md:p-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full hover:bg-[#ff0000] text-white/60 hover:text-white transition-all">
                     <ChevronLeft size={18} className={isRTL ? "rotate-180" : ""} />
@@ -261,7 +269,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   </button>
                 </div>
 
-                {/* Center Tool Picker (Compact on Mobile) */}
                 <div className="flex items-center gap-1 bg-white/5 backdrop-blur-3xl p-1 rounded-full border border-white/10 max-w-[45%] md:max-w-none overflow-x-auto no-scrollbar">
                   {[
                     {id: 'view', icon: MousePointer2}, 
@@ -280,7 +287,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   ))}
                 </div>
 
-                {/* Right side status */}
                 <div className="flex items-center gap-1.5 md:gap-3">
                   <button onClick={toggleZenMode} className={`p-2 md:p-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full transition-all ${isZenMode ? 'text-[#ff0000] border-[#ff0000]/30' : 'text-white/40 hover:text-white'}`}>
                     {isZenMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
@@ -295,7 +301,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 </div>
             </div>
 
-            {/* Color picker (secondary row to avoid overlap) */}
             <AnimatePresence>
               {activeTool !== 'view' && (
                 <motion.div 
@@ -388,8 +393,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               </div>
             </div>
 
-            <div className="absolute inset-y-0 left-0 w-[20%] cursor-pointer z-10" onClick={() => setCurrentPage(p => Math.max(0, p - 1))} />
-            <div className="absolute inset-y-0 right-0 w-[20%] cursor-pointer z-10" onClick={() => setCurrentPage(p => Math.min(pages.length - 1, p + 1))} />
+            <div className="absolute inset-y-0 left-0 w-[20%] cursor-pointer z-10" onClick={() => handlePageChange(currentPage - 1)} />
+            <div className="absolute inset-y-0 right-0 w-[20%] cursor-pointer z-10" onClick={() => handlePageChange(currentPage + 1)} />
           </div>
         )}
       </main>
@@ -404,13 +409,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             className="fixed bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-2 md:gap-3 bg-black/50 backdrop-blur-3xl border border-white/10 px-6 md:px-8 py-3 md:py-4 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
           >
             <div className="flex items-center gap-3 md:gap-4 text-white/40">
-              <button onClick={() => setCurrentPage(p => Math.max(0, p - 1))} className="hover:text-white transition-colors"><ChevronLeft size={18}/></button>
+              <button onClick={() => handlePageChange(currentPage - 1)} className="hover:text-white transition-colors"><ChevronLeft size={18}/></button>
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] md:text-[11px] font-black tracking-widest text-white">{currentPage + 1}</span>
                 <span className="text-[9px] md:text-[10px] opacity-10">/</span>
                 <span className="text-[10px] md:text-[11px] font-black tracking-widest text-white/30">{totalPages}</span>
               </div>
-              <button onClick={() => setCurrentPage(p => Math.min(pages.length - 1, p + 1))} className="hover:text-white transition-colors"><ChevronRight size={18}/></button>
+              <button onClick={() => handlePageChange(currentPage + 1)} className="hover:text-white transition-colors"><ChevronRight size={18}/></button>
             </div>
             
             <div className="w-[1px] h-3 bg-white/10 mx-1.5" />
