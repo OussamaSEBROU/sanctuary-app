@@ -40,7 +40,13 @@ export const translations = {
     chapterName: 'Chapter / Bab',
     editDetails: 'Edit Entry Details',
     goToPage: 'Go to Page',
-    jump: 'Jump'
+    jump: 'Jump',
+    soundscape: 'Soundscape',
+    none: 'None',
+    rain: 'Rain',
+    sea: 'Ocean Waves',
+    river: 'River Flow',
+    night: 'Forest Night'
   },
   ar: {
     title: 'SANCTUARY',
@@ -82,6 +88,12 @@ export const translations = {
     chapterName: 'اسم الباب / الفصل',
     editDetails: 'تعديل بيانات الإدخال',
     goToPage: 'الذهاب إلى صفحة',
-    jump: 'انتقال'
+    jump: 'انتقال',
+    soundscape: 'الخلفية الصوتية',
+    none: 'بلا خلفية',
+    rain: 'صوت المطر',
+    sea: 'أمواج البحر',
+    river: 'خرير المياه',
+    night: 'هدوء الليل'
   }
 };
