@@ -8,7 +8,8 @@ import { pdfStorage } from '../services/pdfStorage';
 import { 
   ChevronLeft, ChevronRight, Maximize2, Highlighter, 
   PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
-  ListOrdered, Minimize2, Star, Trophy, Info, Bookmark, Clock, Hash, Zap, PauseCircle
+  ListOrdered, Minimize2, Star, Trophy, Info, Bookmark, Clock, Hash, Zap, PauseCircle,
+  Volume2, CloudRain, Waves, Droplets, Moon
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -29,6 +30,14 @@ const COLORS = [
   { name: 'Purple', hex: '#a855f7' }
 ];
 
+const SOUNDS = [
+  { id: 'none', icon: Volume2, url: '' },
+  { id: 'rain', icon: CloudRain, url: 'https://cdn.pixabay.com/download/audio/2022/07/04/audio_3d100787e7.mp3?filename=soft-rain-ambient-114354.mp3' },
+  { id: 'sea', icon: Waves, url: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_24e3a47990.mp3?filename=ocean-waves-1129.mp3' },
+  { id: 'river', icon: Droplets, url: 'https://cdn.pixabay.com/download/audio/2021/11/24/audio_279146dfd1.mp3?filename=water-stream-16625.mp3' },
+  { id: 'night', icon: Moon, url: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_652750e50f.mp3?filename=crickets-at-night-14022.mp3' }
+];
+
 export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdate }) => {
   const [isZenMode, setIsZenMode] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -47,6 +56,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [editingAnnoId, setEditingAnnoId] = useState<string | null>(null);
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [isGoToPageOpen, setIsGoToPageOpen] = useState(false);
+  const [isSoundPickerOpen, setIsSoundPickerOpen] = useState(false);
+  const [activeSoundId, setActiveSoundId] = useState('none');
   const [targetPageInput, setTargetPageInput] = useState('');
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [isFlowActive, setIsFlowActive] = useState(false);
@@ -57,6 +68,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const controlTimeoutRef = useRef<number | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const t = translations[lang];
   const isRTL = lang === 'ar';
@@ -68,26 +80,47 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const starProgress = (secondsTowardsNextStar / starThreshold) * 100;
   const minsToNextStar = Math.ceil((starThreshold - secondsTowardsNextStar) / 60);
 
-  // خوارزمية تتبع حالة ظهور النافذة (Visibility & Focus)
+  // خوارزمية تتبع حالة ظهور النافذة
   useEffect(() => {
     const handleVisibilityChange = () => {
       const isActive = document.visibilityState === 'visible';
       setIsWindowActive(isActive);
+      if (!isActive && audioRef.current) {
+        audioRef.current.pause();
+      } else if (isActive && audioRef.current && activeSoundId !== 'none') {
+        audioRef.current.play().catch(() => {});
+      }
     };
-
     const handleBlur = () => setIsWindowActive(false);
     const handleFocus = () => setIsWindowActive(true);
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleBlur);
     window.addEventListener('focus', handleFocus);
-
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleBlur);
       window.removeEventListener('focus', handleFocus);
     };
-  }, []);
+  }, [activeSoundId]);
+
+  // إدارة الصوت
+  useEffect(() => {
+    if (audioRef.current) {
+      if (activeSoundId === 'none') {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      } else {
+        const sound = SOUNDS.find(s => s.id === activeSoundId);
+        if (sound) {
+          audioRef.current.src = sound.url;
+          audioRef.current.load();
+          if (isWindowActive) {
+            audioRef.current.play().catch(e => console.warn("Autoplay blocked or audio error", e));
+          }
+        }
+      }
+    }
+  }, [activeSoundId, isWindowActive]);
 
   useEffect(() => {
     const loadPdfVisuals = async () => {
@@ -111,7 +144,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     loadPdfVisuals();
 
     timerRef.current = window.setInterval(() => {
-      // التحقق من أن النافذة نشطة قبل احتساب الوقت
       if (document.visibilityState === 'visible') {
         setSessionSeconds(s => s + 1);
         storageService.updateBookStats(book.id, 1);
@@ -157,12 +189,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       setShowControls(true);
       if (controlTimeoutRef.current) clearTimeout(controlTimeoutRef.current);
       controlTimeoutRef.current = window.setTimeout(() => {
-        if (!isArchiveOpen && editingAnnoId === null && !isGoToPageOpen) {
+        if (!isArchiveOpen && editingAnnoId === null && !isGoToPageOpen && !isSoundPickerOpen) {
           setShowControls(false);
         }
       }, isFlowActive ? 3000 : 5000); 
     };
-
     window.addEventListener('mousemove', handleActivity);
     window.addEventListener('touchstart', handleActivity);
     handleActivity();
@@ -170,7 +201,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       window.removeEventListener('mousemove', handleActivity);
       window.removeEventListener('touchstart', handleActivity);
     };
-  }, [isArchiveOpen, editingAnnoId, isGoToPageOpen, isFlowActive]);
+  }, [isArchiveOpen, editingAnnoId, isGoToPageOpen, isFlowActive, isSoundPickerOpen]);
 
   const toggleZenMode = async () => {
     const nextState = !isZenMode;
@@ -268,6 +299,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   return (
     <div ref={containerRef} className={`h-screen flex flex-col bg-black overflow-hidden select-none relative ${fontClass}`} dir={isRTL ? 'rtl' : 'ltr'}>
+      <audio ref={audioRef} loop />
       
       {/* خوارزمية النبض البصري */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -279,20 +311,49 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       </div>
 
       {/* المؤقت الأحمر الذكي */}
-      <div className={`fixed bottom-2 left-1/2 -translate-x-1/2 z-[1005] transition-opacity duration-1000 ${showControls ? 'opacity-50' : 'opacity-20'}`}>
-        <div className={`flex items-center gap-1.5 bg-black/40 px-3 py-1 rounded-full border ${isWindowActive ? 'border-[#ff0000]/10' : 'border-white/5'}`}>
+      <div className={`fixed bottom-2 left-1/2 -translate-x-1/2 z-[1005] transition-opacity duration-1000 ${showControls ? 'opacity-80' : 'opacity-20'}`}>
+        <div className={`flex items-center gap-1.5 bg-black/60 px-4 py-1.5 rounded-full border ${isWindowActive ? 'border-[#ff0000]/30' : 'border-white/5 shadow-2xl shadow-red-900/10'}`}>
           {isWindowActive ? (
-            <Clock size={8} className={`${isFlowActive ? 'text-[#ff0000] animate-pulse' : 'text-white/40'}`} />
+            <Clock size={8} className={`${isFlowActive ? 'text-[#ff0000] animate-pulse' : 'text-[#ff0000]'}`} />
           ) : (
             <PauseCircle size={8} className="text-white/20" />
           )}
-          <span className={`text-[8px] md:text-[10px] font-black tracking-widest uppercase ${isWindowActive ? (isFlowActive ? 'text-[#ff0000]' : 'text-white/40') : 'text-white/20'}`}>
+          <span className={`text-[9px] md:text-[11px] font-black tracking-widest uppercase ${isWindowActive ? 'text-[#ff0000]' : 'text-white/20'}`}>
             {sessionMinutes}{lang === 'ar' ? ' د' : 'm'}
             {isFlowActive && isWindowActive && <Zap size={8} className="inline ml-1 mb-0.5" />}
             {!isWindowActive && <span className="ml-1 opacity-50 italic">Paused</span>}
           </span>
         </div>
       </div>
+
+      <AnimatePresence>
+        {isSoundPickerOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3500] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl">
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-[#0f0f0f] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-sm shadow-2xl relative text-center">
+                <button onClick={() => setIsSoundPickerOpen(false)} className="absolute top-6 right-6 p-2 rounded-full bg-white/5 text-white/20 hover:text-white transition-all"><X size={18}/></button>
+                <div className="flex flex-col items-center gap-4 mb-8">
+                  <div className="p-4 bg-[#ff0000]/10 rounded-full text-[#ff0000]"><Volume2 size={24} /></div>
+                  <h3 className="text-xl font-black uppercase italic tracking-tighter">{t.soundscape}</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {SOUNDS.map(sound => (
+                    <button 
+                      key={sound.id} 
+                      onClick={() => { setActiveSoundId(sound.id); setIsSoundPickerOpen(false); }}
+                      className={`flex items-center justify-between p-4 rounded-2xl transition-all border ${activeSoundId === sound.id ? 'bg-[#ff0000]/10 border-[#ff0000]/30 text-white' : 'bg-white/5 border-transparent text-white/40 hover:bg-white/10'}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <sound.icon size={16} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">{(t as any)[sound.id]}</span>
+                      </div>
+                      {activeSoundId === sound.id && <div className="w-1.5 h-1.5 rounded-full bg-[#ff0000]" />}
+                    </button>
+                  ))}
+                </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {isArchiveOpen && (
@@ -375,6 +436,9 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 <div className="flex items-center gap-1.5 md:gap-3">
                   <button onClick={onBack} className="p-2 md:p-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full hover:bg-[#ff0000] text-white/60 hover:text-white transition-all"><ChevronLeft size={18} className={isRTL ? "rotate-180" : ""} /></button>
                   <button onClick={() => setIsArchiveOpen(true)} className="p-2 md:p-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full text-white/40 hover:text-white relative transition-all"><ListOrdered size={20} />{annotations.length > 0 && <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-[#ff0000] rounded-full" />}</button>
+                  <button onClick={() => setIsSoundPickerOpen(true)} className={`p-2 md:p-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full transition-all ${activeSoundId !== 'none' ? 'text-[#ff0000] border-[#ff0000]/30' : 'text-white/40 hover:text-white'}`}>
+                    {activeSoundId === 'none' ? <Volume2 size={18} /> : React.createElement(SOUNDS.find(s => s.id === activeSoundId)!.icon, { size: 18 })}
+                  </button>
                 </div>
                 <div className="flex items-center gap-1 bg-white/5 backdrop-blur-3xl p-1 rounded-full border border-white/10">
                   {[{id: 'view', icon: MousePointer2}, {id: 'highlight', icon: Highlighter}, {id: 'underline', icon: PenTool}, {id: 'box', icon: Square}, {id: 'note', icon: MessageSquare}].map(tool => (
