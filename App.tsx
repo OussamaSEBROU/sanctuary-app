@@ -277,8 +277,8 @@ const App: React.FC = () => {
             {view === ViewState.SHELF && (
               <motion.div key="shelf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">
                 <header className="flex flex-col items-center text-center pt-24 pb-8 shrink-0">
-                  {/* Responsive Title using Clamp */}
-                  <h1 className="text-[clamp(3.5rem,15vw,10rem)] font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[0.8]">
+                  {/* Fixed Clamp for better mobile English support */}
+                  <h1 className="text-[clamp(2.5rem,12vw,10rem)] font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[0.8] break-all">
                     {t.title}
                   </h1>
                   {/* Philosophy Text with Shining Effect */}
