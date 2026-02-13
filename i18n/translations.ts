@@ -46,7 +46,9 @@ export const translations = {
     rain: 'Rain',
     sea: 'Ocean Waves',
     river: 'River Flow',
-    night: 'Forest Night'
+    night: 'Forest Night',
+    birds: 'Forest Birds',
+    fire: 'Bonfire'
   },
   ar: {
     title: 'SANCTUARY',
@@ -94,6 +96,8 @@ export const translations = {
     rain: 'صوت المطر',
     sea: 'أمواج البحر',
     river: 'خرير المياه',
-    night: 'هدوء الليل'
+    night: 'هدوء الليل',
+    birds: 'تغريد العصافير',
+    fire: 'وهج النار'
   }
 };
