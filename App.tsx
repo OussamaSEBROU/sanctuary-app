@@ -1,428 +1,283 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Book, Language, Annotation } from '../types';
-import { translations } from '../i18n/translations';
-import { storageService } from '../services/storageService';
-import { pdfStorage } from '../services/pdfStorage';
+import { ViewState, Book, Language, ShelfData } from './types';
+import { Layout } from './components/Layout';
+import { Shelf } from './components/Shelf';
+import { Reader } from './components/Reader';
+import { Vault } from './components/Vault';
+import { Dashboard } from './components/Dashboard';
+import { translations } from './i18n/translations';
+import { storageService } from './services/storageService';
+import { pdfStorage } from './services/pdfStorage';
 import { 
-  ChevronLeft, ChevronRight, Maximize2, Highlighter, 
-  PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
-  ListOrdered, Minimize2, Star, Trophy, Info, Clock, Hash, Zap, PauseCircle,
-  Volume2, CloudLightning, Waves, Droplets, Moon, Bird, Flame, Save, ArrowLeft, VolumeX,
-  Sparkles, Music
+  Plus, 
+  Library, 
+  X, 
+  Upload, 
+  Menu, 
+  Sparkles, 
+  Activity, 
+  Trash2, 
+  Loader2, 
+  BookOpen, 
+  Globe, 
+  LayoutDashboard
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 declare const pdfjsLib: any;
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-interface ReaderProps {
-  book: Book;
-  lang: Language;
-  onBack: () => void;
-  onStatsUpdate: () => void;
-}
-
-type Tool = 'view' | 'highlight' | 'underline' | 'box' | 'note';
-const COLORS = [
-  { name: 'Yellow', hex: '#fbbf24' },
-  { name: 'Red', hex: '#ef4444' },
-  { name: 'Green', hex: '#22c55e' },
-  { name: 'Blue', hex: '#3b82f6' },
-  { name: 'Purple', hex: '#a855f7' }
-];
-
-const SOUNDS = [
-  { id: 'none', icon: VolumeX, url: '' },
-  { id: 'rain', icon: CloudLightning, url: '/assets/sounds/rain.mp3' },
-  { id: 'sea', icon: Waves, url: '/assets/sounds/sea.mp3' },
-  { id: 'river', icon: Droplets, url: '/assets/sounds/river.mp3' },
-  { id: 'night', icon: Moon, url: '/assets/sounds/night.mp3' },
-  { id: 'birds', icon: Bird, url: '/assets/sounds/birds.mp3' },
-  { id: 'fire', icon: Flame, url: '/assets/sounds/fire.mp3' }
-];
-
-const CELEBRATION_SOUND_URL = '/assets/sounds/celebration.mp3';
-
-export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdate }) => {
-  const [isZenMode, setIsZenMode] = useState(false);
-  const [showControls, setShowControls] = useState(true);
-  const [pages, setPages] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(book.lastPage || 0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+const App: React.FC = () => {
+  const [view, setView] = useState<ViewState>(ViewState.SHELF);
+  const [lang, setLang] = useState<Language>('ar');
+  const [books, setBooks] = useState<Book[]>([]);
+  const [shelves, setShelves] = useState<ShelfData[]>([]);
+  const [activeShelfId, setActiveShelfId] = useState<string>('default');
   
-  const [activeTool, setActiveTool] = useState<Tool>('view');
-  const [activeColor, setActiveColor] = useState(COLORS[0].hex);
-  const [annotations, setAnnotations] = useState<Annotation[]>(book.annotations || []);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
-  const [currentRect, setCurrentRect] = useState<{ x: number, y: number, w: number, h: number } | null>(null);
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [isAddingBook, setIsAddingBook] = useState(false);
+  const [isAddingShelf, setIsAddingShelf] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
-  const [editingAnnoId, setEditingAnnoId] = useState<string | null>(null);
-  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
-  const [isGoToPageOpen, setIsGoToPageOpen] = useState(false);
-  const [isSoundPickerOpen, setIsSoundPickerOpen] = useState(false);
-  const [activeSoundId, setActiveSoundId] = useState('none');
-  const [customSoundUrl, setCustomSoundUrl] = useState<string | null>(null);
-  const [volume, setVolume] = useState(0.5);
-  const [targetPageInput, setTargetPageInput] = useState('');
-  const [sessionSeconds, setSessionSeconds] = useState(0);
-  const [isFlowActive, setIsFlowActive] = useState(false);
-  const [isWindowActive, setIsWindowActive] = useState(true);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [showStarCelebration, setShowStarCelebration] = useState(false);
-  const prevStarsRef = useRef(book.stars);
+  const [newBookTitle, setNewBookTitle] = useState('');
+  const [newBookAuthor, setNewBookAuthor] = useState('');
+  const [newShelfName, setNewShelfName] = useState('');
+  const [pendingFileData, setPendingFileData] = useState<ArrayBuffer | null>(null);
 
-  const touchStartRef = useRef<number | null>(null);
-  const timerRef = useRef<number | null>(null);
-  const controlTimeoutRef = useRef<number | null>(null);
-  const pageRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const soundInputRef = useRef<HTMLInputElement>(null);
-  
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const celebrationAudioRef = useRef<HTMLAudioElement | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
+  useEffect(() => {
+    const loadedBooks = storageService.getBooks();
+    const loadedShelves = storageService.getShelves();
+    setBooks(loadedBooks);
+    setShelves(loadedShelves);
+  }, []);
 
   const t = translations[lang];
-  const isRTL = lang === 'ar';
-  const fontClass = isRTL ? 'font-ar' : 'font-en';
+  const filteredBooks = books.filter(b => b.shelfId === activeShelfId);
+  const fontClass = lang === 'ar' ? 'font-ar' : 'font-en';
 
-  const totalSeconds = book.timeSpentSeconds;
-  const starThreshold = 900; 
-  const secondsTowardsNextStar = totalSeconds % starThreshold;
-  const starProgress = (secondsTowardsNextStar / starThreshold) * 100;
-  const minsToNextStar = Math.ceil((starThreshold - secondsTowardsNextStar) / 60);
-
-  useEffect(() => {
-    if (book.stars > prevStarsRef.current) {
-      setShowStarCelebration(true);
-      if (celebrationAudioRef.current) {
-        celebrationAudioRef.current.volume = 0.8;
-        celebrationAudioRef.current.play().catch(e => console.warn("Celebration audio blocked", e));
-      }
-      prevStarsRef.current = book.stars;
-    }
-  }, [book.stars]);
-
-  const initAudioEngine = () => {
-    if (!audioContextRef.current && audioRef.current) {
-      try {
-        const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
-        const ctx = new AudioContextClass();
-        const gain = ctx.createGain();
-        audioRef.current.crossOrigin = "anonymous";
-        const source = ctx.createMediaElementSource(audioRef.current);
-        source.connect(gain);
-        gain.connect(ctx.destination);
-        audioContextRef.current = ctx;
-        gainNodeRef.current = gain;
-        gain.gain.setValueAtTime(volume * 4, ctx.currentTime);
-      } catch (e) {
-        console.error("Audio Context Init Failed", e);
-      }
-    }
-    if (audioContextRef.current?.state === 'suspended') {
-      audioContextRef.current.resume();
-    }
-  };
-
-  useEffect(() => {
-    if (isLoading) {
-      const msgInterval = setInterval(() => {
-        setLoadingMsgIndex(prev => (prev + 1) % t.loadingMessages.length);
-      }, 3000);
-      return () => clearInterval(msgInterval);
-    }
-  }, [isLoading, t.loadingMessages.length]);
-
-  useEffect(() => {
-    if (gainNodeRef.current && audioContextRef.current) {
-      gainNodeRef.current.gain.setTargetAtTime(volume * 4, audioContextRef.current.currentTime, 0.1);
-    }
-  }, [volume]);
-
-  useEffect(() => {
-    if (audioRef.current) {
-      if (activeSoundId === 'none') {
-        audioRef.current.pause();
-        audioRef.current.src = '';
-      } else if (activeSoundId === 'custom' && customSoundUrl) {
-        initAudioEngine();
-        audioRef.current.src = customSoundUrl;
-        audioRef.current.loop = true;
-        audioRef.current.load();
-        audioRef.current.play().catch(() => {});
-      } else {
-        const sound = SOUNDS.find(s => s.id === activeSoundId);
-        if (sound && sound.url) {
-          initAudioEngine();
-          audioRef.current.src = sound.url;
-          audioRef.current.loop = true;
-          audioRef.current.load();
-          if (isWindowActive) audioRef.current.play().catch(() => {});
-        }
-      }
-    }
-  }, [activeSoundId, isWindowActive, customSoundUrl]);
-
-  const handleCustomSoundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setCustomSoundUrl(url);
-      setActiveSoundId('custom');
-      setIsSoundPickerOpen(false);
-    }
-  };
-
-  useEffect(() => {
-    const loadPdfVisuals = async () => {
-      const fileData = await pdfStorage.getFile(book.id);
-      if (!fileData) { onBack(); return; }
+    if (file && file.type === "application/pdf") {
+      setIsExtracting(true);
+      setNewBookTitle(file.name.replace(/\.[^/.]+$/, ""));
       try {
-        const pdf = await pdfjsLib.getDocument({ data: fileData }).promise;
-        setTotalPages(pdf.numPages);
-        const maxPages = Math.min(pdf.numPages, 300); 
-        for (let i = 1; i <= maxPages; i++) {
-          const p = await pdf.getPage(i);
-          const vp = p.getViewport({ scale: 1.5 });
-          const cv = document.createElement('canvas');
-          cv.height = vp.height; cv.width = vp.width;
-          await p.render({ canvasContext: cv.getContext('2d')!, viewport: vp }).promise;
-          setPages(prev => [...prev, cv.toDataURL('image/jpeg', 0.8)]);
-          if (i === 1) setTimeout(() => setIsLoading(false), 3000);
-        }
-      } catch (err) { console.error(err); }
-    };
-    loadPdfVisuals();
-
-    timerRef.current = window.setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        setSessionSeconds(s => s + 1);
-        storageService.updateBookStats(book.id, 1);
-        onStatsUpdate();
+        const arrayBuffer = await file.arrayBuffer();
+        setPendingFileData(arrayBuffer);
+      } catch (err) {
+        alert("Error loading PDF");
+      } finally {
+        setIsExtracting(false);
       }
-    }, 1000);
+    }
+  };
 
-    return () => { 
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (controlTimeoutRef.current) clearTimeout(controlTimeoutRef.current);
-      if (customSoundUrl) URL.revokeObjectURL(customSoundUrl);
+  const handleAddBook = async () => {
+    if (!newBookTitle || !pendingFileData) return;
+    const bookId = Math.random().toString(36).substr(2, 9);
+    await pdfStorage.saveFile(bookId, pendingFileData);
+    const newBook: Book = {
+      id: bookId,
+      shelfId: activeShelfId,
+      title: newBookTitle,
+      author: newBookAuthor || (lang === 'ar' ? 'مؤلف مجهول' : 'Unknown Scribe'),
+      cover: `https://picsum.photos/seed/${newBookTitle}/800/1200`,
+      content: "[VISUAL_PDF_MODE]",
+      timeSpentSeconds: 0,
+      stars: 0,
+      addedAt: Date.now(),
+      lastPage: 0,
+      annotations: []
     };
-  }, [book.id]);
-
-  useEffect(() => {
-    storageService.updateBookAnnotations(book.id, annotations);
-  }, [annotations]);
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 0 && newPage < totalPages) {
-      setCurrentPage(newPage);
-      storageService.updateBookPage(book.id, newPage);
-    }
+    const updated = [newBook, ...books];
+    setBooks(updated);
+    storageService.saveBooks(updated);
+    setNewBookTitle('');
+    setNewBookAuthor('');
+    setPendingFileData(null);
+    setIsAddingBook(false);
   };
 
-  const handleGoToPage = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const pageNum = parseInt(targetPageInput, 10);
-    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
-      handlePageChange(pageNum - 1);
-      setIsGoToPageOpen(false);
-      setTargetPageInput('');
-    }
-  };
-
-  useEffect(() => {
-    const handleActivity = () => {
-      setShowControls(true);
-      if (controlTimeoutRef.current) clearTimeout(controlTimeoutRef.current);
-      controlTimeoutRef.current = window.setTimeout(() => {
-        if (!isArchiveOpen && editingAnnoId === null && !isGoToPageOpen && !isSoundPickerOpen && !showStarCelebration) {
-          setShowControls(false);
-        }
-      }, 5000); 
-    };
-    window.addEventListener('mousemove', handleActivity);
-    window.addEventListener('touchstart', handleActivity);
-    handleActivity();
-    return () => {
-      window.removeEventListener('mousemove', handleActivity);
-      window.removeEventListener('touchstart', handleActivity);
-    };
-  }, [isArchiveOpen, editingAnnoId, isGoToPageOpen, isSoundPickerOpen, showStarCelebration]);
-
-  const toggleZenMode = async () => {
-    const nextState = !isZenMode;
-    setIsZenMode(nextState);
-    if (nextState && containerRef.current?.requestFullscreen) containerRef.current.requestFullscreen();
-    else if (document.fullscreenElement) document.exitFullscreen();
-  };
-
-  const getRelativeCoords = (clientX: number, clientY: number) => {
-    if (!pageRef.current) return { x: 0, y: 0 };
-    const rect = pageRef.current.getBoundingClientRect();
-    return {
-      x: ((clientX - rect.left) / rect.width) * 100,
-      y: ((clientY - rect.top) / rect.height) * 100
-    };
-  };
-
-  const handleStart = (clientX: number, clientY: number, isTouch = false) => {
-    initAudioEngine();
-    if (activeTool === 'view') {
-      if (isTouch) touchStartRef.current = clientX;
-      return;
-    }
-    const { x, y } = getRelativeCoords(clientX, clientY);
-    if (activeTool === 'note') {
-      const newNote: Annotation = {
-        id: Math.random().toString(36).substr(2, 9),
-        type: 'note', pageIndex: currentPage, x, y, text: '', title: '', chapter: '', color: activeColor
-      };
-      setAnnotations([...annotations, newNote]);
-      setEditingAnnoId(newNote.id);
-      setActiveTool('view');
-      return;
-    }
-    setIsDrawing(true);
-    setStartPos({ x, y });
-  };
-
-  const handleMove = (clientX: number, clientY: number) => {
-    if (!isDrawing) return;
-    const { x: currentX, y: currentY } = getRelativeCoords(clientX, clientY);
-    setCurrentRect({
-      x: Math.min(startPos.x, currentX), y: Math.min(startPos.y, currentY),
-      w: Math.abs(currentX - startPos.x), h: Math.abs(currentY - startPos.y)
-    });
-  };
-
-  const handleEnd = (clientX?: number) => {
-    if (activeTool === 'view' && touchStartRef.current !== null && clientX !== undefined) {
-      const diff = clientX - touchStartRef.current;
-      if (Math.abs(diff) > 50) {
-        if (isRTL) diff > 0 ? handlePageChange(currentPage + 1) : handlePageChange(currentPage - 1);
-        else diff > 0 ? handlePageChange(currentPage - 1) : handlePageChange(currentPage + 1);
-      }
-      touchStartRef.current = null;
-    }
-    if (!isDrawing || !currentRect) { setIsDrawing(false); setCurrentRect(null); return; }
-    const newAnno: Annotation = {
+  const handleAddShelf = () => {
+    if (!newShelfName) return;
+    const newShelf: ShelfData = {
       id: Math.random().toString(36).substr(2, 9),
-      type: activeTool as any, pageIndex: currentPage, x: currentRect.x, y: currentRect.y,
-      width: currentRect.w, height: activeTool === 'underline' ? 0.8 : currentRect.h,
-      color: activeColor, title: '', chapter: '', text: ''
+      name: newShelfName,
+      color: '#ff0000'
     };
-    setAnnotations([...annotations, newAnno]);
-    setEditingAnnoId(newAnno.id);
-    setIsDrawing(false);
-    setCurrentRect(null);
+    const updated = [...shelves, newShelf];
+    setShelves(updated);
+    storageService.saveShelves(updated);
+    setNewShelfName('');
+    setIsAddingShelf(false);
   };
 
-  const sessionMinutes = Math.floor(sessionSeconds / 60);
-  const progress = totalPages > 0 ? ((currentPage + 1) / totalPages) * 100 : 0;
-  const currentPageAnnos = annotations.filter(a => a.pageIndex === currentPage);
+  const handleDeleteShelf = (e: React.MouseEvent, shelfId: string) => {
+    e.stopPropagation();
+    if (shelfId === 'default') return;
+    const confirmMsg = lang === 'ar' ? 'هل أنت متأكد من حذف هذه المجموعة؟ سيتم نقل الكتب إلى المجموعة الأساسية.' : 'Are you sure you want to delete this collection? Books will be moved to the main Sanctuary.';
+    if (!window.confirm(confirmMsg)) return;
+
+    const updatedShelves = shelves.filter(s => s.id !== shelfId);
+    setShelves(updatedShelves);
+    storageService.saveShelves(updatedShelves);
+
+    const updatedBooks = books.map(b => b.shelfId === shelfId ? { ...b, shelfId: 'default' } : b);
+    setBooks(updatedBooks);
+    storageService.saveBooks(updatedBooks);
+
+    if (activeShelfId === shelfId) setActiveShelfId('default');
+  };
 
   return (
-    <div ref={containerRef} className={`h-screen flex flex-col bg-black overflow-hidden select-none relative ${fontClass}`} dir={isRTL ? 'rtl' : 'ltr'}>
-      <audio ref={audioRef} crossOrigin="anonymous" hidden />
-      <audio ref={celebrationAudioRef} src={CELEBRATION_SOUND_URL} crossOrigin="anonymous" hidden />
-      <input type="file" ref={soundInputRef} onChange={handleCustomSoundUpload} accept="audio/*" className="hidden" />
-      
-      <AnimatePresence>
-        {showStarCelebration && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] bg-black/98 backdrop-blur-3xl flex flex-col items-center justify-center p-10 text-center">
-            <Star size={80} className="text-[#ff0000] fill-[#ff0000] drop-shadow-[0_0_50px_rgba(255,0,0,1)] mb-8 md:size-[120px]" />
-            <h2 className="text-2xl md:text-7xl font-black italic text-white uppercase mb-6">{t.starAchieved}</h2>
-            <button onClick={() => setShowStarCelebration(false)} className="px-10 py-4 bg-red-600 text-white font-black uppercase text-xs tracking-[0.4em] rounded-full">{t.continueJourney}</button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showControls && (
-          <motion.header initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -50, opacity: 0 }} className="fixed top-0 left-0 right-0 flex items-center justify-between p-2 md:p-10 bg-gradient-to-b from-black/95 to-transparent z-[1001]">
-            <div className="flex items-center gap-1 md:gap-5">
-              <button onClick={onBack} className="p-2 md:p-5 bg-white/5 rounded-full text-white/60"><ChevronLeft size={18} className={`${isRTL ? "rotate-180" : ""} md:size-6`} /></button>
-              <button onClick={() => setIsArchiveOpen(true)} className="p-2 md:p-5 bg-white/5 rounded-full text-white/40"><ListOrdered size={18} className="md:size-6" /></button>
-              <button onClick={() => { setIsSoundPickerOpen(true); initAudioEngine(); }} className="p-2 md:p-5 bg-white/5 rounded-full text-white/40"><Volume2 size={18} className="md:size-6" /></button>
-            </div>
-            <div className="flex items-center gap-1 md:gap-2 bg-black/50 p-1 md:p-1.5 rounded-full border border-white/10 overflow-x-auto no-scrollbar">
-              {[{id: 'view', icon: MousePointer2}, {id: 'highlight', icon: Highlighter}, {id: 'underline', icon: PenTool}, {id: 'box', icon: Square}, {id: 'note', icon: MessageSquare}].map(tool => (
-                <button key={tool.id} onClick={() => { setActiveTool(tool.id as Tool); initAudioEngine(); }} className={`p-1.5 md:p-4 rounded-full transition-all ${activeTool === tool.id ? 'bg-white text-black' : 'text-white/40'}`}><tool.icon size={14} className="md:size-5"/></button>
-              ))}
-            </div>
-            <div className="flex items-center gap-1 md:gap-5">
-              <button onClick={toggleZenMode} className="p-2 md:p-5 bg-white/5 rounded-full text-white/40"><Maximize2 size={18} className="md:size-6" /></button>
-              <div className="w-8 h-8 md:w-16 md:h-16 flex items-center justify-center bg-white/5 rounded-full border border-[#ff0000]/30"><Star size={14} className="text-[#ff0000] fill-[#ff0000] md:size-6" /></div>
-            </div>
-          </motion.header>
-        )}
-      </AnimatePresence>
-
-      <main className={`flex-1 relative flex items-center justify-center bg-black transition-all ${isZenMode ? 'p-0' : 'p-2 md:p-14'}`} onMouseDown={initAudioEngine} onTouchStart={initAudioEngine}>
-        {!isLoading && (
-          <div ref={pageRef} onMouseDown={(e) => handleStart(e.clientX, e.clientY)} onMouseMove={(e) => handleMove(e.clientX, e.clientY)} onMouseUp={() => handleEnd()} onTouchStart={(e) => handleStart(e.touches[0].clientX, e.touches[0].clientY, true)} onTouchMove={(e) => handleMove(e.touches[0].clientX, e.touches[0].clientY)} onTouchEnd={(e) => handleEnd(e.changedTouches[0].clientX)} className={`relative shadow-2xl border border-white/10 overflow-hidden bg-white ${isZenMode ? 'h-full w-auto' : 'max-h-[80vh] h-full w-auto aspect-[1/1.41]'}`}>
-            <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none" alt="Page" />
-            <div className="absolute inset-0 pointer-events-none">
-              {currentPageAnnos.map(anno => (
-                <div key={anno.id} className="absolute pointer-events-auto" onClick={() => setEditingAnnoId(anno.id)} style={{ left: `${anno.x}%`, top: `${anno.y}%`, width: anno.width ? `${anno.width}%` : 'auto', height: anno.height ? `${anno.height}%` : 'auto', backgroundColor: anno.type === 'highlight' ? `${anno.color}66` : 'transparent', borderBottom: anno.type === 'underline' ? `3px solid ${anno.color}` : 'none', border: anno.type === 'box' ? `2px solid ${anno.color}` : 'none' }}>
-                  {anno.type === 'note' && <div className="w-5 h-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff0000] text-white flex items-center justify-center md:size-6"><MessageSquare size={8} className="md:size-4" /></div>}
+    <Layout lang={lang}>
+      <div className={`flex flex-col h-screen-safe overflow-hidden ${fontClass}`}>
+        
+        {/* Modern Vertical Sidebar */}
+        <AnimatePresence>
+          {isSidebarOpen && (
+            <>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[500]" />
+              <motion.aside
+                initial={{ x: lang === 'ar' ? '100%' : '-100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: lang === 'ar' ? '100%' : '-100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className={`fixed top-0 bottom-0 ${lang === 'ar' ? 'right-0' : 'left-0'} w-[85vw] md:w-80 bg-[#050f05] border-${lang === 'ar' ? 'l' : 'r'} border-white/5 z-[600] flex flex-col shadow-2xl`}
+              >
+                <div className="p-6 md:p-8 flex items-center justify-between border-b border-white/5">
+                   <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-[#ff0000] flex items-center justify-center shadow-[0_0_20px_rgba(255,0,0,0.3)]">
+                      <Sparkles size={16} className="text-white" />
+                    </div>
+                    <h2 className="text-lg md:text-xl font-black uppercase tracking-tighter">{t.menu}</h2>
+                   </div>
+                   <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-full bg-white/5 text-white/40 hover:text-white transition-all"><X size={18}/></button>
                 </div>
-              ))}
-              {currentRect && <div className="absolute border border-dashed" style={{ left: `${currentRect.x}%`, top: `${currentRect.y}%`, width: `${currentRect.w}%`, height: activeTool === 'underline' ? '2px' : `${currentRect.h}%`, backgroundColor: activeTool === 'highlight' ? `${activeColor}44` : 'transparent', borderColor: activeColor }} />}
-            </div>
-          </div>
-        )}
-      </main>
 
-      <AnimatePresence>
-        {showControls && (
-          <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-2 bg-black/80 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-full scale-90 md:scale-100 md:bottom-6 md:px-5 md:py-2.5 md:gap-4">
-            <button onClick={() => handlePageChange(currentPage - 1)} className="text-white/40"><ChevronLeft size={18}/></button>
-            <button onClick={() => setIsGoToPageOpen(true)} className="text-[10px] font-black tracking-widest text-white whitespace-nowrap md:text-xs">
-              {currentPage + 1} / {totalPages}
-            </button>
-            <button onClick={() => handlePageChange(currentPage + 1)} className="text-white/40"><ChevronRight size={18}/></button>
-            <div className="w-[1px] h-3 bg-white/10 mx-1 md:h-4 md:mx-2" />
-            <div className="flex items-center gap-1.5 md:gap-2"><Clock size={10} className="text-[#ff0000] md:size-3" /><span className="text-[9px] font-black md:text-[10px]">{sessionMinutes}m</span></div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="fixed bottom-0 left-0 right-0 h-0.5 bg-white/5 md:h-1"><motion.div className="h-full bg-[#ff0000]" animate={{ width: `${progress}%` }} /></div>
-      
-      {/* Sound Picker UI - Adjusted for Mobile */}
-      <AnimatePresence>
-        {isSoundPickerOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3500] flex items-center justify-center p-4 bg-black/90 backdrop-blur-2xl">
-             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-[#0f0f0f] border border-white/10 p-6 md:p-12 rounded-[2rem] md:rounded-[4rem] w-full max-w-md shadow-3xl overflow-y-auto max-h-[90vh]">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-xl font-black uppercase tracking-tighter italic">{t.soundscape}</h3>
-                  <button onClick={() => setIsSoundPickerOpen(false)} className="p-2 text-white/30"><X size={20}/></button>
-                </div>
-                <div className="grid gap-3">
-                  {SOUNDS.map(sound => (
-                    <button key={sound.id} onClick={() => { setActiveSoundId(sound.id); setIsSoundPickerOpen(false); }} className={`flex items-center justify-between p-4 rounded-xl border ${activeSoundId === sound.id ? 'bg-[#ff0000]/10 border-[#ff0000]/30 text-white' : 'bg-white/5 border-transparent text-white/40 hover:bg-white/10'}`}>
-                      <div className="flex items-center gap-3">
-                        <sound.icon size={16} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{(t as any)[sound.id] || sound.id}</span>
-                      </div>
-                      {activeSoundId === sound.id && <div className="w-1.5 h-1.5 rounded-full bg-[#ff0000]" />}
-                    </button>
-                  ))}
-                  <button onClick={() => soundInputRef.current?.click()} className="flex items-center gap-3 p-4 rounded-xl border border-dashed border-white/10 text-white/30 hover:text-white transition-all">
-                    <Music size={16} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">{t.uploadCustomSound}</span>
+                <div className="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 space-y-8 md:space-y-10">
+                  <button onClick={() => { setView(ViewState.DASHBOARD); setIsSidebarOpen(false); }} className="w-full flex items-center gap-4 p-4 md:p-5 rounded-[1.5rem] md:rounded-[2rem] bg-[#ff0000]/10 border border-[#ff0000]/20 hover:bg-[#ff0000] hover:border-[#ff0000] transition-all group">
+                    <div className="p-2 md:p-3 rounded-lg md:rounded-xl bg-white/10 group-hover:bg-white/20"><LayoutDashboard size={20} className="text-[#ff0000] group-hover:text-white" /></div>
+                    <div className="flex flex-col items-start"><span className="text-[10px] md:text-xs font-black uppercase tracking-widest group-hover:text-white">{t.dashboard}</span><span className="text-[8px] md:text-[9px] uppercase font-black opacity-30 group-hover:opacity-60 group-hover:text-white">{t.cognitiveMetrics}</span></div>
                   </button>
+
+                  <section className="space-y-3 md:space-y-4">
+                    <div className="flex items-center gap-3 opacity-20 px-2"><Globe size={12} /><span className="text-[9px] font-black uppercase tracking-widest">{t.language}</span></div>
+                    <div className="flex flex-col gap-2">
+                      {['ar', 'en'].map((l) => (
+                        <button key={l} onClick={() => { setLang(l as Language); setIsSidebarOpen(false); }} className={`w-full p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all flex items-center justify-between ${lang === l ? 'bg-white text-black border-white' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'}`}>
+                          <span className="text-xs md:text-sm font-bold uppercase">{l === 'ar' ? 'العربية' : 'English'}</span>
+                          {lang === l && <div className="w-1.5 h-1.5 rounded-full bg-red-600" />}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="space-y-3 md:space-y-4">
+                    <div className="flex items-center justify-between px-2">
+                      <div className="flex items-center gap-3 opacity-20"><Library size={12} /><span className="text-[9px] font-black uppercase tracking-widest">{t.collections}</span></div>
+                      <button onClick={() => setIsAddingShelf(true)} className="p-1.5 bg-[#ff0000]/20 rounded-full text-[#ff0000] hover:scale-110 transition-transform"><Plus size={12}/></button>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      {shelves.map(shelf => (
+                        <div key={shelf.id} onClick={() => { setActiveShelfId(shelf.id); setView(ViewState.SHELF); setIsSidebarOpen(false); }} className={`group w-full text-left px-4 md:px-5 py-3 md:py-4 rounded-xl md:rounded-2xl border transition-all text-[10px] md:text-xs font-bold flex items-center justify-between cursor-pointer ${activeShelfId === shelf.id ? 'bg-[#ff0000]/10 border-[#ff0000]/30 text-white' : 'bg-transparent border-transparent text-white/30 hover:bg-white/5'}`}>
+                          <div className="flex items-center gap-3 md:gap-4 truncate"><div className={`w-1.5 h-1.5 rounded-full shrink-0 ${activeShelfId === shelf.id ? 'bg-[#ff0000]' : 'bg-white/10'}`} /><span className="truncate">{shelf.name}</span></div>
+                          {shelf.id !== 'default' && <button onClick={(e) => handleDeleteShelf(e, shelf.id)} className="p-2 text-white/0 group-hover:text-white/20 hover:text-red-600 transition-all rounded-lg hover:bg-white/5"><Trash2 size={12} /></button>}
+                        </div>
+                      ))}
+                    </div>
+                  </section>
                 </div>
-             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+                
+                <div className="p-6 md:p-8 border-t border-white/5 bg-black/40"><div className="flex items-center gap-3 md:gap-4"><Activity size={18} className="text-[#ff0000]" /><div><span className="text-[8px] font-black uppercase tracking-widest opacity-20 leading-none mb-1 block">{t.status}</span><span className="text-[10px] md:text-xs font-black uppercase tracking-tighter">{t.activeSession}</span></div></div></div>
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Global Toolbar */}
+        <div className="fixed top-0 left-0 right-0 z-[100] p-4 md:p-6 pointer-events-none flex justify-between items-start">
+          <button onClick={() => setIsSidebarOpen(true)} className="p-3 md:p-4 rounded-full bg-black/60 backdrop-blur-2xl border border-white/10 pointer-events-auto hover:bg-[#ff0000] hover:border-[#ff0000] transition-all shadow-2xl group">
+            <Menu size={18} className="group-hover:text-white text-white/40 md:size-5"/>
+          </button>
+          
+          {view === ViewState.SHELF && (
+            <button onClick={() => setIsAddingBook(true)} className="px-5 md:px-8 py-2.5 md:py-4 rounded-full bg-white text-black text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] pointer-events-auto shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all flex items-center gap-2 md:gap-3">
+              <Plus size={12} className="md:size-[14px]" />{lang === 'ar' ? 'إضافة كتاب' : 'Add Work'}
+            </button>
+          )}
+        </div>
+
+        <div className="flex-1 relative overflow-hidden flex flex-col">
+          <AnimatePresence mode="wait">
+            {view === ViewState.SHELF && (
+              <motion.div key="shelf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">
+                <header className="flex flex-col items-center text-center pt-20 md:pt-24 pb-4 md:pb-8 shrink-0">
+                  <h1 className="text-[clamp(2.2rem,12vw,8.5rem)] font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[1.1] pt-4 text-center w-full max-w-full">
+                    {t.title}
+                  </h1>
+                  <p className="shining-text text-[9px] md:text-sm font-bold mt-3 md:mt-8 px-8 md:px-12 max-w-2xl tracking-[0.2em] md:tracking-[0.4em] leading-relaxed opacity-80">
+                    {t.philosophy}
+                  </p>
+                </header>
+                <div className="flex-1"><Shelf books={filteredBooks} lang={lang} onSelectBook={(b) => { setSelectedBook(b); setView(ViewState.READER); }} onAddBook={() => setIsAddingBook(true)} /></div>
+              </motion.div>
+            )}
+            
+            {view === ViewState.DASHBOARD && (
+              <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 overflow-y-auto custom-scroll">
+                <Dashboard books={books} shelves={shelves} lang={lang} onBack={() => setView(ViewState.SHELF)} />
+              </motion.div>
+            )}
+
+            {view === ViewState.READER && selectedBook && (
+              <motion.div key="reader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[1000]">
+                <Reader book={selectedBook} lang={lang} onBack={() => { setBooks(storageService.getBooks()); setView(ViewState.SHELF); }} onStatsUpdate={() => setBooks(storageService.getBooks())} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Modals */}
+        <AnimatePresence>
+          {isAddingBook && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] flex items-center justify-center p-4 md:p-6 bg-black/98 backdrop-blur-3xl">
+              <motion.div initial={{ scale: 0.95, y: 30 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/5 p-8 md:p-12 rounded-[2.5rem] md:rounded-[4rem] w-full max-w-xl shadow-2xl relative">
+                <button onClick={() => setIsAddingBook(false)} className="absolute top-6 right-6 md:top-10 md:right-10 p-2 rounded-full bg-white/5 text-white/20 hover:text-white transition-colors"><X size={20} className="md:size-6" /></button>
+                <h2 className="text-xl md:text-3xl font-black mb-8 md:mb-12 text-white uppercase italic flex items-center gap-4 md:gap-5 leading-none"><BookOpen size={32} className="text-[#ff0000] md:size-11" /> {t.newIntake}</h2>
+                <div className="space-y-6 md:space-y-8">
+                  <div onClick={() => !isExtracting && fileInputRef.current?.click()} className="w-full aspect-video border-2 border-dashed border-white/10 rounded-[2rem] md:rounded-[3rem] flex flex-col items-center justify-center gap-4 md:gap-6 cursor-pointer hover:border-[#ff0000]/30 transition-all bg-white/5 group">
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".pdf" />
+                    {isExtracting ? <div className="animate-spin text-[#ff0000]"><Loader2 size={32} className="md:size-10" /></div> : <><div className="p-4 md:p-6 bg-white/5 rounded-full group-hover:bg-[#ff0000] group-hover:text-white transition-all"><Upload size={24} className="text-white/20 md:size-10" /></div><span className="text-[9px] md:text-[11px] uppercase font-black opacity-30 tracking-[0.2em] md:tracking-[0.3em]">{pendingFileData ? newBookTitle : t.uploadHint}</span></>}
+                  </div>
+                  <div className="grid gap-3 md:gap-4">
+                    <input type="text" value={newBookTitle} onChange={e => setNewBookTitle(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-6 text-xs md:text-sm font-bold text-white outline-none focus:border-[#ff0000]/50" placeholder={t.bookTitle} />
+                    <input type="text" value={newBookAuthor} onChange={e => setNewBookAuthor(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-6 text-xs md:text-sm font-bold text-white outline-none focus:border-[#ff0000]/50" placeholder={t.author} />
+                  </div>
+                  <button onClick={handleAddBook} disabled={!newBookTitle || !pendingFileData} className="w-full bg-white text-black py-4 md:py-6 rounded-[1.5rem] md:rounded-[2rem] font-black text-[10px] md:text-xs uppercase shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all tracking-[0.3em] md:tracking-[0.5em]">{t.save}</button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {isAddingShelf && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/95 backdrop-blur-2xl">
+              <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-10 md:p-12 rounded-[2.5rem] md:rounded-[4rem] w-full max-w-md shadow-2xl text-center">
+                <h3 className="text-2xl md:text-3xl font-black uppercase italic text-white mb-8 md:mb-10">{lang === 'ar' ? 'إنشاء رف' : 'New Shelf'}</h3>
+                <input autoFocus type="text" value={newShelfName} onChange={e => setNewShelfName(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-6 text-xs md:text-sm font-bold text-white outline-none mb-8 md:mb-10 focus:border-[#ff0000]/50" placeholder={lang === 'ar' ? 'اسم الرف...' : 'Shelf Name...'} />
+                <button onClick={handleAddShelf} className="w-full bg-[#ff0000] py-4 md:py-6 rounded-[1.5rem] md:rounded-[2rem] font-black text-[10px] md:text-xs uppercase shadow-2xl hover:scale-105 transition-transform text-white tracking-[0.3em] md:tracking-[0.4em]">{t.establish}</button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </Layout>
   );
 };
+
+export default App;
