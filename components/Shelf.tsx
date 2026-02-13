@@ -43,9 +43,9 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
   };
 
   return (
-    <div className="relative h-full flex flex-col items-center justify-start overflow-hidden w-full pt-10 px-4">
+    <div className="relative h-full flex flex-col items-center justify-start overflow-hidden w-full pt-4 md:pt-10 px-4">
       {/* 3D Carousel Stage */}
-      <div className="relative w-full h-[320px] md:h-[480px] flex items-center justify-center perspective-1000 mt-4 md:mt-8">
+      <div className="relative w-full h-[280px] md:h-[480px] flex items-center justify-center perspective-1000 mt-2 md:mt-8">
         <AnimatePresence mode="popLayout">
           {books.map((book, index) => {
             const isCenter = index === activeIndex;
@@ -60,7 +60,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
                 initial={{ opacity: 0, scale: 0.6 }}
                 animate={{ 
                   opacity: isCenter ? 1 : 0.25, 
-                  x: diff * (window.innerWidth < 768 ? 120 : 280), 
+                  x: diff * (window.innerWidth < 768 ? 100 : 280), 
                   scale: isCenter ? 1 : 0.7, 
                   rotateY: diff * (window.innerWidth < 768 ? -20 : -35),
                   zIndex: 20 - Math.abs(diff),
@@ -69,7 +69,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
                 exit={{ opacity: 0, scale: 0.5 }}
                 transition={{ type: 'spring', stiffness: 260, damping: 28 }}
                 onClick={() => isCenter ? onSelectBook(book) : setActiveIndex(index)}
-                className="absolute w-[180px] h-[270px] md:w-[300px] md:h-[450px] cursor-pointer"
+                className="absolute w-[160px] h-[240px] md:w-[300px] md:h-[450px] cursor-pointer"
               >
                 <div className={`relative w-full h-full rounded-[2.5rem] overflow-hidden border-2 transition-all duration-700
                    ${isCenter ? 'border-[#ff0000] shadow-[0_0_50px_rgba(255,0,0,0.3)]' : 'border-white/5 opacity-60'}`}>
@@ -90,51 +90,51 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
         key={activeBook.id} 
         initial={{ opacity: 0, y: 20 }} 
         animate={{ opacity: 1, y: 0 }} 
-        className="mt-12 md:mt-16 text-center w-full px-6"
+        className="mt-6 md:mt-16 text-center w-full px-6 pb-6"
       >
-        <div className="flex items-center justify-center gap-6 md:gap-12 mb-10 bg-white/5 border border-white/10 py-4 px-8 md:px-12 rounded-[2.5rem] inline-flex backdrop-blur-xl">
+        <div className="flex items-center justify-center gap-6 md:gap-12 mb-6 md:mb-10 bg-white/5 border border-white/10 py-3 md:py-4 px-6 md:px-12 rounded-[2rem] md:rounded-[2.5rem] inline-flex backdrop-blur-xl">
           <div className="flex flex-col items-center">
-             <div className="flex gap-1 mb-1.5">
+             <div className="flex gap-1 mb-1 md:mb-1.5">
               {[...Array(5)].map((_, i) => (
-                <Star key={i} size={14} className={i < activeBook.stars ? 'text-[#ff0000] fill-[#ff0000] drop-shadow-[0_0_5px_rgba(255,0,0,0.6)]' : 'text-white/5'} />
+                <Star key={i} size={12} className={i < activeBook.stars ? 'text-[#ff0000] fill-[#ff0000] drop-shadow-[0_0_5px_rgba(255,0,0,0.6)]' : 'text-white/5'} />
               ))}
             </div>
-            <span className="text-[8px] md:text-[10px] uppercase font-black opacity-30 tracking-widest">{t.stars}</span>
+            <span className="text-[7px] md:text-[10px] uppercase font-black opacity-30 tracking-widest">{t.stars}</span>
           </div>
-          <div className="h-10 w-[1px] bg-white/10" />
+          <div className="h-8 md:h-10 w-[1px] bg-white/10" />
           <div className="flex flex-col items-center">
-            <div className="flex items-center gap-2.5 text-sm md:text-xl font-black text-white">
-              <Clock size={16} className="text-[#ff0000]" />
+            <div className="flex items-center gap-1.5 md:gap-2.5 text-xs md:text-xl font-black text-white">
+              <Clock size={14} className="text-[#ff0000]" />
               {formatTime(activeBook.timeSpentSeconds)}
             </div>
-            <span className="text-[8px] md:text-[10px] uppercase font-black opacity-30 tracking-widest">{t.cumulativeTime}</span>
+            <span className="text-[7px] md:text-[10px] uppercase font-black opacity-30 tracking-widest">{t.cumulativeTime}</span>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-center gap-6">
+        <div className="flex items-center justify-center gap-4 md:gap-6">
            <button 
              onClick={() => setActiveIndex(prev => (prev - 1 + books.length) % books.length)} 
-             className="p-4 rounded-full border border-white/10 text-white/30 hover:text-[#ff0000] hover:bg-[#ff0000]/10 hover:border-[#ff0000]/20 transition-all active:scale-90"
+             className="p-3 md:p-4 rounded-full border border-white/10 text-white/30 hover:text-[#ff0000] hover:bg-[#ff0000]/10 hover:border-[#ff0000]/20 transition-all active:scale-90"
            >
-             <ChevronLeft size={24}/>
+             <ChevronLeft size={20}/>
            </button>
            
            <button 
              onClick={() => onSelectBook(activeBook)} 
-             className="relative group bg-white px-14 py-4.5 rounded-full overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-[0_20px_40px_rgba(0,0,0,0.4)]"
+             className="relative group bg-white px-10 md:px-14 py-3.5 md:py-4.5 rounded-full overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-[0_20px_40px_rgba(0,0,0,0.4)]"
            >
               <div className="absolute inset-0 bg-[#ff0000] translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
-              <span className="relative z-10 text-black group-hover:text-white font-black text-xs md:text-sm tracking-[0.4em] uppercase">
+              <span className="relative z-10 text-black group-hover:text-white font-black text-[10px] md:text-sm tracking-[0.4em] uppercase">
                 {lang === 'ar' ? 'دخول' : 'Venture'}
               </span>
             </button>
             
             <button 
               onClick={() => setActiveIndex(prev => (prev + 1) % books.length)} 
-              className="p-4 rounded-full border border-white/10 text-white/30 hover:text-[#ff0000] hover:bg-[#ff0000]/10 hover:border-[#ff0000]/20 transition-all active:scale-90"
+              className="p-3 md:p-4 rounded-full border border-white/10 text-white/30 hover:text-[#ff0000] hover:bg-[#ff0000]/10 hover:border-[#ff0000]/20 transition-all active:scale-90"
             >
-              <ChevronRight size={24}/>
+              <ChevronRight size={20}/>
             </button>
         </div>
       </motion.div>
