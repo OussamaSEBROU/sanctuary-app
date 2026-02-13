@@ -9,7 +9,7 @@ import {
   ChevronLeft, ChevronRight, Maximize2, Highlighter, 
   PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
   ListOrdered, Minimize2, Star, Trophy, Info, Bookmark, Clock, Hash, Zap, PauseCircle,
-  Volume2, CloudRain, Waves, Droplets, Moon
+  Volume2, CloudRain, Waves, Droplets, Moon, Bird, Flame
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -32,10 +32,12 @@ const COLORS = [
 
 const SOUNDS = [
   { id: 'none', icon: Volume2, url: '' },
-  { id: 'rain', icon: CloudRain, url: 'https://cdn.pixabay.com/download/audio/2022/07/04/audio_3d100787e7.mp3?filename=soft-rain-ambient-114354.mp3' },
-  { id: 'sea', icon: Waves, url: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_24e3a47990.mp3?filename=ocean-waves-1129.mp3' },
-  { id: 'river', icon: Droplets, url: 'https://cdn.pixabay.com/download/audio/2021/11/24/audio_279146dfd1.mp3?filename=water-stream-16625.mp3' },
-  { id: 'night', icon: Moon, url: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_652750e50f.mp3?filename=crickets-at-night-14022.mp3' }
+  { id: 'rain', icon: CloudRain, url: 'https://actions.google.com/sounds/v1/weather/rain_on_roof.ogg' },
+  { id: 'sea', icon: Waves, url: 'https://actions.google.com/sounds/v1/water/waves_crashing_on_shore.ogg' },
+  { id: 'river', icon: Droplets, url: 'https://actions.google.com/sounds/v1/water/river_stream.ogg' },
+  { id: 'night', icon: Moon, url: 'https://actions.google.com/sounds/v1/ambient/night_ambience.ogg' },
+  { id: 'birds', icon: Bird, url: 'https://actions.google.com/sounds/v1/ambient/morning_birds.ogg' },
+  { id: 'fire', icon: Flame, url: 'https://actions.google.com/sounds/v1/ambient/fire_crackle.ogg' }
 ];
 
 export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdate }) => {
@@ -103,7 +105,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     };
   }, [activeSoundId]);
 
-  // إدارة الصوت
+  // إدارة الصوت المطورة
   useEffect(() => {
     if (audioRef.current) {
       if (activeSoundId === 'none') {
@@ -111,11 +113,17 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         audioRef.current.src = '';
       } else {
         const sound = SOUNDS.find(s => s.id === activeSoundId);
-        if (sound) {
+        if (sound && sound.url) {
           audioRef.current.src = sound.url;
+          audioRef.current.volume = 0.5; // حجم معتدل للاسترخاء
           audioRef.current.load();
           if (isWindowActive) {
-            audioRef.current.play().catch(e => console.warn("Autoplay blocked or audio error", e));
+            const playPromise = audioRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(error => {
+                console.warn("Audio playback failed:", error);
+              });
+            }
           }
         }
       }
