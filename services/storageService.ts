@@ -48,6 +48,15 @@ export const storageService = {
     }
   },
 
+  updateBookPage: (bookId: string, page: number) => {
+    const books = storageService.getBooks();
+    const index = books.findIndex(b => b.id === bookId);
+    if (index !== -1) {
+      books[index].lastPage = page;
+      storageService.saveBooks(books);
+    }
+  },
+
   updateBookStats: (bookId: string, seconds: number) => {
     const books = storageService.getBooks();
     const index = books.findIndex(b => b.id === bookId);
