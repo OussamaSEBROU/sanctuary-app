@@ -1,90 +1,189 @@
 
-import React, { useState } from 'react';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
-import { Book, Language } from '../types';
-import { translations } from '../i18n/translations';
-import { Star, Clock, Upload } from 'lucide-react';
-
-interface ShelfProps {
-  books: Book[];
-  lang: Language;
-  onSelectBook: (book: Book) => void;
-  onAddBook: () => void;
-}
-
-export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBook }) => {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const t = translations[lang];
-
-  if (books.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-8">
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center w-full max-w-lg">
-          <button onClick={onAddBook} className="group relative w-full aspect-[4/3] border-2 border-dashed border-white/5 rounded-[2.5rem] bg-white/5 hover:border-[#ff0000]/30 transition-all flex flex-col items-center justify-center gap-6 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#ff0000]/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="p-6 rounded-full bg-white/5 border border-white/10 group-hover:scale-110 group-hover:bg-[#ff0000]/10 group-hover:border-[#ff0000]/30 transition-all">
-               <Upload size={32} className="text-white/20 group-hover:text-[#ff0000]" />
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <span className="text-[11px] font-black tracking-[0.3em] uppercase text-white/20 group-hover:text-[#ff0000]">{t.addToSanctuary}</span>
-              <p className="text-[10px] text-white/10 group-hover:text-white/30 uppercase font-bold">{lang === 'ar' ? 'قم برفع ملف PDF للبدء' : 'Upload a PDF to begin'}</p>
-            </div>
-          </button>
-        </motion.div>
-      </div>
-    );
+export const translations = {
+  en: {
+    title: 'SANCTUARY',
+    philosophy: 'True knowledge is not reached until we perceive the logic of action as we perceive the logic of the idea.',
+    addToSanctuary: 'UPLOAD MANUSCRIPT (PDF)',
+    stats: 'Performance Stats',
+    cumulativeTime: 'Cumulative Time',
+    todayFocus: "Today's Focus",
+    stars: 'Stars',
+    vault: 'The Vault',
+    dashboard: 'Intelligence Dashboard',
+    backToShelf: 'Back to Shelf',
+    zenMode: 'Zen Mode',
+    createFlashcard: 'Create Flashcard',
+    nextStar: 'Next star in {min}m',
+    emptyShelf: 'The sanctuary is quiet. Upload a PDF manuscript to begin.',
+    bookTitle: 'Manuscript Title',
+    author: 'Scribe / Author',
+    save: 'Extract Wisdom',
+    uploadHint: 'Drop your PDF here',
+    language: 'Language',
+    settings: 'Settings',
+    menu: 'Menu',
+    wisdomIndex: 'Wisdom Index',
+    noAnnotations: 'No modifications yet.',
+    page: 'Page',
+    totalReadingTime: 'Total Focus Duration',
+    topCategories: 'Subject Mastery',
+    readingConsistency: 'Cognitive Flow',
+    recentActivity: 'Recent Deciphering',
+    minutes: 'minutes',
+    hours: 'hours',
+    collections: 'Collections',
+    status: 'Status',
+    activeSession: 'Deciphering Active',
+    cognitiveMetrics: 'Cognitive Metrics',
+    todayNeuralIntake: 'Neural Intake Today',
+    newIntake: 'New Intake',
+    establish: 'Establish',
+    modTitle: 'Modification Title',
+    chapterName: 'Chapter / Bab',
+    editDetails: 'Entry Details',
+    goToPage: 'Go to Page',
+    jump: 'Jump',
+    soundscape: 'Soundscape',
+    none: 'None / Silent',
+    rain: 'Rain & Deep Thunder',
+    sea: 'Ocean Waves',
+    river: 'River Flow',
+    night: 'Forest Night',
+    birds: 'Forest Birds',
+    fire: 'Bonfire',
+    celebration: 'Achievement / Celebration',
+    discard: 'Discard',
+    back: 'Back',
+    volume: 'Volume Boost (Max 400%)',
+    loadingNote: 'Note: Reconstructing neural archives. Larger manuscripts may take a few moments.',
+    starAchieved: 'STAR ACHIEVED',
+    starMotivation: 'Your focus is illuminating the sanctuary. The light of knowledge grows stronger.',
+    continueJourney: 'CONTINUE DECIPHERING',
+    uploadCustomSound: 'Upload Custom Sound (MP3)',
+    custom: 'Custom Sound',
+    shelfEvolution: 'Shelf Evolution Curve',
+    peakPerformance: 'Peak Performance Periods',
+    lowPerformance: 'Minimal Output Periods',
+    shelfComparison: 'Comparative Collection Benchmarking',
+    bookRanking: 'Manuscript Mastery Ranking',
+    shelfEfficiency: 'Shelf Intensity (Min/Book)',
+    comparativeAnalysis: 'Shelf Synergy Analysis',
+    knowledgeVelocity: 'Knowledge Velocity',
+    retentionRate: 'Wisdom Retention',
+    deleteShelf: 'Wipe Collection',
+    confirmShelfDelete: 'Warning: This will dissolve the collection and its historical associations.',
+    shelfDominance: 'Shelf Dominance Ratio',
+    focusIntensity: 'Focus Intensity',
+    cognitiveBalance: 'Cognitive Balance',
+    vsAverage: 'vs Sanctuary Avg',
+    leadShelf: 'Leading Shelf',
+    timeDistribution: 'Temporal Distribution',
+    peakFocusHours: 'Peak Concentration Hours',
+    growthBenchmark: 'Individual Growth Benchmarks',
+    shelfSynergy: 'Comparative Synergy Flow',
+    shelfVolumeComparison: 'Shelf Volume Comparison',
+    bookGrowthBenchmark: 'Manuscript Evolution Benchmarks',
+    bookSynergy: 'Neural Synergy Flow',
+    loadingMessages: [
+      'Reconstructing neural archives...',
+      'Deciphering logic patterns...',
+      'Calibrating focus parameters...',
+      'Igniting the light of knowledge...',
+      'Mapping manuscript geometry...',
+      'Preparing the Sanctuary...'
+    ]
+  },
+  ar: {
+    title: 'SANCTUARY',
+    philosophy: 'لا نصل إلى المعرفة الحقيقية حتى نعيَ منطق العمل كما نعي منطق الفكرة',
+    addToSanctuary: 'رفع مخطوطة (PDF)',
+    stats: 'إحصائيات الأداء',
+    cumulativeTime: 'الوقت التراكمي',
+    todayFocus: "تركيز اليوم",
+    stars: 'النجوم',
+    vault: 'خزنة المعرفة',
+    dashboard: 'لوحة التحليل الذكي',
+    backToShelf: 'العودة للرف',
+    zenMode: 'وضع الزن',
+    createFlashcard: 'إنشاء بطاقة',
+    nextStar: 'النجمة التالية بعد {min} دقيقة',
+    emptyShelf: 'المحراب هادئ. ارفع مخطوطة PDF للبدء.',
+    bookTitle: 'عنوان المخطوطة',
+    author: 'المؤلف / الكاتب',
+    save: 'استخلاص الحكمة',
+    uploadHint: 'أسقط ملف الـ PDF هنا',
+    language: 'العربية',
+    settings: 'الإعدادات',
+    menu: 'القائمة',
+    wisdomIndex: 'فهرس الحكمة',
+    noAnnotations: 'لا توجد تعديلات بعد.',
+    page: 'صفحة',
+    totalReadingTime: 'إجمالي مدة التركيز',
+    topCategories: 'إتقان المجالات',
+    readingConsistency: 'التدفق المعرفي',
+    recentActivity: 'نشاط الفك والتحليل الأخير',
+    minutes: 'دقيقة',
+    hours: 'ساعة',
+    collections: 'المجموعات',
+    status: 'الحالة',
+    activeSession: 'فك التشفير نشط',
+    cognitiveMetrics: 'تحليلات معرفية',
+    todayNeuralIntake: 'تحصيل اليوم العصبي',
+    newIntake: 'إدخال جديد',
+    establish: 'إنشاء',
+    modTitle: 'عنوان التعديل',
+    chapterName: 'اسم الباب / الفصل',
+    editDetails: 'بيانات الإدخال',
+    goToPage: 'الذهاب إلى صفحة',
+    jump: 'انتقال',
+    soundscape: 'الخلفية الصوتية',
+    none: 'صامت / بلا خلفية',
+    rain: 'مطر ورعد عميق',
+    sea: 'أمواج البحر',
+    river: 'خرير المياه',
+    night: 'هدوء الليل',
+    birds: 'تغريد العصافير',
+    fire: 'وهج النار',
+    celebration: 'احتفال / إنجاز',
+    discard: 'إلغاء',
+    back: 'رجوع',
+    volume: 'تضخيم الصوت (حتى 400%)',
+    loadingNote: 'ملاحظة: المخطوطات الكبيرة قد تستغرق بضع لحظات لإعادة البناء من الأرشيف العصبي.',
+    starAchieved: 'تم تحصيل نجمة جديدة',
+    starMotivation: 'تركيزك يضيء المحراب الآن. شعلة المعرفة تزداد اتقاداً بداخلك، استمر في الارتقاء.',
+    continueJourney: 'مواصلة فك التشفير',
+    uploadCustomSound: 'رفع مقطع صوتي خاص (MP3)',
+    custom: 'مقطع مخصص',
+    shelfEvolution: 'منحنى تطور الأرفف',
+    peakPerformance: 'فترات الأداء الأقصى',
+    lowPerformance: 'فترات الأداء الأدنى',
+    shelfComparison: 'مقارنة وتحليل المجموعات',
+    bookRanking: 'تصنيف إتقان المخطوطات',
+    shelfEfficiency: 'كثافة الرف (دقيقة/كتاب)',
+    comparativeAnalysis: 'تحليل تآزر الأرفف',
+    knowledgeVelocity: 'سرعة تحصيل المعرفة',
+    retentionRate: 'معدل الاحتفاظ بالحكمة',
+    deleteShelf: 'مسح الرف',
+    confirmShelfDelete: 'تحذير: سيتم حذف الرف وجميع الارتباطات التاريخية الخاصة به.',
+    shelfDominance: 'نسبة هيمنة الرف',
+    focusIntensity: 'كثافة التركيز',
+    cognitiveBalance: 'التوازن المعرفي',
+    vsAverage: 'مقارنة بمتوسط المحراب',
+    leadShelf: 'الرف القائد',
+    timeDistribution: 'التوزيع الزمني',
+    peakFocusHours: 'ساعات ذروة التركيز',
+    growthBenchmark: 'مؤشرات تطور الأرفف',
+    shelfSynergy: 'انسياب التآزر بين الأرفف',
+    shelfVolumeComparison: 'مقارنة حجم الأرفف',
+    bookGrowthBenchmark: 'منحنى تطور المخطوطات الفردي',
+    bookSynergy: 'انسياب تآزر المخطوطات',
+    loadingMessages: [
+      'جاري استعادة الأرشيف العصبي...',
+      'فك تشفير أنماط المنطق...',
+      'معايرة معايير التركيز...',
+      'إيقاد شعلة المعرفة...',
+      'رسم هندسة المخطوطة...',
+      'تجهيز المحراب...'
+    ]
   }
-
-  const activeBook = books[activeIndex];
-  const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    return `${h}h ${m}m`;
-  };
-
-  const handleDragEnd = (event: any, info: PanInfo) => {
-    const swipeThreshold = 50;
-    if (info.offset.x < -swipeThreshold) {
-      // Swipe Left -> Next
-      setActiveIndex(prev => (prev + 1) % books.length);
-    } else if (info.offset.x > swipeThreshold) {
-      // Swipe Right -> Prev
-      setActiveIndex(prev => (prev - 1 + books.length) % books.length);
-    }
-  };
-
-  return (
-    <div className="relative h-full flex flex-col items-center justify-start overflow-hidden w-full pt-4 md:pt-10 px-4">
-      {/* 3D Carousel Stage with Drag Support */}
-      <motion.div 
-        drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        onDragEnd={handleDragEnd}
-        className="relative w-full h-[350px] md:h-[550px] flex items-center justify-center perspective-1000 mt-2 md:mt-8 touch-none cursor-grab active:cursor-grabbing"
-      >
-        <AnimatePresence mode="popLayout">
-          {books.map((book, index) => {
-            const isCenter = index === activeIndex;
-            const diff = index - activeIndex;
-            
-            // Limit rendered items for performance
-            if (Math.abs(diff) > 2) return null;
-
-            return (
-              <motion.div
-                key={book.id}
-                initial={{ opacity: 0, scale: 0.6 }}
-                animate={{ 
-                  opacity: isCenter ? 1 : 0.3, 
-                  x: diff * (window.innerWidth < 768 ? 140 : 300), 
-                  scale: isCenter ? 1 : 0.75, 
-                  rotateY: diff * (window.innerWidth < 768 ? -25 : -35),
-                  zIndex: 20 - Math.abs(diff),
-                  filter: isCenter ? 'blur(0px)' : 'blur(4px)'
-                }}
-                exit={{ opacity: 0, scale: 0.5 }}
-                transition={{ type: 'spring', stiffness: 350, damping: 35 }}
-                onClick={() => isCenter ? onSelectBook(book) : setActiveIndex(index)}
-                className="absolute w-[200px] h-[280px] md:w-[340px] md:h-[500px]"
-              >
-                <div className={`relative w-full h-full rounded-[2.5rem] overflow-hidden border-2 transition-all duration-50
+};
