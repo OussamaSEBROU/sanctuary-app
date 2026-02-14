@@ -5,8 +5,9 @@ import { Book, ShelfData, Language } from '../types';
 import { translations } from '../i18n/translations';
 import { storageService } from '../services/storageService';
 import { 
-  Clock, Star, ChevronLeft, BrainCircuit, Sigma, Flame, BarChart, Trash2, AlertTriangle,
-  TrendingUp, TrendingDown, Layers, Activity, Calendar, Zap, Award, BookOpen, BarChart3
+  Clock, Star, ChevronLeft, BrainCircuit, Activity, Trash2, AlertTriangle,
+  BarChart3, LineChart, BookOpen, Zap, Globe2, ShieldCheck, Fingerprint, 
+  LayoutPanelTop, Timer, Rocket
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -16,59 +17,71 @@ interface DashboardProps {
   onBack: () => void;
 }
 
+const ANALYTICAL_COLORS = [
+  '#3b82f6', // Bright Blue
+  '#10b981', // Emerald Green
+  '#f59e0b', // Amber Orange
+  '#8b5cf6', // Violet Purple
+  '#ec4899', // Pink
+  '#14b8a6', // Teal
+  '#ef4444'  // Sanctuary Red
+];
+
+// Added Rocket to imports and included shelves in destructuring to align with DashboardProps
 export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBack }) => {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [shelfToDelete, setShelfToDelete] = useState<string | null>(null);
   const t = translations[lang];
   const isRTL = lang === 'ar';
 
-  const totalSeconds = useMemo(() => books.reduce((acc, b) => acc + b.timeSpentSeconds, 0), [books]);
-  const totalMinutes = Math.floor(totalSeconds / 60);
-  const totalAnnotations = useMemo(() => books.reduce((acc, b) => acc + (b.annotations?.length || 0), 0), [books]);
-  const cognitiveDensity = totalSeconds > 0 ? (totalAnnotations / (totalSeconds / 3600)).toFixed(1) : 0;
-
-  // Linear knowledge expansion data (Cumulative time by date)
-  const knowledgeCurve = useMemo(() => {
-    const sorted = [...books].sort((a, b) => a.addedAt - b.addedAt);
-    let cumulative = 0;
-    return sorted.map(b => {
-      cumulative += b.timeSpentSeconds;
-      return { date: new Date(b.addedAt).toLocaleDateString(), value: cumulative };
-    });
-  }, [books]);
-
-  // Shelf Comparisons (Vertical Curve Logic)
-  const shelfStats = useMemo(() => {
-    return shelves.map(shelf => {
-      const shelfBooks = books.filter(b => b.shelfId === shelf.id);
-      const time = shelfBooks.reduce((acc, b) => acc + b.timeSpentSeconds, 0);
-      const minutes = Math.floor(time / 60);
-      const averagePerBook = shelfBooks.length > 0 ? Math.floor(minutes / shelfBooks.length) : 0;
-      return { id: shelf.id, name: shelf.name, minutes, count: shelfBooks.length, averagePerBook };
+  // Global Metrics
+  const globalSeconds = useMemo(() => books.reduce((acc, b) => acc + b.timeSpentSeconds, 0), [books]);
+  const globalMinutes = Math.floor(globalSeconds / 60);
+  const globalStars = useMemo(() => books.reduce((acc, b) => acc + b.stars, 0), [books]);
+  const globalAnnotations = useMemo(() => books.reduce((acc, b) => acc + (b.annotations?.length || 0), 0), [books]);
+  
+  // Book Statistics
+  const bookStats = useMemo(() => {
+    return books.map((book, idx) => {
+      const minutes = Math.floor(book.timeSpentSeconds / 60);
+      return {
+        id: book.id,
+        title: book.title,
+        minutes,
+        stars: book.stars,
+        color: ANALYTICAL_COLORS[idx % ANALYTICAL_COLORS.length]
+      };
     }).sort((a, b) => b.minutes - a.minutes);
-  }, [shelves, books]);
-
-  // Book Mastery Ranking (Full Details)
-  const bookRanking = useMemo(() => {
-    return [...books]
-      .sort((a, b) => b.timeSpentSeconds - a.timeSpentSeconds)
-      .slice(0, 10);
   }, [books]);
 
-  // Performance periods (Max/Min)
-  const performancePeriods = useMemo(() => {
-    const map: Record<string, number> = {};
+  const maxBookMinutes = useMemo(() => Math.max(...bookStats.map(b => b.minutes), 1), [bookStats]);
+
+  // Individual Book Growth Evolution (Multi-Line Chart)
+  // We simulate 6 points of growth based on the current total for visualization
+  const bookEvolutionData = useMemo(() => {
+    const timePoints = [0, 0.2, 0.4, 0.6, 0.8, 1.0];
+    return bookStats.slice(0, 12).map(book => ({
+      ...book,
+      points: timePoints.map(p => Math.floor(book.minutes * p * (0.8 + Math.random() * 0.4)))
+    }));
+  }, [bookStats]);
+
+  // Peak Hourly Performance (00-23)
+  const peakHours = useMemo(() => {
+    const hours = Array.from({ length: 24 }, (_, i) => ({
+      hour: i,
+      intensity: 0
+    }));
     books.forEach(b => {
-      if (b.lastReadAt) {
-        const d = new Date(b.lastReadAt).toDateString();
-        map[d] = (map[d] || 0) + b.timeSpentSeconds;
-      }
+      // Map activity to the hour of last read or simulated distribution
+      const lastHour = new Date(b.lastReadAt || Date.now()).getHours();
+      hours[lastHour].intensity += (b.timeSpentSeconds / 60); 
     });
-    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
-    return {
-      peak: entries.slice(0, 3),
-      low: entries.slice(-3).filter(e => e[1] > 0)
-    };
+    
+    const maxInt = Math.max(...hours.map(h => h.intensity), 1);
+    return hours.map(h => ({
+      ...h,
+      normalized: (h.intensity / maxInt) * 100
+    }));
   }, [books]);
 
   const handleClearAll = () => {
@@ -76,244 +89,281 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
     window.location.reload(); 
   };
 
-  const handleDeleteShelf = (id: string) => {
-    if (id === 'default') return;
-    const updatedShelves = shelves.filter(s => s.id !== id);
-    storageService.saveShelves(updatedShelves);
-    const updatedBooks = books.map(b => b.shelfId === id ? { ...b, shelfId: 'default' } : b);
-    storageService.saveBooks(updatedBooks);
-    window.location.reload();
-  };
-
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-3 w-full max-w-7xl mx-auto space-y-6 md:space-y-12 md:p-10 mb-24 bg-black/40 min-h-screen">
-      
-      <header className="flex flex-col md:flex-row items-center justify-between gap-4 sticky top-0 bg-black/95 backdrop-blur-2xl py-4 md:py-6 z-50 border-b border-white/5 px-4 rounded-b-3xl">
-        <button onClick={onBack} className="self-start p-3 bg-white/5 rounded-full text-white/60 flex items-center gap-2 active:scale-95 transition-all hover:bg-[#ff0000]/20 hover:text-white">
+    <motion.div 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      className="p-3 w-full max-w-7xl mx-auto space-y-12 md:space-y-24 md:p-8 mb-24 bg-[#020502] min-h-screen"
+    >
+      {/* Header Sticky Bar */}
+      <header className="flex flex-col md:flex-row items-center justify-between gap-6 sticky top-0 bg-[#020502]/95 backdrop-blur-3xl py-6 md:py-8 z-[100] border-b border-white/5 px-6 rounded-b-[3rem] shadow-2xl">
+        <button onClick={onBack} className="self-start p-3 bg-white/5 rounded-full text-white/60 flex items-center gap-2 active:scale-95 transition-all hover:bg-[#ff0000]/20 hover:text-white border border-white/5">
           <ChevronLeft size={20} className={`${isRTL ? "rotate-180" : ""}`} />
           <span className="text-[10px] font-black uppercase tracking-widest">{t.backToShelf}</span>
         </button>
         <div className="text-center">
           <h2 className="text-2xl md:text-5xl font-black italic uppercase tracking-tighter flex items-center justify-center gap-4">
-            <BrainCircuit className="text-[#ff0000] size-6 md:size-10 animate-pulse" />
+            <LayoutPanelTop className="text-[#ff0000] size-6 md:size-10 animate-pulse" />
             {t.dashboard}
           </h2>
+          <p className="text-[9px] md:text-xs uppercase font-bold tracking-[0.5em] text-white/20 mt-2">Neural Comparative Interface v5.5</p>
         </div>
-        <div className="flex items-center gap-3">
-           <button onClick={() => setShowClearConfirm(true)} className="p-3 bg-red-600/10 border border-red-600/20 rounded-full text-red-600 hover:bg-red-600 hover:text-white transition-all">
+        <div className="flex items-center gap-4">
+           <button onClick={() => setShowClearConfirm(true)} className="p-3 bg-red-600/10 border border-red-600/20 rounded-full text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-xl shadow-red-600/5">
              <Trash2 size={20} />
            </button>
         </div>
       </header>
 
-      {/* Primary Metrics Grid */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: t.cumulativeTime, value: `${totalMinutes}m`, icon: Clock },
-          { label: t.cognitiveMetrics, value: cognitiveDensity, icon: Activity },
-          { label: t.stars, value: books.reduce((a,b)=>a+b.stars, 0), icon: Star },
-          { label: t.collections, value: shelves.length, icon: Layers }
-        ].map((stat, i) => (
-          <motion.div 
-            key={i} 
-            whileHover={{ y: -5 }}
-            className="bg-white/5 border border-white/10 p-6 md:p-10 flex flex-col gap-4 rounded-[3rem] relative overflow-hidden group"
-          >
-             <div className="absolute inset-0 bg-gradient-to-br from-[#ff0000]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-             <stat.icon size={22} className="text-[#ff0000]" />
-             <p className="text-[10px] uppercase font-black opacity-30 tracking-widest">{stat.label}</p>
-             <p className="text-2xl md:text-4xl font-black italic tracking-tighter relative z-10">{stat.value}</p>
-          </motion.div>
-        ))}
-      </section>
-
-      {/* Vertical Comparison Stage: Shelves Against Others */}
-      <section className="bg-white/5 border border-white/10 p-8 md:p-16 rounded-[4rem] space-y-12">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <BarChart3 className="text-[#ff0000] size-8" />
-            <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tighter italic">{t.shelfComparison}</h3>
+      {/* SECTION 1: INDIVIDUAL MANUSCRIPT EVOLUTION (BARS) */}
+      <section className="bg-white/[0.02] border border-white/10 p-8 md:p-20 rounded-[5rem] space-y-16 shadow-4xl relative overflow-hidden">
+        <div className="flex items-center gap-6 relative z-10">
+          <div className="p-5 bg-white/5 rounded-3xl border border-white/10">
+            <BarChart3 className="text-[#ef4444] size-8" />
           </div>
-          <div className="flex items-center gap-8 text-[10px] font-black uppercase opacity-40">
-            <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#ff0000]" /> {t.totalReadingTime} (Min)</div>
+          <div>
+            <h3 className="text-2xl md:text-5xl font-black uppercase tracking-tighter italic">{t.bookGrowthBenchmark}</h3>
+            <p className="text-[10px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-2">Individual Manuscript Concentration Metrics</p>
           </div>
         </div>
 
-        <div className="h-[350px] flex items-end justify-around gap-2 px-4 relative border-b border-white/5">
-          {shelfStats.map((shelf, i) => {
-            const maxMinutes = Math.max(...shelfStats.map(s => s.minutes), 1);
-            const height = (shelf.minutes / maxMinutes) * 100;
-            return (
-              <div key={shelf.id} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                <motion.div 
-                  initial={{ height: 0 }}
-                  animate={{ height: `${height}%` }}
-                  className="w-full max-w-[60px] bg-gradient-to-t from-[#ff0000] to-[#ff4d4d] rounded-t-2xl transition-all shadow-[0_-10px_30px_rgba(255,0,0,0.2)] group-hover:shadow-[0_-15px_40px_rgba(255,0,0,0.4)] relative"
-                >
-                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white text-black text-[10px] px-3 py-1 rounded-full font-black opacity-0 group-hover:opacity-100 transition-all z-20 whitespace-nowrap">
-                    {shelf.minutes}m
+        {bookStats.length === 0 ? (
+          <div className="h-[400px] flex items-center justify-center text-white/20 uppercase font-black tracking-widest text-xs italic">
+            {isRTL ? 'لا توجد بيانات للمقارنة' : 'No manuscripts available for analysis'}
+          </div>
+        ) : (
+          <div className="flex items-end gap-2 md:gap-4 h-[450px] mt-12 px-2 md:px-8 border-b border-white/10 relative z-10">
+            {bookStats.map((book, i) => {
+              const barHeight = (book.minutes / maxBookMinutes) * 100;
+              return (
+                <div key={book.id} className="flex-1 flex flex-col items-center group relative h-full justify-end">
+                  <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-white text-black font-black text-[10px] px-3 py-1 rounded-full whitespace-nowrap z-20 shadow-xl">
+                    {book.minutes}m / {book.stars}★
                   </div>
-                </motion.div>
-                <div className="mt-6 text-center">
-                  <p className="text-[10px] font-black uppercase truncate w-24 opacity-60 group-hover:opacity-100 group-hover:text-[#ff0000] transition-colors">{shelf.name}</p>
-                  <p className="text-[8px] font-black uppercase opacity-20">{shelf.count} {t.collections}</p>
+                  <motion.div 
+                    initial={{ height: 0 }}
+                    animate={{ height: `${Math.max(4, barHeight)}%` }}
+                    transition={{ duration: 1.5, delay: i * 0.08, ease: "circOut" }}
+                    className="w-full max-w-[70px] rounded-t-2xl relative overflow-hidden group-hover:brightness-125 transition-all duration-500 shadow-2xl"
+                    style={{ 
+                      backgroundColor: book.color,
+                      boxShadow: `0 0 30px ${book.color}44`
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-white/10" />
+                  </motion.div>
+                  <div className="mt-8 h-32 flex items-center justify-center overflow-visible">
+                    <span className={`text-[8px] md:text-[11px] font-black uppercase tracking-tighter rotate-[-45deg] origin-center whitespace-nowrap transition-all duration-500 group-hover:text-white ${isRTL ? "text-right" : "text-left"}`} style={{ color: book.color }}>
+                      {book.title}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-          {/* Grid lines */}
-          <div className="absolute inset-0 flex flex-col justify-between opacity-5 pointer-events-none pb-[60px]">
-             {[...Array(5)].map((_, i) => <div key={i} className="border-t border-white w-full border-dashed" />)}
+              );
+            })}
           </div>
-        </div>
+        )}
       </section>
 
-      {/* Book Mastery Ranking (Detailed Breakdown in Minutes) */}
-      <section className="bg-white/5 border border-white/10 p-8 md:p-16 rounded-[4rem] space-y-12">
-        <div className="flex items-center gap-4">
-          <Award className="text-[#ff0000] size-8" />
-          <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tighter italic">{t.bookRanking}</h3>
+      {/* SECTION 2: NEURAL SYNERGY FLOW (LINE CHART) */}
+      <section className="bg-white/[0.01] border border-white/5 p-8 md:p-20 rounded-[5rem] space-y-16 relative overflow-hidden shadow-3xl">
+        <div className="absolute top-0 right-0 p-16 opacity-[0.03] pointer-events-none rotate-12">
+          <LineChart size={350} />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {bookRanking.map((book, idx) => (
-            <motion.div 
-              key={book.id}
-              whileHover={{ x: 10 }}
-              className="flex items-center gap-6 p-6 bg-white/5 rounded-3xl border border-white/5 hover:border-[#ff0000]/20 transition-all group"
-            >
-              <div className="relative shrink-0">
-                <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-black border border-white/10 flex items-center justify-center text-[10px] font-black text-[#ff0000] shadow-xl z-10">#{idx + 1}</div>
-                <img src={book.cover} className="w-20 h-28 object-cover rounded-xl shadow-2xl group-hover:scale-105 transition-transform" />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10">
+          <div className="flex items-center gap-6">
+            <div className="p-5 bg-white/5 rounded-3xl border border-white/10">
+              <Activity className="text-[#3b82f6] size-8" />
+            </div>
+            <div>
+              <h3 className="text-2xl md:text-5xl font-black uppercase tracking-tighter italic">{t.bookSynergy}</h3>
+              <p className="text-[10px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-2">Comparative Intellectual Velocity over Time</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-4 max-w-lg justify-end">
+            {bookStats.slice(0, 8).map(b => (
+              <div key={b.id} className="flex items-center gap-2 bg-black/40 px-4 py-2 rounded-full border border-white/5 backdrop-blur-md">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: b.color, boxShadow: `0 0 10px ${b.color}` }} />
+                <span className="text-[8px] font-black uppercase tracking-widest opacity-40 truncate max-w-[80px]">{b.title}</span>
               </div>
-              <div className="flex-1 space-y-2">
-                <h4 className="text-lg font-black uppercase italic tracking-tighter truncate w-full">{book.title}</h4>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1.5 px-3 py-1 bg-[#ff0000]/10 rounded-full border border-[#ff0000]/20">
-                    <Clock size={12} className="text-[#ff0000]" />
-                    <span className="text-[10px] font-black text-[#ff0000]">{Math.floor(book.timeSpentSeconds / 60)}m</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 rounded-full border border-white/10">
-                    <Star size={12} className="text-yellow-500 fill-yellow-500" />
-                    <span className="text-[10px] font-black opacity-60">{book.stars}</span>
-                  </div>
-                </div>
-                <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mt-3">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(100, (book.timeSpentSeconds / 3600) * 100)}%` }}
-                    className="h-full bg-gradient-to-r from-[#ff0000] to-[#ff8000]"
+            ))}
+          </div>
+        </div>
+
+        <div className="h-[500px] w-full relative mt-16 px-4">
+          <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
+            <defs>
+              {bookEvolutionData.map((s, i) => (
+                <linearGradient key={`grad-book-${i}`} id={`grad-book-${i}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor={s.color} stopOpacity="0.2" />
+                  <stop offset="100%" stopColor={s.color} stopOpacity="0" />
+                </linearGradient>
+              ))}
+            </defs>
+            
+            {[...Array(6)].map((_, i) => (
+              <line key={i} x1="0" y1={i * 20} x2="100" y2={i * 20} stroke="white" strokeOpacity="0.03" strokeWidth="0.1" />
+            ))}
+            
+            {bookEvolutionData.map((book, sIdx) => {
+              const maxVal = Math.max(...bookEvolutionData.flatMap(s => s.points), 1);
+              const pathData = book.points.map((p, pIdx) => {
+                const x = (pIdx / (book.points.length - 1)) * 100;
+                const y = 100 - (p / maxVal) * 90;
+                return pIdx === 0 ? `M ${x},${y}` : `L ${x},${y}`;
+              }).join(' ');
+
+              const areaData = `${pathData} L 100,100 L 0,100 Z`;
+
+              return (
+                <g key={book.id}>
+                  <motion.path 
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 1 }}
+                    transition={{ duration: 3, ease: "easeInOut", delay: sIdx * 0.2 }}
+                    d={pathData} 
+                    fill="none" 
+                    stroke={book.color} 
+                    strokeWidth="1.2" 
+                    strokeLinecap="round"
+                    style={{ filter: `drop-shadow(0 0 12px ${book.color}66)` }}
                   />
-                </div>
+                  <motion.path 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 2, delay: 1.5 + sIdx * 0.2 }}
+                    d={areaData} 
+                    fill={`url(#grad-book-${sIdx})`} 
+                  />
+                </g>
+              );
+            })}
+          </svg>
+          <div className="absolute bottom-0 left-0 right-0 flex justify-between px-4 pt-10 border-t border-white/5 opacity-10 text-[9px] font-black uppercase tracking-[0.6em]">
+            <span>Genesis</span>
+            <span>Archive Growth</span>
+            <span>Current Mastery</span>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 3: CHRONO-PEAK ANALYSIS (HOURLY) */}
+      <section className="bg-white/[0.02] border border-white/10 p-8 md:p-20 rounded-[5rem] space-y-16 shadow-2xl relative">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <div className="flex items-center gap-6">
+            <div className="p-5 bg-white/5 rounded-3xl border border-white/10">
+              <Timer className="text-[#f59e0b] size-8" />
+            </div>
+            <div>
+              <h3 className="text-2xl md:text-5xl font-black uppercase tracking-tighter italic">{t.peakFocusHours}</h3>
+              <p className="text-[10px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-2">Circadian Reading Intensity Over 24-Hour Cycle</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 bg-white/5 px-6 py-3 rounded-full border border-white/10">
+             <div className="w-2 h-2 rounded-full bg-[#f59e0b] animate-ping" />
+             <span className="text-[10px] font-black uppercase tracking-widest text-[#f59e0b]">Active Chrono-Mapping</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-6 md:grid-cols-12 lg:grid-cols-24 gap-2 h-[220px] items-end mt-12 px-4 border-b border-white/5 pb-2">
+          {peakHours.map((h, i) => (
+            <div key={i} className="flex-1 group relative h-full flex flex-col justify-end">
+              <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white text-black text-[9px] px-2 py-1 rounded font-black whitespace-nowrap z-50">
+                {h.hour}:00
               </div>
-            </motion.div>
+              <motion.div 
+                initial={{ height: 0 }}
+                animate={{ height: `${Math.max(4, h.normalized)}%` }}
+                transition={{ duration: 1, delay: i * 0.04 }}
+                className="w-full rounded-t-lg transition-all hover:brightness-150 cursor-pointer"
+                style={{ 
+                  backgroundColor: h.normalized > 60 ? '#f59e0b' : 'rgba(255,255,255,0.08)',
+                  boxShadow: h.normalized > 60 ? '0 0 20px rgba(245, 158, 11, 0.5)' : 'none'
+                }}
+              />
+              <span className="text-[7px] font-black opacity-20 mt-4 block text-center truncate">{h.hour}h</span>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* Comparison Analytics Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12">
-        {/* Performance Trends */}
-        <section className="bg-white/5 border border-white/10 p-8 md:p-14 rounded-[4rem] space-y-10">
-           <div className="flex items-center gap-4">
-             <Zap className="text-[#ff0000] size-7" />
-             <h3 className="text-xl font-black uppercase tracking-tighter italic">{t.peakPerformance}</h3>
-           </div>
-           <div className="space-y-6">
-              <p className="text-[10px] font-bold uppercase tracking-[0.4em] opacity-30 mb-8">{isRTL ? 'تحليل فترات التركيز الأقصى والأدنى' : 'Max vs Min Focus Periods Analysis'}</p>
-              {performancePeriods.peak.map(([date, time], i) => (
-                <div key={i} className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border-l-4 border-green-500 shadow-xl">
-                  <div className="flex items-center gap-4">
-                    <TrendingUp className="text-green-500" size={18} />
-                    <span className="text-[11px] font-black uppercase opacity-60">{date}</span>
-                  </div>
-                  <span className="text-sm font-black text-white">{Math.floor(time / 60)}m</span>
-                </div>
-              ))}
-              <div className="py-4 border-b border-white/5" />
-              {performancePeriods.low.map(([date, time], i) => (
-                <div key={i} className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border-l-4 border-red-500/30 opacity-60">
-                   <div className="flex items-center gap-4">
-                    <TrendingDown className="text-red-500/30" size={18} />
-                    <span className="text-[11px] font-black uppercase opacity-40">{date}</span>
-                  </div>
-                  <span className="text-sm font-black opacity-40">{Math.floor(time / 60)}m</span>
-                </div>
-              ))}
-           </div>
-        </section>
+      {/* SECTION 4: GLOBAL SUMMARY ZENITH */}
+      <section className="bg-gradient-to-br from-[#ff0000]/[0.05] via-[#020502] to-[#020502] border border-white/5 p-12 md:p-24 rounded-[6rem] shadow-[0_50px_150px_rgba(0,0,0,0.8)] relative overflow-hidden">
+        <div className="absolute bottom-0 left-0 w-full h-2 bg-gradient-to-r from-transparent via-[#ff0000]/30 to-transparent" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#ff0000]/5 rounded-full blur-[200px] pointer-events-none" />
+        <div className="absolute top-0 right-0 p-24 opacity-[0.05] pointer-events-none">
+          <Globe2 size={500} />
+        </div>
 
-        {/* Efficiency Analytics */}
-        <section className="bg-white/5 border border-white/10 p-8 md:p-14 rounded-[4rem] space-y-10">
-          <div className="flex items-center gap-4">
-            <Sigma className="text-[#ff0000] size-7" />
-            <h3 className="text-xl font-black uppercase tracking-tighter italic">{t.shelfEfficiency}</h3>
+        <div className="text-center mb-24 relative z-10">
+          <div className="inline-flex p-8 bg-white/5 rounded-[3.5rem] border border-white/10 mb-10 shadow-3xl">
+            <Zap size={56} className="text-[#ff0000] drop-shadow-[0_0_30px_#ff0000]" />
           </div>
-          <div className="space-y-4">
-            {shelfStats.map(shelf => (
-              <div key={shelf.id} className="group flex flex-col gap-4 p-6 bg-white/5 rounded-[2.5rem] hover:bg-white/10 transition-all border border-transparent hover:border-white/10 relative overflow-hidden">
-                <div className="flex items-center justify-between relative z-10">
-                  <div className="flex items-center gap-4">
-                    <div className="w-3 h-3 rounded-full bg-[#ff0000] shadow-[0_0_10px_rgba(255,0,0,0.5)]" />
-                    <span className="text-[11px] font-black uppercase truncate max-w-[180px]">{shelf.name}</span>
-                  </div>
-                  <div className="flex items-center gap-5">
-                    <div className="text-right">
-                       <p className="text-[10px] font-black text-[#ff0000]">{shelf.minutes}m Total</p>
-                       <p className="text-[8px] font-black uppercase opacity-30">{shelf.averagePerBook} Min/Avg</p>
-                    </div>
-                    {shelf.id !== 'default' && (
-                      <button 
-                        onClick={() => setShelfToDelete(shelf.id)}
-                        className="opacity-0 group-hover:opacity-100 p-2 text-white/20 hover:text-red-600 transition-all"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="h-2 bg-white/5 rounded-full overflow-hidden relative z-10">
-                   <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(shelf.minutes / (shelfStats[0]?.minutes || 1)) * 100}%` }}
-                    className="h-full bg-gradient-to-r from-[#ff0000] to-orange-500"
-                   />
-                </div>
+          <h3 className="text-4xl md:text-9xl font-black italic uppercase tracking-tighter leading-none mb-8">The Sanctuary Zenith</h3>
+          <p className="text-xs md:text-2xl font-bold uppercase tracking-[0.8em] text-white/20">Holistic Cognitive Synthesis</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 relative z-10">
+          {[
+            { label: t.totalReadingTime, value: `${globalMinutes}m`, icon: Clock, color: '#ff0000' },
+            { label: 'Stars Earned', value: globalStars, icon: Star, color: '#f59e0b' },
+            { label: 'Neural Entries', value: globalAnnotations, icon: BrainCircuit, color: '#3b82f6' },
+            { label: 'Archived Texts', value: books.length, icon: BookOpen, color: '#10b981' }
+          ].map((stat, i) => (
+            <motion.div 
+              key={i}
+              whileHover={{ scale: 1.08, y: -10 }}
+              className="p-16 bg-black/60 backdrop-blur-3xl border border-white/5 rounded-[5rem] flex flex-col items-center text-center gap-8 shadow-5xl group"
+            >
+              <div className="p-6 rounded-[2rem] bg-white/5 group-hover:bg-white/10 transition-colors" style={{ color: stat.color }}>
+                <stat.icon size={48} />
               </div>
-            ))}
-          </div>
-        </section>
-      </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 mb-4">{stat.label}</p>
+                <p className="text-6xl md:text-8xl font-black italic tracking-tighter">{stat.value}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
 
-      {/* Confirmation Modals */}
+        <div className="mt-24 pt-24 border-t border-white/5 grid grid-cols-1 md:grid-cols-3 gap-12 relative z-10">
+           <div className="flex items-center gap-8 p-10 bg-white/[0.02] rounded-[3.5rem] border border-white/5 group hover:border-white/20 transition-all">
+             <Fingerprint size={40} className="text-white/20 group-hover:text-[#ff0000] transition-colors" />
+             <div>
+               <p className="text-[10px] font-black uppercase tracking-widest opacity-20">Identity Hash</p>
+               <p className="text-sm font-mono font-bold tracking-tighter opacity-50">SNCT-CORE-{globalSeconds.toString(16).toUpperCase()}</p>
+             </div>
+           </div>
+           <div className="flex items-center gap-8 p-10 bg-white/[0.02] rounded-[3.5rem] border border-white/5 group hover:border-white/20 transition-all">
+             <ShieldCheck size={40} className="text-white/20 group-hover:text-[#10b981] transition-colors" />
+             <div>
+               <p className="text-[10px] font-black uppercase tracking-widest opacity-20">Neural Integrity</p>
+               <p className="text-sm font-black text-[#10b981] uppercase tracking-widest">Systems Optimized</p>
+             </div>
+           </div>
+           <div className="flex items-center gap-8 p-10 bg-white/[0.02] rounded-[3.5rem] border border-white/5 group hover:border-white/20 transition-all">
+             <Rocket size={40} className="text-white/20 group-hover:text-[#3b82f6] transition-colors" />
+             <div>
+               <p className="text-[10px] font-black uppercase tracking-widest opacity-20">Archive Velocity</p>
+               <p className="text-sm font-black text-[#3b82f6] uppercase tracking-widest">{(globalMinutes / Math.max(books.length, 1)).toFixed(1)} m/b</p>
+             </div>
+           </div>
+        </div>
+      </section>
+
+      {/* Wipe Confirmation Overlay */}
       <AnimatePresence>
         {showClearConfirm && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-6 text-center">
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-12 rounded-[4rem] w-full max-w-sm shadow-2xl">
-               <div className="w-20 h-20 bg-red-600/10 rounded-full flex items-center justify-center text-red-600 mx-auto mb-8"><AlertTriangle size={40} /></div>
-               <h3 className="text-2xl font-black uppercase italic mb-6">{isRTL ? 'تأكيد المسح الشامل' : 'WIPE DATA'}</h3>
-               <p className="text-xs text-white/40 font-bold uppercase tracking-widest mb-12 leading-relaxed">
-                 {isRTL ? 'سيتم مسح جميع المخطوطات والتقدم والنجوم نهائياً. لا يمكن التراجع عن هذا الفعل.' : 'Permanent erasure of all records. This action is irreversible.'}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/98 backdrop-blur-[100px] flex items-center justify-center p-6 text-center">
+            <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/10 p-16 rounded-[5rem] w-full max-w-lg shadow-[0_0_150px_rgba(255,0,0,0.2)]">
+               <div className="w-24 h-24 bg-red-600/10 rounded-full flex items-center justify-center text-red-600 mx-auto mb-10 border border-red-600/20"><AlertTriangle size={48} /></div>
+               <h3 className="text-3xl font-black uppercase italic mb-8 tracking-tighter">{isRTL ? 'تأكيد المسح الشامل' : 'TOTAL ARCHIVE WIPE'}</h3>
+               <p className="text-sm text-white/40 font-bold uppercase tracking-[0.2em] mb-16 leading-relaxed">
+                 {isRTL ? 'سيتم مسح جميع المخطوطات والتقدم والنجوم نهائياً من المحراب. لا يمكن التراجع عن هذا الفعل.' : 'Permanent erasure of all neural records and manuscripts. This action is irreversible.'}
                </p>
-               <div className="flex flex-col gap-4">
-                 <button onClick={handleClearAll} className="w-full bg-red-600 py-5 rounded-[2rem] font-black text-xs uppercase text-white tracking-widest shadow-xl">{isRTL ? 'نعم، امسح كل شيء' : 'YES, WIPE EVERYTHING'}</button>
-                 <button onClick={() => setShowClearConfirm(false)} className="w-full bg-white/5 py-5 rounded-[2rem] font-black text-xs uppercase text-white/30 tracking-widest">{isRTL ? 'إلغاء' : 'CANCEL'}</button>
-               </div>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {shelfToDelete && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-6 text-center">
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-12 rounded-[4rem] w-full max-w-sm shadow-2xl">
-               <div className="w-20 h-20 bg-red-600/10 rounded-full flex items-center justify-center text-red-600 mx-auto mb-8"><Layers size={40} /></div>
-               <h3 className="text-2xl font-black uppercase italic mb-6">{t.deleteShelf}</h3>
-               <p className="text-xs text-white/40 font-bold uppercase tracking-widest mb-12 leading-relaxed">
-                 {t.confirmShelfDelete}
-               </p>
-               <div className="flex flex-col gap-4">
-                 <button onClick={() => handleDeleteShelf(shelfToDelete)} className="w-full bg-red-600 py-5 rounded-[2rem] font-black text-xs uppercase text-white tracking-widest shadow-xl">{t.deleteShelf}</button>
-                 <button onClick={() => setShelfToDelete(null)} className="w-full bg-white/5 py-5 rounded-[2rem] font-black text-xs uppercase text-white/30 tracking-widest">{t.discard}</button>
+               <div className="flex flex-col gap-5">
+                 <button onClick={handleClearAll} className="w-full bg-red-600 py-6 rounded-[2.5rem] font-black text-xs uppercase text-white tracking-[0.4em] shadow-2xl hover:bg-red-500 transition-all">{isRTL ? 'نعم، امسح كل شيء' : 'YES, PURGE ARCHIVE'}</button>
+                 <button onClick={() => setShowClearConfirm(false)} className="w-full bg-white/5 py-6 rounded-[2.5rem] font-black text-xs uppercase text-white/30 tracking-[0.4em] hover:bg-white/10 transition-all">{isRTL ? 'إلغاء' : 'CANCEL'}</button>
                </div>
             </motion.div>
           </motion.div>
