@@ -53,6 +53,9 @@ const TOOL_ICONS = {
   note: MessageSquare
 };
 
+// Thresholds: 15, 30, 50, 135, 180 minutes in seconds
+const STAR_THRESHOLDS = [900, 1800, 3000, 8100, 10800];
+
 export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdate }) => {
   const [isZenMode, setIsZenMode] = useState(false);
   const [isNightMode, setIsNightMode] = useState(false);
@@ -90,9 +93,9 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const isRTL = lang === 'ar';
   const fontClass = isRTL ? 'font-ar' : 'font-en';
 
-  const starThreshold = 900; 
-  const secondsIntoCycle = book.timeSpentSeconds % starThreshold;
-  const remainingSeconds = starThreshold - secondsIntoCycle;
+  // Calculate next star milestone
+  const nextThreshold = STAR_THRESHOLDS.find(t => book.timeSpentSeconds < t);
+  const remainingSeconds = nextThreshold ? nextThreshold - book.timeSpentSeconds : 0;
   const minsToNextStar = Math.ceil(remainingSeconds / 60);
 
   useEffect(() => {
@@ -462,7 +465,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 <button onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)} className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${isToolsMenuOpen ? 'bg-white text-black' : 'bg-white/5 text-[#ff0000] border border-[#ff0000]/20'}`}>
                   <ActiveToolIcon size={16} />
                 </button>
-                <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-full border border-white/5">
+                <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-full border border-white/5 relative">
                    {[...Array(5)].map((_, i) => {
                      const isEarned = i < book.stars;
                      const isProgressing = i === book.stars;
@@ -473,9 +476,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                        </div>
                      );
                    })}
-                   <span className="text-[6px] font-black tracking-tighter text-[#ff0000] ml-1 uppercase">
-                     -{minsToNextStar}m
-                   </span>
+                   {nextThreshold && (
+                     <span className="text-[6px] font-black tracking-tighter text-[#ff0000] ml-1 uppercase opacity-80">
+                       -{minsToNextStar}m
+                     </span>
+                   )}
                 </div>
               </div>
               <div className="flex items-center gap-0.5 flex-1 justify-center">
