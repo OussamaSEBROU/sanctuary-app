@@ -242,11 +242,11 @@ const App: React.FC = () => {
           <AnimatePresence mode="wait">
             {view === ViewState.SHELF && (
               <motion.div key="shelf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col relative">
-                <header className="flex flex-col items-center text-center pt-20 md:pt-24 pb-4 md:pb-8 shrink-0">
+                <header className="flex flex-col items-center text-center pt-20 md:pt-12 pb-4 md:pb-6 shrink-0">
                   <h1 className="text-[clamp(2.2rem,12vw,8.5rem)] font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[1.1] pt-4 text-center w-full max-w-full">
                     {t.title}
                   </h1>
-                  <p className="shining-text text-[9px] md:text-sm font-bold mt-3 md:mt-8 px-8 md:px-12 max-w-2xl tracking-[0.2em] md:tracking-[0.4em] leading-relaxed opacity-80">
+                  <p className="shining-text text-[11px] md:text-base font-bold mt-3 md:mt-4 px-8 md:px-12 max-w-2xl tracking-[0.2em] md:tracking-[0.4em] leading-relaxed opacity-80">
                     {t.philosophy}
                   </p>
                 </header>
@@ -275,8 +275,8 @@ const App: React.FC = () => {
 
         <AnimatePresence>
           {isAddingBook && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] flex items-center justify-center p-4 md:p-6 bg-black/98 backdrop-blur-3xl">
-              <motion.div initial={{ scale: 0.95, y: 30 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/5 p-8 md:p-12 rounded-[2.5rem] md:rounded-[4rem] w-full max-w-xl shadow-2xl relative">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] flex items-center justify-center p-0 md:p-6 bg-black/98 backdrop-blur-3xl">
+              <motion.div initial={{ scale: 0.95, y: 30 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/5 p-8 md:p-12 rounded-none md:rounded-[4rem] w-full max-w-xl min-h-screen md:min-h-0 shadow-2xl relative flex flex-col justify-center">
                 <button onClick={() => setIsAddingBook(false)} className="absolute top-6 right-6 md:top-10 md:right-10 p-2 rounded-full bg-white/5 text-white/20 hover:text-white transition-colors"><X size={20} className="md:size-6" /></button>
                 <h2 className="text-xl md:text-3xl font-black mb-8 md:mb-12 text-white uppercase italic flex items-center gap-4 md:gap-5 leading-none"><BookOpen size={32} className="text-[#ff0000] md:size-11" /> {t.newIntake}</h2>
                 <div className="space-y-6 md:space-y-8">
