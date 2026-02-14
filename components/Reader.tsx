@@ -10,7 +10,7 @@ import {
   PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
   ListOrdered, Star, Volume2, CloudLightning, Waves, 
   Moon, Bird, Flame, VolumeX, Sparkles, Search, Droplets, PartyPopper,
-  Minimize2, Edit3, Award, Layers, LogOut
+  Minimize2, Edit3, Award, Layers, LogOut, Sun
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -55,6 +55,7 @@ const TOOL_ICONS = {
 
 export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdate }) => {
   const [isZenMode, setIsZenMode] = useState(false);
+  const [isNightMode, setIsNightMode] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [pages, setPages] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(book.lastPage || 0);
@@ -307,6 +308,9 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               <button onClick={onBack} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white/5 rounded-full text-white/60 hover:bg-white/10 active:scale-90"><ChevronLeft size={20} className={isRTL ? "rotate-180" : ""} /></button>
               <button onClick={() => setIsArchiveOpen(true)} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 active:scale-90"><ListOrdered size={20} /></button>
               <button onClick={() => setIsSoundPickerOpen(true)} className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeSoundId !== 'none' ? 'bg-[#ff0000] text-white shadow-[0_0_15px_rgba(255,0,0,0.5)]' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}><Volume2 size={20} /></button>
+              <button onClick={() => setIsNightMode(!isNightMode)} className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full transition-all active:scale-90 ${isNightMode ? 'bg-[#ff0000] text-white shadow-[0_0_15px_rgba(255,0,0,0.5)]' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                {isNightMode ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
             </div>
 
             <div className="flex flex-col items-center pointer-events-auto">
@@ -355,9 +359,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className={`relative bg-white shadow-2xl overflow-hidden touch-none transition-shadow duration-700 ${isZenMode ? 'h-[95vh] w-auto aspect-[1/1.41] shadow-[0_0_120px_rgba(255,255,255,0.05)]' : 'max-h-[75vh] md:max-h-[85vh] w-auto aspect-[1/1.41] rounded-xl md:rounded-3xl shadow-[0_40px_80px_-15px_rgba(0,0,0,0.6)]'}`}
+              className={`relative shadow-2xl overflow-hidden touch-none transition-shadow duration-700 ${isZenMode ? 'h-[95vh] w-auto aspect-[1/1.41] shadow-[0_0_120px_rgba(255,255,255,0.05)]' : 'max-h-[75vh] md:max-h-[85vh] w-auto aspect-[1/1.41] rounded-xl md:rounded-3xl shadow-[0_40px_80px_-15px_rgba(0,0,0,0.6)]'}`}
+              style={{ backgroundColor: isNightMode ? '#001122' : '#ffffff' }}
             >
-              <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none select-none" alt="Page" />
+              <img 
+                src={pages[currentPage]} 
+                className="w-full h-full object-contain pointer-events-none select-none transition-all duration-500" 
+                alt="Page" 
+                style={{ filter: isNightMode ? 'invert(1) hue-rotate(180deg)' : 'none' }}
+              />
               
               <div className="absolute inset-0 pointer-events-none">
                 {annotations.filter(a => a.pageIndex === currentPage).map(anno => (
