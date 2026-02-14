@@ -64,20 +64,30 @@ export const storageService = {
     const books = storageService.getBooks();
     const index = books.findIndex(b => b.id === bookId);
     if (index !== -1) {
-      books[index].timeSpentSeconds += seconds;
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const book = books[index];
+
+      // Reset daily counter if date changed
+      if (book.lastReadDate !== today) {
+        book.dailyTimeSeconds = 0;
+        book.lastReadDate = today;
+      }
+
+      book.timeSpentSeconds += seconds;
+      book.dailyTimeSeconds = (book.dailyTimeSeconds || 0) + seconds;
       
       // Calculate stars based on thresholds
       let stars = 0;
       for (const threshold of STAR_THRESHOLDS) {
-        if (books[index].timeSpentSeconds >= threshold) {
+        if (book.timeSpentSeconds >= threshold) {
           stars++;
         } else {
           break;
         }
       }
       
-      books[index].stars = stars;
-      books[index].lastReadAt = Date.now();
+      book.stars = stars;
+      book.lastReadAt = Date.now();
       storageService.saveBooks(books);
     }
   },
