@@ -85,6 +85,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   // Zoom State
   const [zoomScale, setZoomScale] = useState(1);
+  const initialPinchDistance = useRef<number | null>(null);
+  const initialScaleOnPinch = useRef<number>(1);
   const controls = useAnimation();
   
   const timerRef = useRef<number | null>(null);
@@ -211,18 +213,45 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   const handleTouchStart = (e: React.TouchEvent) => {
     handleUserActivity();
+    
+    if (e.touches.length === 2) {
+      // Initialize pinch to zoom
+      const dist = Math.hypot(
+        e.touches[0].pageX - e.touches[1].pageX,
+        e.touches[0].pageY - e.touches[1].pageY
+      );
+      initialPinchDistance.current = dist;
+      initialScaleOnPinch.current = zoomScale;
+      setIsDrawing(false); // Cancel any drawing if zooming starts
+      return;
+    }
+
     if (activeTool !== 'view' && e.touches.length === 1) {
       handleStart(e.touches[0].clientX, e.touches[0].clientY);
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && initialPinchDistance.current !== null) {
+      // Handle pinch to zoom
+      const dist = Math.hypot(
+        e.touches[0].pageX - e.touches[1].pageX,
+        e.touches[0].pageY - e.touches[1].pageY
+      );
+      const newScale = (dist / initialPinchDistance.current) * initialScaleOnPinch.current;
+      setZoomScale(Math.max(1, Math.min(newScale, 4))); // Limit zoom to 4x
+      return;
+    }
+
     if (isDrawing && e.touches.length === 1) {
       handleMove(e.touches[0].clientX, e.touches[0].clientY);
     }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length < 2) {
+      initialPinchDistance.current = null;
+    }
     if (isDrawing) handleEnd();
   };
 
@@ -369,7 +398,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             <motion.div 
               ref={pageRef} 
               layout
-              drag={activeTool === 'view' ? true : false}
+              drag={activeTool === 'view' ? (zoomScale > 1 ? true : 'x') : false}
               dragConstraints={zoomScale <= 1 ? { left: 0, right: 0, top: 0, bottom: 0 } : false}
               onDragEnd={handleDragEnd}
               onDoubleClick={handleDoubleClick}
@@ -430,12 +459,17 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
 
         {isLoading && (
-          <div className="flex flex-col items-center gap-6">
+          <div className="flex flex-col items-center gap-8 max-w-xs text-center">
             <div className="relative w-16 h-16 md:w-20 md:h-20">
               <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }} className="absolute inset-0 border-2 border-t-[#ff0000] border-r-transparent border-b-transparent border-l-transparent rounded-full shadow-[0_0_20px_#ff0000]" />
               <div className="absolute inset-1.5 border border-white/5 rounded-full" />
             </div>
-            <p className="text-[9px] font-black uppercase tracking-[0.6em] text-[#ff0000] animate-pulse">Reconstructing...</p>
+            <div className="space-y-4">
+              <p className="text-[9px] font-black uppercase tracking-[0.6em] text-[#ff0000] animate-pulse">Reconstructing...</p>
+              <p className="text-[10px] md:text-xs text-white/40 font-bold leading-relaxed px-4 italic">
+                {t.loadingNote}
+              </p>
+            </div>
           </div>
         )}
       </main>
@@ -579,7 +613,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                         
                         <div className="mt-auto pt-6 md:pt-8 border-t border-white/5 flex justify-end z-10 relative">
                            <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-[#ff0000] opacity-40 group-hover:opacity-100 group-hover:translate-x-1 md:group-hover:translate-x-2 transition-all flex items-center gap-2 md:gap-4">
-                             RECALL SOURCE <ChevronRight size={14} md:size={18} />
+                             RECALL SOURCE <ChevronRight size={window.innerWidth < 768 ? 14 : 18} />
                            </span>
                         </div>
                       </motion.div>
