@@ -27,6 +27,8 @@ export interface Book {
   cover: string;
   content: string;
   timeSpentSeconds: number;
+  dailyTimeSeconds?: number; // New: track daily progress
+  lastReadDate?: string; // New: YYYY-MM-DD to detect new days
   stars: number;
   addedAt: number;
   lastReadAt?: number;
