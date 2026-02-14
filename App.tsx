@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ViewState, Book, Language, ShelfData } from './types';
 import { Layout } from './components/Layout';
 import { Shelf } from './components/Shelf';
@@ -21,7 +21,8 @@ import {
   Loader2, 
   BookOpen, 
   Globe, 
-  LayoutDashboard
+  LayoutDashboard,
+  Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -59,6 +60,17 @@ const App: React.FC = () => {
   const filteredBooks = books.filter(b => b.shelfId === activeShelfId);
   const fontClass = lang === 'ar' ? 'font-ar' : 'font-en';
 
+  // Calculate global daily focus
+  const totalTodayMinutes = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return Math.floor(books.reduce((acc, b) => {
+      if (b.lastReadDate === today) {
+        return acc + (b.dailyTimeSeconds || 0);
+      }
+      return acc;
+    }, 0) / 60);
+  }, [books]);
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type === "application/pdf") {
@@ -87,6 +99,8 @@ const App: React.FC = () => {
       cover: `https://picsum.photos/seed/${newBookTitle}/800/1200`,
       content: "[VISUAL_PDF_MODE]",
       timeSpentSeconds: 0,
+      dailyTimeSeconds: 0,
+      lastReadDate: new Date().toISOString().split('T')[0],
       stars: 0,
       addedAt: Date.now(),
       lastPage: 0,
@@ -136,7 +150,6 @@ const App: React.FC = () => {
     <Layout lang={lang}>
       <div className={`flex flex-col h-screen-safe overflow-hidden ${fontClass}`}>
         
-        {/* Modern Vertical Sidebar */}
         <AnimatePresence>
           {isSidebarOpen && (
             <>
@@ -198,23 +211,37 @@ const App: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Global Toolbar */}
         <div className="fixed top-0 left-0 right-0 z-[100] p-4 md:p-6 pointer-events-none flex justify-between items-start">
           <button onClick={() => setIsSidebarOpen(true)} className="p-3 md:p-4 rounded-full bg-black/60 backdrop-blur-2xl border border-white/10 pointer-events-auto hover:bg-[#ff0000] hover:border-[#ff0000] transition-all shadow-2xl group">
             <Menu size={18} className="group-hover:text-white text-white/40 md:size-5"/>
           </button>
           
           {view === ViewState.SHELF && (
-            <button onClick={() => setIsAddingBook(true)} className="px-5 md:px-8 py-2.5 md:py-4 rounded-full bg-white text-black text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] pointer-events-auto shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all flex items-center gap-2 md:gap-3">
-              <Plus size={12} className="md:size-[14px]" />{lang === 'ar' ? 'إضافة كتاب' : 'Add Work'}
-            </button>
+            <div className="flex flex-col items-end gap-3 pointer-events-auto">
+              <button onClick={() => setIsAddingBook(true)} className="px-5 md:px-8 py-2.5 md:py-4 rounded-full bg-white text-black text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all flex items-center gap-2 md:gap-3">
+                <Plus size={12} className="md:size-[14px]" />{lang === 'ar' ? 'إضافة كتاب' : 'Add Work'}
+              </button>
+              
+              {/* Daily Focus Metric */}
+              <motion.div 
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex items-center gap-3 bg-black/40 backdrop-blur-xl px-5 py-2.5 rounded-full border border-[#ff0000]/20 shadow-xl"
+              >
+                <Clock size={14} className="text-[#ff0000] animate-pulse" />
+                <div className="flex flex-col items-start leading-none">
+                  <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-0.5">{t.todayFocus}</span>
+                  <span className="text-[11px] font-black text-[#ff0000]">{totalTodayMinutes} {lang === 'ar' ? 'دقيقة' : 'min'}</span>
+                </div>
+              </motion.div>
+            </div>
           )}
         </div>
 
         <div className="flex-1 relative overflow-hidden flex flex-col">
           <AnimatePresence mode="wait">
             {view === ViewState.SHELF && (
-              <motion.div key="shelf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">
+              <motion.div key="shelf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col relative">
                 <header className="flex flex-col items-center text-center pt-20 md:pt-24 pb-4 md:pb-8 shrink-0">
                   <h1 className="text-[clamp(2.2rem,12vw,8.5rem)] font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[1.1] pt-4 text-center w-full max-w-full">
                     {t.title}
@@ -224,6 +251,11 @@ const App: React.FC = () => {
                   </p>
                 </header>
                 <div className="flex-1"><Shelf books={filteredBooks} lang={lang} onSelectBook={(b) => { setSelectedBook(b); setView(ViewState.READER); }} onAddBook={() => setIsAddingBook(true)} /></div>
+                
+                {/* Branding Footer */}
+                <div className="absolute bottom-6 left-0 right-0 text-center pointer-events-none opacity-20">
+                  <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.6em] text-white font-en">Developed By Oussama SEBROU</span>
+                </div>
               </motion.div>
             )}
             
@@ -241,7 +273,6 @@ const App: React.FC = () => {
           </AnimatePresence>
         </div>
 
-        {/* Modals */}
         <AnimatePresence>
           {isAddingBook && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] flex items-center justify-center p-4 md:p-6 bg-black/98 backdrop-blur-3xl">
@@ -281,4 +312,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
