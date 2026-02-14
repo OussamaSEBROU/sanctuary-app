@@ -54,13 +54,13 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
   };
 
   return (
-    <div className="relative h-full flex flex-col items-center justify-start overflow-hidden w-full pt-4 md:pt-10 px-4">
+    <div className="relative h-full flex flex-col items-center justify-start overflow-hidden w-full pt-4 md:pt-0 px-4">
       {/* 3D Carousel Stage with Drag Support */}
       <motion.div 
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         onDragEnd={handleDragEnd}
-        className="relative w-full h-[350px] md:h-[550px] flex items-center justify-center perspective-1000 mt-2 md:mt-8 touch-none cursor-grab active:cursor-grabbing"
+        className="relative w-full h-[350px] md:h-[550px] flex items-center justify-center perspective-1000 mt-2 md:mt-4 touch-none cursor-grab active:cursor-grabbing"
       >
         <AnimatePresence mode="popLayout">
           {books.map((book, index) => {
@@ -118,7 +118,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
         key={activeBook.id} 
         initial={{ opacity: 0, y: 20 }} 
         animate={{ opacity: 1, y: 0 }} 
-        className="mt-12 md:mt-16 text-center w-full px-6 pb-20"
+        className="mt-12 md:mt-8 text-center w-full px-6 pb-20"
       >
         <div className="flex items-center justify-center gap-6 md:gap-16 bg-white/5 border border-white/10 py-5 px-10 md:px-20 rounded-[3rem] inline-flex backdrop-blur-3xl shadow-2xl">
           <div className="flex flex-col items-center">
