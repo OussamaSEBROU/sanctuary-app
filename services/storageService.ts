@@ -14,6 +14,9 @@ const DEFAULT_SHELF: ShelfData = {
   color: '#ff0000'
 };
 
+// New non-linear thresholds in seconds: 15m, 30m, 50m, 135m, 180m
+const STAR_THRESHOLDS = [900, 1800, 3000, 8100, 10800];
+
 export const storageService = {
   getShelves: (): ShelfData[] => {
     const data = localStorage.getItem(STORAGE_KEYS.SHELVES);
@@ -62,7 +65,18 @@ export const storageService = {
     const index = books.findIndex(b => b.id === bookId);
     if (index !== -1) {
       books[index].timeSpentSeconds += seconds;
-      books[index].stars = Math.floor(books[index].timeSpentSeconds / 900);
+      
+      // Calculate stars based on thresholds
+      let stars = 0;
+      for (const threshold of STAR_THRESHOLDS) {
+        if (books[index].timeSpentSeconds >= threshold) {
+          stars++;
+        } else {
+          break;
+        }
+      }
+      
+      books[index].stars = stars;
       books[index].lastReadAt = Date.now();
       storageService.saveBooks(books);
     }
