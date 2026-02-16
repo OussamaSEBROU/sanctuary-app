@@ -65,7 +65,7 @@ const App: React.FC = () => {
   const filteredBooks = books.filter(b => b.shelfId === activeShelfId);
   const fontClass = lang === 'ar' ? 'font-ar' : 'font-en';
 
-  // Calculate stats strictly for the ACTIVE shelf
+  // Stats specific to the active shelf only
   const shelfStats = useMemo(() => {
     const shelfBooks = books.filter(b => b.shelfId === activeShelfId);
     const totalSeconds = shelfBooks.reduce((acc, b) => acc + b.timeSpentSeconds, 0);
@@ -225,22 +225,22 @@ const App: React.FC = () => {
           </button>
           
           {view === ViewState.SHELF && (
-            <div className="flex flex-col items-end gap-3 pointer-events-auto">
-              <button onClick={() => setIsAddingBook(true)} className="px-6 md:px-10 py-3 md:py-5 rounded-full bg-white text-black text-[10px] md:text-xs font-black uppercase tracking-[0.3em] shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all flex items-center gap-3">
-                <Plus size={14} />{lang === 'ar' ? 'إضافة كتاب' : 'Add Work'}
-              </button>
-              
+            <div className="flex flex-row items-center gap-3 pointer-events-auto">
               <MotionDiv 
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-3 bg-black/60 backdrop-blur-xl px-5 py-3 rounded-full border border-[#ff0000]/30 shadow-xl"
+                className="flex items-center gap-3 bg-black/60 backdrop-blur-xl px-4 py-2.5 md:px-6 md:py-3.5 rounded-full border border-[#ff0000]/30 shadow-xl"
               >
                 <Clock size={16} className="text-[#ff0000] animate-pulse" />
                 <div className="flex flex-col items-start leading-none">
-                  <span className="text-[8px] font-black uppercase tracking-widest opacity-30 mb-0.5">{t.todayFocus}</span>
-                  <span className="text-[12px] font-black text-[#ff0000]">{totalTodayMinutes} {lang === 'ar' ? 'دقيقة' : 'min'}</span>
+                  <span className="text-[7px] font-black uppercase tracking-widest opacity-30 mb-0.5">{t.todayFocus}</span>
+                  <span className="text-[11px] font-black text-[#ff0000]">{totalTodayMinutes} {lang === 'ar' ? 'دقيقة' : 'min'}</span>
                 </div>
               </MotionDiv>
+
+              <button onClick={() => setIsAddingBook(true)} className="px-5 md:px-8 py-3 md:py-4 rounded-full bg-white text-black text-[9px] md:text-[11px] font-black uppercase tracking-[0.3em] shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all flex items-center gap-2.5">
+                <Plus size={14} />{lang === 'ar' ? 'إضافة كتاب' : 'Add Work'}
+              </button>
             </div>
           )}
         </div>
@@ -249,7 +249,7 @@ const App: React.FC = () => {
           <AnimatePresence mode="wait">
             {view === ViewState.SHELF && (
               <MotionDiv key="shelf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col relative">
-                <header className="flex flex-col items-center text-center pt-16 md:pt-10 pb-2 md:pb-4 shrink-0 overflow-visible">
+                <header className="flex flex-col items-center text-center pt-20 md:pt-14 pb-2 md:pb-4 shrink-0 overflow-visible">
                   <h1 className="text-[clamp(2.5rem,14vw,9.5rem)] font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[1.0] text-center w-full max-w-full drop-shadow-2xl">
                     {t.title}
                   </h1>
@@ -258,22 +258,22 @@ const App: React.FC = () => {
                   </p>
 
                   {/* CUMULATIVE SHELF STATS (GREEN AREA) - PRIMARY STATS FOR THE ACTIVE SHELF */}
-                  <div className="mt-6 md:mt-8 flex items-center gap-8 md:gap-16 bg-black/40 backdrop-blur-3xl px-8 md:px-14 py-4 md:py-6 rounded-full border border-white/10 shadow-3xl relative overflow-hidden group">
+                  <div className="mt-4 md:mt-6 flex items-center gap-6 md:gap-10 bg-black/40 backdrop-blur-3xl px-6 md:px-10 py-3 md:py-4 rounded-full border border-white/10 shadow-3xl relative overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent animate-shimmer" />
                     <div className="flex flex-col items-center relative z-10">
-                      <div className="flex items-center gap-3">
-                        <Clock size={18} className="text-[#ff0000]" />
-                        <span className="text-xl md:text-3xl font-black text-white">{shelfStats.minutes} {lang === 'ar' ? 'د' : 'm'}</span>
+                      <div className="flex items-center gap-2">
+                        <Clock size={14} className="text-[#ff0000]" />
+                        <span className="text-base md:text-xl font-black text-white">{shelfStats.minutes} {lang === 'ar' ? 'د' : 'm'}</span>
                       </div>
-                      <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest opacity-30 mt-1">{t.cumulativeTime}</span>
+                      <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-20">{t.cumulativeTime}</span>
                     </div>
-                    <div className="w-[1px] h-10 md:h-12 bg-white/10 relative z-10" />
+                    <div className="w-[1px] h-6 md:h-8 bg-white/10 relative z-10" />
                     <div className="flex flex-col items-center relative z-10">
-                      <div className="flex items-center gap-3">
-                        <Star size={18} className="text-[#ff0000] fill-[#ff0000]" />
-                        <span className="text-xl md:text-3xl font-black text-white">{shelfStats.stars}</span>
+                      <div className="flex items-center gap-2">
+                        <Star size={14} className="text-[#ff0000] fill-[#ff0000]" />
+                        <span className="text-base md:text-xl font-black text-white">{shelfStats.stars}</span>
                       </div>
-                      <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest opacity-30 mt-1">{t.stars}</span>
+                      <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-20">{t.stars}</span>
                     </div>
                   </div>
                 </header>
@@ -282,8 +282,8 @@ const App: React.FC = () => {
                   <Shelf books={filteredBooks} lang={lang} onSelectBook={(b) => { setSelectedBook(b); setView(ViewState.READER); }} onAddBook={() => setIsAddingBook(true)} />
                 </div>
                 
-                <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none opacity-20">
-                  <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.6em] text-white">Developed By Oussama SEBROU</span>
+                <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none opacity-10">
+                  <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.6em] text-white">Developed By Oussama SEBROU</span>
                 </div>
               </MotionDiv>
             )}
