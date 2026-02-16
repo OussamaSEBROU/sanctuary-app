@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, PanInfo, useAnimation } from 'framer-motion';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { Book, Language, Annotation } from '../types';
 import { translations } from '../i18n/translations';
 import { storageService } from '../services/storageService';
@@ -14,6 +13,10 @@ import {
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
+
+// Using any to bypass motion property type errors
+const MotionDiv = motion.div as any;
+const MotionHeader = motion.header as any;
 
 interface ReaderProps {
   book: Book;
@@ -307,7 +310,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     setCurrentRect(null);
   };
 
-  const handleDragEnd = (_event: any, info: PanInfo) => {
+  // Using any for info parameter to bypass PanInfo export issue
+  const handleDragEnd = (_event: any, info: any) => {
     if (activeTool !== 'view') return;
     // STABILITY FIX: Lock page flipping when zoomed more than 5%
     if (zoomScale > 1.05) return;
@@ -344,7 +348,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
       <AnimatePresence>
         {showControls && !isZenMode && (
-          <motion.header 
+          <MotionHeader 
             initial={{ y: -100, opacity: 0 }} 
             animate={{ y: 0, opacity: 1 }} 
             exit={{ y: -100, opacity: 0 }} 
@@ -362,7 +366,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             <div className="flex flex-col items-center pointer-events-auto">
               <AnimatePresence>
                 {activeTool !== 'view' && (
-                  <motion.div 
+                  <MotionDiv 
                     initial={{ opacity: 0, y: 10, scale: 0.8 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.8 }}
@@ -376,7 +380,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                         style={{ backgroundColor: color.hex }}
                       />
                     ))}
-                  </motion.div>
+                  </MotionDiv>
                 )}
               </AnimatePresence>
             </div>
@@ -386,14 +390,14 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                  <Maximize2 size={20} />
                </button>
             </div>
-          </motion.header>
+          </MotionHeader>
         )}
       </AnimatePresence>
 
       <main className={`flex-1 flex items-center justify-center bg-black transition-all duration-1000 ${isZenMode ? 'p-0' : 'p-2 md:p-4'} relative overflow-hidden`} ref={containerRef}>
         {!isLoading && (
           <div className="relative w-full h-full flex items-center justify-center overflow-auto no-scrollbar scroll-smooth p-10">
-            <motion.div 
+            <MotionDiv 
               ref={pageRef} 
               layout
               drag={activeTool === 'view' ? true : false}
@@ -453,14 +457,14 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   />
                 )}
               </div>
-            </motion.div>
+            </MotionDiv>
           </div>
         )}
 
         {isLoading && (
           <div className="flex flex-col items-center gap-8 max-w-xs text-center">
             <div className="relative w-16 h-16 md:w-20 md:h-20">
-              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }} className="absolute inset-0 border-2 border-t-[#ff0000] border-r-transparent border-b-transparent border-l-transparent rounded-full shadow-[0_0_20px_#ff0000]" />
+              <MotionDiv animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }} className="absolute inset-0 border-2 border-t-[#ff0000] border-r-transparent border-b-transparent border-l-transparent rounded-full shadow-[0_0_20px_#ff0000]" />
               <div className="absolute inset-1.5 border border-white/5 rounded-full" />
             </div>
             <div className="space-y-4">
@@ -476,7 +480,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1100] flex flex-col items-center gap-2 w-[90vw] max-w-[420px] pointer-events-none">
         {!isZenMode && (
           <div className="flex items-center gap-2 mb-1">
-            <motion.div 
+            <MotionDiv 
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.8 }}
               className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md pointer-events-auto border border-white/5 shadow-xl"
@@ -485,13 +489,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               <span className="text-[8px] md:text-[9px] font-black tracking-[0.1em] text-[#ff0000] uppercase">
                 {sessionMinutes}Min Concentration
               </span>
-            </motion.div>
+            </MotionDiv>
           </div>
         )}
 
         <AnimatePresence>
           {isToolsMenuOpen && showControls && !isZenMode && (
-            <motion.div 
+            <MotionDiv 
               initial={{ y: 20, opacity: 0, scale: 0.9 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 20, opacity: 0, scale: 0.9 }}
@@ -506,13 +510,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   <Icon size={18} />
                 </button>
               ))}
-            </motion.div>
+            </MotionDiv>
           )}
         </AnimatePresence>
 
         <AnimatePresence>
           {showControls && (
-            <motion.div 
+            <MotionDiv 
               initial={{ y: 40, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 40, opacity: 0 }}
@@ -530,7 +534,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                        return (
                          <div key={i} className="relative w-1.5 h-1.5">
                            <div className={`absolute inset-0 rounded-full transition-all duration-1000 ${isEarned ? 'bg-[#ff0000] shadow-[0_0_8px_rgba(255,0,0,0.5)]' : isProgressing ? 'bg-white/10' : 'bg-white/5'}`} />
-                           {isProgressing && <motion.div animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute inset-0 rounded-full bg-[#ff0000]" />}
+                           {isProgressing && <MotionDiv animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute inset-0 rounded-full bg-[#ff0000]" />}
                          </div>
                        );
                      })}
@@ -567,15 +571,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                    <button onClick={() => setIsGoToPageOpen(true)} className="w-8 h-8 flex items-center justify-center text-white/20 hover:text-white"><Search size={14} /></button>
                 </div>
               )}
-            </motion.div>
+            </MotionDiv>
           )}
         </AnimatePresence>
       </div>
 
       <AnimatePresence>
         {isArchiveOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/40 backdrop-blur-[60px] p-0 md:p-12 flex items-center justify-center overflow-hidden">
-             <motion.div 
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/40 backdrop-blur-[60px] p-0 md:p-12 flex items-center justify-center overflow-hidden">
+             <MotionDiv 
                initial={{ y: 50, opacity: 0, scale: 0.95 }} 
                animate={{ y: 0, opacity: 1, scale: 1 }} 
                className="w-full max-w-6xl h-full md:h-[90vh] bg-white/[0.03] border border-white/[0.08] rounded-none md:rounded-[4rem] flex flex-col shadow-[0_0_150px_rgba(0,0,0,0.9)] overflow-hidden backdrop-blur-3xl"
@@ -603,7 +607,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                         <span className="text-lg md:text-xl font-black uppercase tracking-[0.4em] md:tracking-[0.6em]">{t.noAnnotations}</span>
                       </div>
                     ) : annotations.map(anno => (
-                      <motion.div 
+                      <MotionDiv 
                         key={anno.id} 
                         whileHover={{ y: -10, scale: 1.02, backgroundColor: 'rgba(255,255,255,0.06)' }}
                         onClick={() => { handlePageChange(anno.pageIndex); setIsArchiveOpen(false); }} 
@@ -633,19 +637,19 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                              RECALL SOURCE <ChevronRight size={window.innerWidth < 768 ? 14 : 18} />
                            </span>
                         </div>
-                      </motion.div>
+                      </MotionDiv>
                     ))}
                   </div>
                 </div>
-             </motion.div>
-          </motion.div>
+             </MotionDiv>
+          </MotionDiv>
         )}
 
         {showStarAchievement && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3000] bg-black/98 backdrop-blur-[100px] flex items-center justify-center p-6 overflow-hidden">
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3000] bg-black/98 backdrop-blur-[100px] flex items-center justify-center p-6 overflow-hidden">
              <div className="absolute inset-0 pointer-events-none">
                 {[...Array(50)].map((_, i) => (
-                  <motion.div 
+                  <MotionDiv 
                     key={i} 
                     initial={{ x: 0, y: 0, scale: 0, opacity: 1 }} 
                     animate={{ 
@@ -658,10 +662,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                     className="absolute top-1/2 left-1/2"
                   >
                     <PartyPopper size={24} className="text-[#ff0000]" />
-                  </motion.div>
+                  </MotionDiv>
                 ))}
              </div>
-             <motion.div initial={{ scale: 0.5, y: 100 }} animate={{ scale: 1, y: 0 }} className="flex flex-col items-center text-center max-w-2xl z-10">
+             <MotionDiv initial={{ scale: 0.5, y: 100 }} animate={{ scale: 1, y: 0 }} className="flex flex-col items-center text-center max-w-2xl z-10">
                 <div className="relative mb-8 md:mb-16">
                   <div className="relative p-12 md:p-20 bg-[#ff0000]/10 rounded-full border border-[#ff0000]/30 shadow-[0_0_200px_rgba(255,0,0,0.8)] animate-pulse">
                     <Award size={window.innerWidth < 768 ? 80 : 150} className="text-[#ff0000] drop-shadow-[0_0_50px_#ff0000]" />
@@ -675,12 +679,12 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 >
                   {t.continueJourney}
                 </button>
-             </motion.div>
-          </motion.div>
+             </MotionDiv>
+          </MotionDiv>
         )}
 
         {isSoundPickerOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4">
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4">
             <div className="bg-[#0b140b] border border-white/10 p-8 md:p-10 rounded-[3rem] md:rounded-[4rem] w-full max-w-md shadow-3xl overflow-hidden flex flex-col max-h-[80vh]">
               <div className="flex items-center justify-between mb-8 md:mb-10">
                 <h3 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter">{t.soundscape}</h3>
@@ -702,12 +706,12 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 ))}
               </div>
             </div>
-          </motion.div>
+          </MotionDiv>
         )}
 
         {isGoToPageOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-10 md:p-12 rounded-[3rem] md:rounded-[4rem] w-full max-w-md text-center shadow-[0_50px_100px_rgba(0,0,0,0.8)]">
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-6">
+            <MotionDiv initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-10 md:p-12 rounded-[3rem] md:rounded-[4rem] w-full max-w-md text-center shadow-[0_50px_100px_rgba(0,0,0,0.8)]">
               <h3 className="text-xl md:text-2xl font-black uppercase italic mb-8 md:mb-10 tracking-widest">{t.goToPage}</h3>
               <form onSubmit={jumpToPage}>
                 <input autoFocus type="number" value={targetPageInput} onChange={(e) => setTargetPageInput(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl md:rounded-3xl p-6 md:p-8 text-3xl md:text-4xl font-black text-center text-white outline-none focus:border-[#ff0000]/50 mb-8 md:mb-10 shadow-inner" placeholder={`1 - ${totalPages}`} />
@@ -716,12 +720,12 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   <button type="submit" className="flex-1 bg-[#ff0000] py-4 md:py-5 rounded-2xl md:rounded-3xl font-black uppercase text-[10px] tracking-widest text-white shadow-[0_20px_40px_rgba(255,0,0,0.3)] hover:scale-105 transition-all">{t.jump}</button>
                 </div>
               </form>
-            </motion.div>
-          </motion.div>
+            </MotionDiv>
+          </MotionDiv>
         )}
 
         {editingAnnoId && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2100] bg-black/98 flex items-center justify-center p-0 md:p-6">
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2100] bg-black/98 flex items-center justify-center p-0 md:p-6">
             <div className="bg-[#0b140b] border border-white/10 p-8 md:p-14 rounded-none md:rounded-[4rem] w-full max-w-2xl min-h-screen md:min-h-0 shadow-4xl flex flex-col justify-center">
               <div className="flex items-center justify-between mb-10"><h3 className="text-xl md:text-2xl font-black uppercase italic flex items-center gap-4"><Edit3 size={window.innerWidth < 768 ? 24 : 32} className="text-[#ff0000]" /> {t.editDetails}</h3><button onClick={() => setEditingAnnoId(null)} className="p-2 hover:text-[#ff0000] transition-colors"><X size={window.innerWidth < 768 ? 24 : 32}/></button></div>
               <div className="space-y-6">
@@ -730,7 +734,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               </div>
               <div className="flex gap-4 md:gap-6 mt-10 md:mt-12"><button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} className="flex-1 bg-red-600/10 text-red-600 py-4 md:py-6 rounded-xl md:rounded-[2rem] font-black uppercase text-[10px] tracking-[0.1em] md:tracking-[0.2em]">{t.discard}</button><button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-4 md:py-6 rounded-xl md:rounded-[2rem] font-black uppercase text-[10px] tracking-[0.1em] md:tracking-[0.2em] shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all">{t.save}</button></div>
             </div>
-          </motion.div>
+          </MotionDiv>
         )}
       </AnimatePresence>
     </div>
