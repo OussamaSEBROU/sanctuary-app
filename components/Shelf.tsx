@@ -1,11 +1,10 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Book, Language } from '../types';
 import { translations } from '../i18n/translations';
-import { Star, Clock, Upload, Layers } from 'lucide-react';
+import { Upload } from 'lucide-react';
 
-// Using any to bypass motion property type errors
 const MotionDiv = motion.div as any;
 
 interface ShelfProps {
@@ -49,18 +48,16 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
 
   return (
     <div className="relative w-full flex-1 flex flex-col items-center justify-start overflow-visible pt-0 px-4">
-      {/* 3D Carousel Stage - Raised Upward */}
       <MotionDiv 
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         onDragEnd={handleDragEnd}
-        className="relative w-full h-[400px] md:h-[600px] flex items-center justify-center perspective-1000 -mt-12 md:-mt-20 touch-none cursor-grab active:cursor-grabbing"
+        className="relative w-full h-[400px] md:h-[600px] flex items-center justify-center perspective-1000 -mt-16 md:-mt-24 touch-none cursor-grab active:cursor-grabbing"
       >
         <AnimatePresence mode="popLayout">
           {books.map((book, index) => {
             const isCenter = index === activeIndex;
             const diff = index - activeIndex;
-            
             if (Math.abs(diff) > 2) return null;
 
             return (
@@ -73,7 +70,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
                   scale: isCenter ? 1.05 : 0.75, 
                   rotateY: diff * (window.innerWidth < 768 ? -25 : -35),
                   zIndex: 20 - Math.abs(diff),
-                  filter: isCenter ? 'blur(0px) contrast(1)' : 'blur(8px) contrast(0.7)' 
+                  filter: isCenter ? 'blur(0px) contrast(1)' : 'blur(10px) contrast(0.6)' 
                 }}
                 exit={{ opacity: 0, scale: 0.5 }}
                 transition={{ type: 'spring', stiffness: 350, damping: 35 }}
@@ -81,10 +78,9 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
                 className="absolute w-[220px] h-[310px] md:w-[380px] md:h-[540px]"
               >
                 <div className={`relative w-full h-full rounded-[2.5rem] overflow-hidden border transition-all duration-700
-                   ${isCenter ? 'border-white/40 shadow-[0_30px_80px_rgba(0,0,0,0.9)]' : 'border-white/5 shadow-none'}`}>
+                   ${isCenter ? 'border-white/40 shadow-[0_30px_80px_rgba(0,0,0,0.9)]' : 'border-white/5'}`}>
                   <img src={book.cover} alt={book.title} className="w-full h-full object-cover select-none pointer-events-none" />
                   
-                  {/* Title Overlay for clarity */}
                   <div className={`absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent flex flex-col justify-end p-6 md:p-12 pointer-events-none transition-opacity duration-500 ${isCenter ? 'opacity-100' : 'opacity-0'}`}>
                     <p className="text-lg md:text-3xl font-black truncate leading-tight uppercase tracking-tighter text-white drop-shadow-lg">{book.title}</p>
                     <p className="text-[10px] md:text-sm text-[#ff0000] font-black uppercase tracking-widest mt-1.5">{book.author}</p>
@@ -107,8 +103,6 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
           })}
         </AnimatePresence>
       </MotionDiv>
-
-      {/* Navigation Hint */}
       <div className="mt-4 mb-8">
          <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-10 animate-pulse">
            {lang === 'ar' ? 'اسحب للتنقل • انقر للدخول' : 'Swipe to Browse • Click to Enter'}
