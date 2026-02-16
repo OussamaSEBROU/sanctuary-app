@@ -80,7 +80,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [zoomScale, setZoomScale] = useState(1);
   const [isPinching, setIsPinching] = useState(false);
-  const [swipeDirection, setSwipeDirection] = useState(0); // -1 for left, 1 for right
+  const [direction, setDirection] = useState(0); 
   
   const initialPinchDistance = useRef<number | null>(null);
   const initialScaleOnPinch = useRef<number>(1);
@@ -176,7 +176,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 0 && newPage < totalPages && newPage !== currentPage) {
-      setSwipeDirection(newPage > currentPage ? 1 : -1);
+      setDirection(newPage > currentPage ? 1 : -1);
       setZoomScale(1);
       setCurrentPage(newPage);
       storageService.updateBookPage(book.id, newPage);
@@ -284,15 +284,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       <AnimatePresence>
         {showControls && (
           <MotionHeader initial={{ y: -100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -100, opacity: 0 }} 
-            className="fixed top-0 left-0 right-0 p-4 md:p-6 flex items-center justify-between z-[1100] bg-gradient-to-b from-black via-black/40 to-transparent pointer-events-none"
+            className="fixed top-0 left-0 right-0 p-4 md:p-6 flex items-center justify-between z-[1100] bg-gradient-to-b from-black via-black/40 to-transparent pointer-events-auto"
           >
-            <div className="flex items-center gap-2 md:gap-3 pointer-events-auto">
+            <div className="flex items-center gap-2 md:gap-3">
               {!isZenMode && <button onClick={onBack} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/60 hover:bg-white/10 active:scale-90"><ChevronLeft size={18} className={isRTL ? "rotate-180" : ""} /></button>}
               <button onClick={() => setIsArchiveOpen(true)} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 active:scale-90"><ListOrdered size={18} /></button>
               <button onClick={() => setIsSoundPickerOpen(true)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeSoundId !== 'none' ? 'bg-red-600 text-white shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}><Volume2 size={18} /></button>
               <button onClick={() => setIsNightMode(!isNightMode)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 ${isNightMode ? 'bg-red-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>{isNightMode ? <Sun size={18} /> : <Moon size={18} />}</button>
             </div>
-            <div className="flex items-center gap-2 pointer-events-auto">
+            <div className="flex items-center gap-2">
               <button onClick={() => setIsToolsOpen(!isToolsOpen)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 ${isToolsOpen ? 'bg-white text-black shadow-xl' : 'bg-white/5 text-white/40'}`}><Palette size={18} /></button>
               <button onClick={toggleZenMode} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full border transition-all ${isZenMode ? 'bg-red-600 border-red-600 text-white' : 'bg-white/5 border-white/10 text-white/40'}`}><Maximize2 size={18} /></button>
             </div>
@@ -317,15 +317,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         </AnimatePresence>
 
         {!isLoading && (
-          <div className={`relative w-full h-full flex items-center justify-center overflow-hidden ${isZenMode ? 'p-0' : 'p-6'}`}>
+          <div className={`relative w-full h-full flex items-center justify-center ${isZenMode ? 'p-0' : 'p-6'}`}>
             <MotionDiv 
               ref={pageRef} 
               drag={activeTool === 'view' ? "x" : false}
               dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.2}
+              dragElastic={0.15}
               onDragEnd={(e: any, info: any) => {
                 if (activeTool === 'view' && zoomScale === 1) {
-                  const threshold = 40; // Responsive threshold
+                  const threshold = 50; 
                   if (info.offset.x < -threshold) handlePageChange(currentPage + 1);
                   else if (info.offset.x > threshold) handlePageChange(currentPage - 1);
                 }
@@ -340,16 +340,18 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               className={`relative shadow-[0_0_100px_rgba(0,0,0,1)] overflow-hidden touch-none will-change-transform ${isZenMode ? 'h-full w-full rounded-none' : 'max-h-[85vh] w-auto aspect-[1/1.41] rounded-2xl md:rounded-3xl'}`} 
               style={{ backgroundColor: isNightMode ? '#001122' : '#ffffff', transformOrigin: 'center center', userSelect: 'none' }}
             >
-              <AnimatePresence mode="popLayout" initial={false}>
+              <AnimatePresence mode="wait">
                 <MotionDiv
                   key={currentPage}
-                  initial={{ x: swipeDirection > 0 ? (isRTL ? -100 : 100) : (isRTL ? 100 : -100), opacity: 0 }}
+                  initial={{ x: direction * (isRTL ? -40 : 40), opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
-                  exit={{ x: swipeDirection > 0 ? (isRTL ? 100 : -100) : (isRTL ? -100 : 100), opacity: 0 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 40, mass: 0.8 }}
-                  className="w-full h-full absolute inset-0 flex items-center justify-center"
+                  exit={{ x: direction * (isRTL ? 40 : -40), opacity: 0 }}
+                  transition={{ duration: 0.12, ease: "easeOut" }}
+                  className="w-full h-full flex items-center justify-center bg-transparent"
                 >
-                  <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none select-none" style={{ filter: isNightMode ? 'invert(1) hue-rotate(180deg)' : 'none' }} alt="Page" />
+                  {pages[currentPage] && (
+                    <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none select-none" style={{ filter: isNightMode ? 'invert(1) hue-rotate(180deg)' : 'none' }} alt={`Page ${currentPage + 1}`} />
+                  )}
                 </MotionDiv>
               </AnimatePresence>
               
@@ -369,13 +371,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </main>
 
-      {/* FOOTER ZEN CONTROLS */}
       <div className="fixed bottom-6 left-0 right-0 z-[2000] pointer-events-none px-6 flex flex-col items-center gap-4">
         <AnimatePresence>
           {showControls && (
             <MotionDiv initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="flex flex-col items-center gap-4 pointer-events-auto">
               
-              {/* MODIFICATIONS BAR - HORIZONTAL & SMALL & FUNCTIONAL */}
               <AnimatePresence>
                 {isToolsOpen && (
                   <MotionDiv initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="bg-black/80 backdrop-blur-3xl border border-white/10 px-4 py-2 rounded-full shadow-4xl flex items-center gap-3 mb-2">
@@ -399,13 +399,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 )}
               </AnimatePresence>
 
-              {/* Reading Time - Minutes only */}
               <div className="bg-red-600/10 border border-red-600/30 px-5 py-1.5 rounded-full backdrop-blur-xl flex items-center gap-2 shadow-2xl">
                  <Clock size={12} className="text-red-600 animate-pulse" />
                  <span className="text-[10px] md:text-xs font-black text-red-600 tracking-widest">{Math.floor(sessionSeconds/60)}m</span>
               </div>
 
-              {/* Central Navigation Hub */}
               <div className="bg-black/60 backdrop-blur-3xl border border-white/10 rounded-full p-2 flex items-center gap-2 shadow-4xl">
                  <button onClick={() => setIsThumbnailsOpen(!isThumbnailsOpen)} className={`w-9 h-9 flex items-center justify-center rounded-full transition-all ${isThumbnailsOpen ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:bg-white/5'}`}><LayoutGrid size={16}/></button>
                  <div className="flex items-center gap-1 bg-white/5 rounded-full px-4 py-1.5 border border-white/5">
@@ -420,7 +418,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         </AnimatePresence>
       </div>
 
-      {/* Popups */}
       <AnimatePresence>
         {isGoToPageOpen && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-6 pointer-events-auto">
