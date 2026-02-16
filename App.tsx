@@ -4,7 +4,6 @@ import { ViewState, Book, Language, ShelfData } from './types';
 import { Layout } from './components/Layout';
 import { Shelf } from './components/Shelf';
 import { Reader } from './components/Reader';
-import { Vault } from './components/Vault';
 import { Dashboard } from './components/Dashboard';
 import { translations } from './i18n/translations';
 import { storageService } from './services/storageService';
@@ -13,24 +12,22 @@ import {
   Plus, 
   Library, 
   X, 
-  Upload, 
   Menu, 
   Sparkles, 
-  Activity, 
   Trash2, 
   Loader2, 
   BookOpen, 
   Globe, 
   LayoutDashboard,
   Clock,
-  Star
+  Star,
+  Upload
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 declare const pdfjsLib: any;
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// Using any to bypass motion property type errors
 const MotionDiv = motion.div as any;
 const MotionAside = motion.aside as any;
 
@@ -40,15 +37,12 @@ const App: React.FC = () => {
   const [books, setBooks] = useState<Book[]>([]);
   const [shelves, setShelves] = useState<ShelfData[]>([]);
   const [activeShelfId, setActiveShelfId] = useState<string>('default');
-  
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [isAddingBook, setIsAddingBook] = useState(false);
   const [isAddingShelf, setIsAddingShelf] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
   const [isExtracting, setIsExtracting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const [newBookTitle, setNewBookTitle] = useState('');
   const [newBookAuthor, setNewBookAuthor] = useState('');
   const [newShelfName, setNewShelfName] = useState('');
@@ -65,23 +59,18 @@ const App: React.FC = () => {
   const filteredBooks = books.filter(b => b.shelfId === activeShelfId);
   const fontClass = lang === 'ar' ? 'font-ar' : 'font-en';
 
-  // Stats specific to the active shelf only
+  // Stats strictly scoped to active shelf
   const shelfStats = useMemo(() => {
     const shelfBooks = books.filter(b => b.shelfId === activeShelfId);
     const totalSeconds = shelfBooks.reduce((acc, b) => acc + b.timeSpentSeconds, 0);
     const totalStars = shelfBooks.reduce((acc, b) => acc + b.stars, 0);
-    return {
-      minutes: Math.floor(totalSeconds / 60),
-      stars: totalStars
-    };
+    return { minutes: Math.floor(totalSeconds / 60), stars: totalStars };
   }, [books, activeShelfId]);
 
   const totalTodayMinutes = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     return Math.floor(books.reduce((acc, b) => {
-      if (b.lastReadDate === today) {
-        return acc + (b.dailyTimeSeconds || 0);
-      }
+      if (b.lastReadDate === today) return acc + (b.dailyTimeSeconds || 0);
       return acc;
     }, 0) / 60);
   }, [books]);
@@ -107,41 +96,26 @@ const App: React.FC = () => {
     const bookId = Math.random().toString(36).substr(2, 9);
     await pdfStorage.saveFile(bookId, pendingFileData);
     const newBook: Book = {
-      id: bookId,
-      shelfId: activeShelfId,
-      title: newBookTitle,
+      id: bookId, shelfId: activeShelfId, title: newBookTitle,
       author: newBookAuthor || (lang === 'ar' ? 'مؤلف مجهول' : 'Unknown Scribe'),
       cover: `https://picsum.photos/seed/${newBookTitle}/800/1200`,
-      content: "[VISUAL_PDF_MODE]",
-      timeSpentSeconds: 0,
-      dailyTimeSeconds: 0,
-      lastReadDate: new Date().toISOString().split('T')[0],
-      stars: 0,
-      addedAt: Date.now(),
-      lastPage: 0,
-      annotations: []
+      content: "[VISUAL_PDF_MODE]", timeSpentSeconds: 0, dailyTimeSeconds: 0,
+      lastReadDate: new Date().toISOString().split('T')[0], stars: 0,
+      addedAt: Date.now(), lastPage: 0, annotations: []
     };
     const updated = [newBook, ...books];
     setBooks(updated);
     storageService.saveBooks(updated);
-    setNewBookTitle('');
-    setNewBookAuthor('');
-    setPendingFileData(null);
-    setIsAddingBook(false);
+    setNewBookTitle(''); setNewBookAuthor(''); setPendingFileData(null); setIsAddingBook(false);
   };
 
   const handleAddShelf = () => {
     if (!newShelfName) return;
-    const newShelf: ShelfData = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: newShelfName,
-      color: '#ff0000'
-    };
+    const newShelf: ShelfData = { id: Math.random().toString(36).substr(2, 9), name: newShelfName, color: '#ff0000' };
     const updated = [...shelves, newShelf];
     setShelves(updated);
     storageService.saveShelves(updated);
-    setNewShelfName('');
-    setIsAddingShelf(false);
+    setNewShelfName(''); setIsAddingShelf(false);
   };
 
   const handleDeleteShelf = (e: React.MouseEvent, shelfId: string) => {
@@ -159,15 +133,12 @@ const App: React.FC = () => {
   return (
     <Layout lang={lang}>
       <div className={`flex flex-col h-screen-safe overflow-hidden ${fontClass}`}>
-        
         <AnimatePresence>
           {isSidebarOpen && (
             <>
               <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[500]" />
               <MotionAside
-                initial={{ x: lang === 'ar' ? '100%' : '-100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: lang === 'ar' ? '100%' : '-100%' }}
+                initial={{ x: lang === 'ar' ? '100%' : '-100%' }} animate={{ x: 0 }} exit={{ x: lang === 'ar' ? '100%' : '-100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                 className={`fixed top-0 bottom-0 ${lang === 'ar' ? 'right-0' : 'left-0'} w-[85vw] md:w-80 bg-[#050f05] border-none z-[600] flex flex-col shadow-2xl`}
               >
@@ -180,13 +151,11 @@ const App: React.FC = () => {
                    </div>
                    <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-full bg-white/5 text-white/40 hover:text-white transition-all"><X size={18}/></button>
                 </div>
-
                 <div className="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 space-y-8 md:space-y-10">
                   <button onClick={() => { setView(ViewState.DASHBOARD); setIsSidebarOpen(false); }} className="w-full flex items-center gap-4 p-4 md:p-5 rounded-[1.5rem] md:rounded-[2rem] bg-[#ff0000]/10 border border-[#ff0000]/20 hover:bg-[#ff0000] hover:border-[#ff0000] transition-all group">
                     <div className="p-2 md:p-3 rounded-lg md:rounded-xl bg-white/10 group-hover:bg-white/20"><LayoutDashboard size={20} className="text-[#ff0000] group-hover:text-white" /></div>
                     <div className="flex flex-col items-start"><span className="text-[10px] md:text-xs font-black uppercase tracking-widest group-hover:text-white">{t.dashboard}</span><span className="text-[8px] md:text-[9px] uppercase font-black opacity-30 group-hover:opacity-60 group-hover:text-white">{t.cognitiveMetrics}</span></div>
                   </button>
-
                   <section className="space-y-3 md:space-y-4">
                     <div className="flex items-center gap-3 opacity-20 px-2"><Globe size={12} /><span className="text-[9px] font-black uppercase tracking-widest">{t.language}</span></div>
                     <div className="flex flex-col gap-2">
@@ -198,7 +167,6 @@ const App: React.FC = () => {
                       ))}
                     </div>
                   </section>
-
                   <section className="space-y-3 md:space-y-4">
                     <div className="flex items-center justify-between px-2">
                       <div className="flex items-center gap-3 opacity-20"><Library size={12} /><span className="text-[9px] font-black uppercase tracking-widest">{t.collections}</span></div>
@@ -223,21 +191,15 @@ const App: React.FC = () => {
           <button onClick={() => setIsSidebarOpen(true)} className="p-3.5 md:p-5 rounded-full bg-black/60 backdrop-blur-2xl border border-white/10 pointer-events-auto hover:bg-[#ff0000] hover:border-[#ff0000] transition-all shadow-2xl group">
             <Menu size={20} className="group-hover:text-white text-white/40 md:size-6"/>
           </button>
-          
           {view === ViewState.SHELF && (
             <div className="flex flex-row items-center gap-3 pointer-events-auto">
-              <MotionDiv 
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-3 bg-black/60 backdrop-blur-xl px-4 py-2.5 md:px-6 md:py-3.5 rounded-full border border-[#ff0000]/30 shadow-xl"
-              >
+              <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3 bg-black/60 backdrop-blur-xl px-4 py-2.5 md:px-6 md:py-3.5 rounded-full border border-[#ff0000]/30 shadow-xl">
                 <Clock size={16} className="text-[#ff0000] animate-pulse" />
                 <div className="flex flex-col items-start leading-none">
                   <span className="text-[7px] font-black uppercase tracking-widest opacity-30 mb-0.5">{t.todayFocus}</span>
                   <span className="text-[11px] font-black text-[#ff0000]">{totalTodayMinutes} {lang === 'ar' ? 'دقيقة' : 'min'}</span>
                 </div>
               </MotionDiv>
-
               <button onClick={() => setIsAddingBook(true)} className="px-5 md:px-8 py-3 md:py-4 rounded-full bg-white text-black text-[9px] md:text-[11px] font-black uppercase tracking-[0.3em] shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all flex items-center gap-2.5">
                 <Plus size={14} />{lang === 'ar' ? 'إضافة كتاب' : 'Add Work'}
               </button>
@@ -250,14 +212,8 @@ const App: React.FC = () => {
             {view === ViewState.SHELF && (
               <MotionDiv key="shelf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col relative">
                 <header className="flex flex-col items-center text-center pt-20 md:pt-14 pb-2 md:pb-4 shrink-0 overflow-visible">
-                  <h1 className="text-[clamp(2.5rem,14vw,9.5rem)] font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[1.0] text-center w-full max-w-full drop-shadow-2xl">
-                    {t.title}
-                  </h1>
-                  <p className="shining-text text-[11px] md:text-base font-bold mt-2 md:mt-3 px-8 md:px-12 max-w-2xl tracking-[0.4em] leading-relaxed opacity-90 italic">
-                    {t.philosophy}
-                  </p>
-
-                  {/* CUMULATIVE SHELF STATS (GREEN AREA) - PRIMARY STATS FOR THE ACTIVE SHELF */}
+                  <h1 className="text-[clamp(2.5rem,14vw,9.5rem)] font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[1.0] text-center w-full max-w-full drop-shadow-2xl">{t.title}</h1>
+                  <p className="shining-text text-[11px] md:text-base font-bold mt-2 md:mt-3 px-8 md:px-12 max-w-2xl tracking-[0.4em] leading-relaxed opacity-90 italic">{t.philosophy}</p>
                   <div className="mt-4 md:mt-6 flex items-center gap-6 md:gap-10 bg-black/40 backdrop-blur-3xl px-6 md:px-10 py-3 md:py-4 rounded-full border border-white/10 shadow-3xl relative overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent animate-shimmer" />
                     <div className="flex flex-col items-center relative z-10">
@@ -277,23 +233,19 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 </header>
-                
                 <div className="flex-1 flex flex-col justify-center items-center">
                   <Shelf books={filteredBooks} lang={lang} onSelectBook={(b) => { setSelectedBook(b); setView(ViewState.READER); }} onAddBook={() => setIsAddingBook(true)} />
                 </div>
-                
                 <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none opacity-10">
                   <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.6em] text-white">Developed By Oussama SEBROU</span>
                 </div>
               </MotionDiv>
             )}
-            
             {view === ViewState.DASHBOARD && (
               <MotionDiv key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 overflow-y-auto custom-scroll">
                 <Dashboard books={books} shelves={shelves} lang={lang} onBack={() => setView(ViewState.SHELF)} />
               </MotionDiv>
             )}
-
             {view === ViewState.READER && selectedBook && (
               <MotionDiv key="reader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[1000]">
                 <Reader book={selectedBook} lang={lang} onBack={() => { setBooks(storageService.getBooks()); setView(ViewState.SHELF); }} onStatsUpdate={() => setBooks(storageService.getBooks())} />
