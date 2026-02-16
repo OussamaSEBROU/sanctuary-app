@@ -134,11 +134,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         const renderSinglePage = async (idx: number) => {
           if (idx < 0 || idx >= pdf.numPages || tempPages[idx]) return;
           const p = await pdf.getPage(idx + 1);
-          const vp = p.getViewport({ scale: 2 });
+          const vp = p.getViewport({ scale: 1.5 });
           const cv = document.createElement('canvas');
           cv.height = vp.height; cv.width = vp.width;
           await p.render({ canvasContext: cv.getContext('2d')!, viewport: vp }).promise;
-          tempPages[idx] = cv.toDataURL('image/jpeg', 0.85);
+          tempPages[idx] = cv.toDataURL('image/jpeg', 0.8);
           setPages([...tempPages]);
         };
         await renderSinglePage(currentPage);
@@ -263,6 +263,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     >
       <audio ref={audioRef} loop hidden />
 
+      {/* Quantum Transition Overlay */}
       <AnimatePresence>
         {(isLoading || isJumping) && (
           <MotionDiv key="transition-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[5000] bg-black/60 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center pointer-events-none">
@@ -292,6 +293,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       </AnimatePresence>
 
       <main className="flex-1 flex items-center justify-center bg-black relative overflow-hidden" ref={containerRef}>
+        {/* Adobe Reader Style Sidebar */}
         <AnimatePresence>
           {isThumbnailsOpen && (
             <MotionDiv initial={{ x: -100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -100, opacity: 0 }} className="fixed left-0 top-0 bottom-0 w-24 md:w-32 bg-black/80 backdrop-blur-2xl z-[1500] border-r border-white/5 flex flex-col pt-24 pb-8 overflow-y-auto no-scrollbar scroll-smooth">
@@ -341,19 +343,19 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </main>
 
-      {/* FOOTER ZEN CONTROLS */}
+      {/* FIXED ZEN NAVIGATION UI */}
       <div className="fixed bottom-6 left-0 right-0 z-[2000] pointer-events-none px-6 flex flex-col items-center gap-4">
         <AnimatePresence>
           {showControls && (
             <MotionDiv initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="flex flex-col items-center gap-4 pointer-events-auto">
               
-              {/* Reading Time - Small, Red, Always Visible in Controls */}
+              {/* Reading Time - Red Subtle */}
               <div className="bg-red-600/10 border border-red-600/30 px-5 py-1.5 rounded-full backdrop-blur-xl flex items-center gap-2 shadow-2xl">
                  <Clock size={12} className="text-red-600 animate-pulse" />
                  <span className="text-[10px] md:text-xs font-black text-red-600 tracking-widest">{Math.floor(sessionSeconds/60)}m {sessionSeconds%60}s</span>
               </div>
 
-              {/* Central Control Bar */}
+              {/* Central Control Hub */}
               <div className="bg-black/60 backdrop-blur-3xl border border-white/10 rounded-full p-2 flex items-center gap-2 shadow-4xl">
                  <button onClick={() => setIsThumbnailsOpen(!isThumbnailsOpen)} className={`w-9 h-9 flex items-center justify-center rounded-full transition-all ${isThumbnailsOpen ? 'bg-white text-black' : 'text-white/40 hover:bg-white/5'}`}><LayoutGrid size={16}/></button>
                  <div className="flex items-center gap-1 bg-white/5 rounded-full px-4 py-1.5 border border-white/5">
@@ -368,7 +370,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         </AnimatePresence>
       </div>
 
-      {/* FLOATING TOOLS PANEL */}
+      {/* Annotation Edit & Tools Popups */}
       <AnimatePresence>
         {isToolsOpen && showControls && (
           <MotionDiv initial={{ x: 100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 100, opacity: 0 }} className="fixed right-6 bottom-32 z-[3000] pointer-events-auto bg-black/80 backdrop-blur-3xl border border-white/10 p-3 rounded-[2.5rem] shadow-4xl flex flex-col gap-3">
@@ -392,31 +394,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </AnimatePresence>
 
-      {/* POPUPS (ANNOTATION, GO TO PAGE, SOUNDS, ARCHIVE) */}
       <AnimatePresence>
-        {editingAnnoId && currentEditingAnno && (
-          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[4000] bg-black/60 backdrop-blur-xl flex items-center justify-center p-6 pointer-events-auto">
-            <MotionDiv initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-black/40 backdrop-blur-2xl border border-white/10 p-5 rounded-[2rem] w-full max-w-[300px] shadow-5xl flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                 <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-xl bg-white/5 border border-white/10" style={{ color: currentEditingAnno.color }}><Highlighter size={16} /></div>
-                    <h3 className="text-xs font-black uppercase text-white/90">{isRTL ? 'تعديل' : 'Modification'}</h3>
-                 </div>
-                 <button onClick={() => setEditingAnnoId(null)} className="p-1.5 rounded-full bg-white/5 text-white/30 hover:text-white"><X size={14}/></button>
-              </div>
-              <div className="space-y-3 flex-1 overflow-y-auto no-scrollbar pr-1">
-                <input type="text" value={currentEditingAnno.title || ''} onChange={(e) => updateEditingAnnotation({ title: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-[10px] font-bold text-white outline-none focus:border-red-600/50" placeholder={isRTL ? 'عنوان...' : 'Title...'} />
-                <textarea value={currentEditingAnno.text || ''} onChange={(e) => updateEditingAnnotation({ text: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-[10px] font-bold text-white outline-none focus:border-red-600/50 min-h-[70px] resize-none" placeholder={isRTL ? 'ملاحظة...' : 'Note...'} />
-                <div className="flex flex-wrap gap-1.5">{COLORS.map(c => (<button key={c.hex} onClick={() => updateEditingAnnotation({ color: c.hex })} className={`w-5 h-5 rounded-full border transition-all ${currentEditingAnno.color === c.hex ? 'border-white scale-110' : 'border-transparent opacity-60'}`} style={{ backgroundColor: c.hex }} />))}</div>
-              </div>
-              <div className="flex gap-2 mt-4 pt-3 border-t border-white/5">
-                <button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} className="w-9 h-9 bg-red-600/10 border border-red-600/20 text-red-600 rounded-lg flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><Trash2 size={14}/></button>
-                <button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-2 rounded-lg font-black uppercase text-[8px] tracking-widest hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2"><Check size={12}/>{isRTL ? 'حفظ' : 'Save'}</button>
-              </div>
-            </MotionDiv>
-          </MotionDiv>
-        )}
-
         {isGoToPageOpen && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-6 pointer-events-auto">
             <MotionDiv initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-xs shadow-5xl text-center">
@@ -428,7 +406,9 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             </MotionDiv>
           </MotionDiv>
         )}
+      </AnimatePresence>
 
+      <AnimatePresence>
         {isSoundPickerOpen && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 pointer-events-auto">
             <div className="bg-[#0b140b] border border-white/10 p-6 md:p-8 rounded-[2.5rem] w-full max-w-xs shadow-3xl">
@@ -444,7 +424,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             </div>
           </MotionDiv>
         )}
-
+      </AnimatePresence>
+      
+      {/* Archive View */}
+      <AnimatePresence>
         {isArchiveOpen && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/40 backdrop-blur-[40px] p-6 flex items-center justify-center pointer-events-auto">
              <MotionDiv initial={{ y: 50 }} animate={{ y: 0 }} className="w-full max-w-xl bg-[#0b140b] border border-white/10 rounded-[2.5rem] p-6 max-h-[70vh] overflow-hidden flex flex-col shadow-4xl">
@@ -468,6 +451,32 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   ))}
                 </div>
              </MotionDiv>
+          </MotionDiv>
+        )}
+      </AnimatePresence>
+
+      {/* Annotation Edit Detail View */}
+      <AnimatePresence>
+        {editingAnnoId && currentEditingAnno && (
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[4000] bg-black/60 backdrop-blur-xl flex items-center justify-center p-6 pointer-events-auto">
+            <MotionDiv initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-black/40 backdrop-blur-2xl border border-white/10 p-5 rounded-[2rem] w-full max-w-[300px] shadow-5xl flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                 <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-white/5 border border-white/10" style={{ color: currentEditingAnno.color }}><Highlighter size={16} /></div>
+                    <h3 className="text-xs font-black uppercase text-white/90">{isRTL ? 'تعديل' : 'Modification'}</h3>
+                 </div>
+                 <button onClick={() => setEditingAnnoId(null)} className="p-1.5 rounded-full bg-white/5 text-white/30 hover:text-white"><X size={14}/></button>
+              </div>
+              <div className="space-y-3 flex-1 overflow-y-auto no-scrollbar pr-1">
+                <input type="text" value={currentEditingAnno.title || ''} onChange={(e) => updateEditingAnnotation({ title: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-[10px] font-bold text-white outline-none focus:border-red-600/50" placeholder={isRTL ? 'عنوان...' : 'Title...'} />
+                <textarea value={currentEditingAnno.text || ''} onChange={(e) => updateEditingAnnotation({ text: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-[10px] font-bold text-white outline-none focus:border-red-600/50 min-h-[70px] resize-none" placeholder={isRTL ? 'ملاحظة...' : 'Note...'} />
+                <div className="flex flex-wrap gap-1.5">{COLORS.map(c => (<button key={c.hex} onClick={() => updateEditingAnnotation({ color: c.hex })} className={`w-5 h-5 rounded-full border transition-all ${currentEditingAnno.color === c.hex ? 'border-white scale-110' : 'border-transparent opacity-60'}`} style={{ backgroundColor: c.hex }} />))}</div>
+              </div>
+              <div className="flex gap-2 mt-4 pt-3 border-t border-white/5">
+                <button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} className="w-9 h-9 bg-red-600/10 border border-red-600/20 text-red-600 rounded-lg flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><Trash2 size={14}/></button>
+                <button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-2 rounded-lg font-black uppercase text-[8px] tracking-widest hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2"><Check size={12}/>{isRTL ? 'حفظ' : 'Save'}</button>
+              </div>
+            </MotionDiv>
           </MotionDiv>
         )}
       </AnimatePresence>
