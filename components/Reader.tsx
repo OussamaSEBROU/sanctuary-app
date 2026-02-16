@@ -60,7 +60,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [pages, setPages] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(book.lastPage || 0);
   const [isLoading, setIsLoading] = useState(true);
-  const [isJumping, setIsJumping] = useState(false);
   const [totalPages, setTotalPages] = useState(0);
   
   const [activeTool, setActiveTool] = useState<Tool>('view');
@@ -81,6 +80,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [zoomScale, setZoomScale] = useState(1);
   const [isPinching, setIsPinching] = useState(false);
+  const [swipeDirection, setSwipeDirection] = useState(0); // -1 for left, 1 for right
   
   const initialPinchDistance = useRef<number | null>(null);
   const initialScaleOnPinch = useRef<number>(1);
@@ -94,7 +94,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const isRTL = lang === 'ar';
   const fontClass = isRTL ? 'font-ar' : 'font-en';
 
-  // Keyboard Navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isGoToPageOpen || editingAnnoId || activeTool !== 'view') return;
@@ -177,13 +176,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 0 && newPage < totalPages && newPage !== currentPage) {
-      setIsJumping(true);
-      setTimeout(() => {
-        setZoomScale(1);
-        setCurrentPage(newPage);
-        storageService.updateBookPage(book.id, newPage);
-        setIsJumping(false);
-      }, 50); // Reduced delay for faster feel
+      setSwipeDirection(newPage > currentPage ? 1 : -1);
+      setZoomScale(1);
+      setCurrentPage(newPage);
+      storageService.updateBookPage(book.id, newPage);
     }
   };
 
@@ -321,14 +317,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         </AnimatePresence>
 
         {!isLoading && (
-          <div className={`relative w-full h-full flex items-center justify-center overflow-auto no-scrollbar ${isZenMode ? 'p-0' : 'p-6'}`}>
+          <div className={`relative w-full h-full flex items-center justify-center overflow-hidden ${isZenMode ? 'p-0' : 'p-6'}`}>
             <MotionDiv 
               ref={pageRef} 
-              drag={activeTool === 'view'}
-              dragConstraints={zoomScale > 1 ? containerRef : { left: 0, right: 0, top: 0, bottom: 0 }}
+              drag={activeTool === 'view' ? "x" : false}
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.2}
               onDragEnd={(e: any, info: any) => {
-                if (zoomScale === 1 && activeTool === 'view') {
-                  const threshold = 80;
+                if (activeTool === 'view' && zoomScale === 1) {
+                  const threshold = 40; // Responsive threshold
                   if (info.offset.x < -threshold) handlePageChange(currentPage + 1);
                   else if (info.offset.x > threshold) handlePageChange(currentPage - 1);
                 }
@@ -340,18 +337,17 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               onTouchMove={handleTouchMove} 
               onTouchEnd={handleEnd} 
               animate={{ scale: zoomScale }} 
-              transition={{ type: 'spring', damping: 40, stiffness: 250 }} 
-              className={`relative shadow-[0_0_100px_rgba(0,0,0,1)] overflow-hidden touch-none ${isZenMode ? 'h-full w-full rounded-none' : 'max-h-[85vh] w-auto aspect-[1/1.41] rounded-2xl md:rounded-3xl'}`} 
+              className={`relative shadow-[0_0_100px_rgba(0,0,0,1)] overflow-hidden touch-none will-change-transform ${isZenMode ? 'h-full w-full rounded-none' : 'max-h-[85vh] w-auto aspect-[1/1.41] rounded-2xl md:rounded-3xl'}`} 
               style={{ backgroundColor: isNightMode ? '#001122' : '#ffffff', transformOrigin: 'center center', userSelect: 'none' }}
             >
-              <AnimatePresence mode="wait">
+              <AnimatePresence mode="popLayout" initial={false}>
                 <MotionDiv
                   key={currentPage}
-                  initial={{ x: isRTL ? -30 : 30, opacity: 0 }}
+                  initial={{ x: swipeDirection > 0 ? (isRTL ? -100 : 100) : (isRTL ? 100 : -100), opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
-                  exit={{ x: isRTL ? 30 : -30, opacity: 0 }}
-                  transition={{ duration: 0.25, ease: "easeOut" }}
-                  className="w-full h-full"
+                  exit={{ x: swipeDirection > 0 ? (isRTL ? 100 : -100) : (isRTL ? -100 : 100), opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 40, mass: 0.8 }}
+                  className="w-full h-full absolute inset-0 flex items-center justify-center"
                 >
                   <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none select-none" style={{ filter: isNightMode ? 'invert(1) hue-rotate(180deg)' : 'none' }} alt="Page" />
                 </MotionDiv>
