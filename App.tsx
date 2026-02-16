@@ -132,16 +132,25 @@ const App: React.FC = () => {
   return (
     <Layout lang={lang}>
       <div className={`flex flex-col h-screen-safe overflow-hidden ${fontClass}`}>
+        {/* Sidebar Navigation */}
         <AnimatePresence>
           {isSidebarOpen && (
-            <>
-              <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[500]" />
+            <React.Fragment key="sidebar-container">
+              <MotionDiv 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }} 
+                onClick={() => setIsSidebarOpen(false)} 
+                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[2000]" 
+              />
               <MotionAside
-                initial={{ x: lang === 'ar' ? '100%' : '-100%' }} animate={{ x: 0 }} exit={{ x: lang === 'ar' ? '100%' : '-100%' }}
+                initial={{ x: lang === 'ar' ? '100%' : '-100%' }} 
+                animate={{ x: 0 }} 
+                exit={{ x: lang === 'ar' ? '100%' : '-100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className={`fixed top-0 bottom-0 ${lang === 'ar' ? 'right-0' : 'left-0'} w-[85vw] md:w-80 bg-[#050f05] border-none z-[600] flex flex-col shadow-2xl`}
+                className={`fixed top-0 bottom-0 ${lang === 'ar' ? 'right-0' : 'left-0'} w-[85vw] md:w-80 bg-[#050f05] border-none z-[2100] flex flex-col shadow-2xl overflow-hidden`}
               >
-                <div className="p-6 md:p-8 flex items-center justify-between border-b border-white/5">
+                <div className="p-6 md:p-8 flex items-center justify-between border-b border-white/5 shrink-0">
                    <div className="flex items-center gap-3">
                     <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-[#ff0000] flex items-center justify-center shadow-[0_0_20px_rgba(255,0,0,0.3)]">
                       <Sparkles size={16} className="text-white" />
@@ -150,13 +159,17 @@ const App: React.FC = () => {
                    </div>
                    <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-full bg-white/5 text-white/40 hover:text-white transition-all"><X size={18}/></button>
                 </div>
+                
                 <div className="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 space-y-8 md:space-y-10">
+                  {/* Dashboard Quick Access */}
                   <button onClick={() => { setView(ViewState.DASHBOARD); setIsSidebarOpen(false); }} className="w-full flex items-center gap-4 p-4 md:p-5 rounded-[1.5rem] md:rounded-[2rem] bg-[#ff0000]/10 border border-[#ff0000]/20 hover:bg-[#ff0000] hover:border-[#ff0000] transition-all group">
                     <div className="p-2 md:p-3 rounded-lg md:rounded-xl bg-white/10 group-hover:bg-white/20"><LayoutDashboard size={20} className="text-[#ff0000] group-hover:text-white" /></div>
                     <div className="flex flex-col items-start"><span className="text-[10px] md:text-xs font-black uppercase tracking-widest group-hover:text-white">{t.dashboard}</span><span className="text-[8px] md:text-[9px] uppercase font-black opacity-30 group-hover:opacity-60 group-hover:text-white">{t.cognitiveMetrics}</span></div>
                   </button>
+                  
+                  {/* Language Selection */}
                   <section className="space-y-3 md:space-y-4">
-                    <div className="flex items-center gap-3 opacity-20 px-2"><Globe2 size={12} /><span className="text-[9px] font-black uppercase tracking-widest">{t.language}</span></div>
+                    <div className="flex items-center gap-3 opacity-20 px-2"><Globe size={12} /><span className="text-[9px] font-black uppercase tracking-widest">{t.language}</span></div>
                     <div className="flex flex-col gap-2">
                       {['ar', 'en'].map((l) => (
                         <button key={l} onClick={() => { setLang(l as Language); setIsSidebarOpen(false); }} className={`w-full p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all flex items-center justify-between ${lang === l ? 'bg-white text-black border-white' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'}`}>
@@ -166,7 +179,9 @@ const App: React.FC = () => {
                       ))}
                     </div>
                   </section>
-                  <section className="space-y-3 md:space-y-4">
+                  
+                  {/* Collections / Shelves */}
+                  <section className="space-y-3 md:space-y-4 pb-12">
                     <div className="flex items-center justify-between px-2">
                       <div className="flex items-center gap-3 opacity-20"><Library size={12} /><span className="text-[9px] font-black uppercase tracking-widest">{t.collections}</span></div>
                       <button onClick={() => setIsAddingShelf(true)} className="p-1.5 bg-[#ff0000]/20 rounded-full text-[#ff0000] hover:scale-110 transition-transform"><Plus size={12}/></button>
@@ -182,14 +197,19 @@ const App: React.FC = () => {
                   </section>
                 </div>
               </MotionAside>
-            </>
+            </React.Fragment>
           )}
         </AnimatePresence>
 
-        <div className="fixed top-0 left-0 right-0 z-[100] p-4 md:p-8 pointer-events-none flex justify-between items-start">
-          <button onClick={() => setIsSidebarOpen(true)} className="p-3.5 md:p-5 rounded-full bg-black/60 backdrop-blur-2xl border border-white/10 pointer-events-auto hover:bg-[#ff0000] hover:border-[#ff0000] transition-all shadow-2xl group">
+        {/* Global Fixed Controls */}
+        <div className="fixed top-0 left-0 right-0 z-[1000] p-4 md:p-8 pointer-events-none flex justify-between items-start">
+          <button 
+            onClick={() => setIsSidebarOpen(true)} 
+            className="p-3.5 md:p-5 rounded-full bg-black/60 backdrop-blur-2xl border border-white/10 pointer-events-auto hover:bg-[#ff0000] hover:border-[#ff0000] transition-all shadow-2xl group active:scale-95"
+          >
             <Menu size={20} className="group-hover:text-white text-white/40 md:size-6"/>
           </button>
+          
           {view === ViewState.SHELF && (
             <div className="flex flex-row items-center gap-3 pointer-events-auto">
               <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3 bg-black/60 backdrop-blur-xl px-4 py-2.5 md:px-6 md:py-3.5 rounded-full border border-[#ff0000]/30 shadow-xl">
@@ -199,13 +219,14 @@ const App: React.FC = () => {
                   <span className="text-[11px] font-black text-[#ff0000]">{totalTodayMinutes} {lang === 'ar' ? 'دقيقة' : 'min'}</span>
                 </div>
               </MotionDiv>
-              <button onClick={() => setIsAddingBook(true)} className="px-5 md:px-8 py-3 md:py-4 rounded-full bg-white text-black text-[9px] md:text-[11px] font-black uppercase tracking-[0.3em] shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all flex items-center gap-2.5">
+              <button onClick={() => setIsAddingBook(true)} className="px-5 md:px-8 py-3 md:py-4 rounded-full bg-white text-black text-[9px] md:text-[11px] font-black uppercase tracking-[0.3em] shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all flex items-center gap-2.5 active:scale-95">
                 <Plus size={14} />{lang === 'ar' ? 'إضافة كتاب' : 'Add Work'}
               </button>
             </div>
           )}
         </div>
 
+        {/* Main Content View Switcher */}
         <div className="flex-1 relative overflow-hidden flex flex-col">
           <AnimatePresence mode="wait">
             {view === ViewState.SHELF && (
@@ -246,16 +267,17 @@ const App: React.FC = () => {
               </MotionDiv>
             )}
             {view === ViewState.READER && selectedBook && (
-              <MotionDiv key="reader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[1000]">
+              <MotionDiv key="reader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[5000]">
                 <Reader book={selectedBook} lang={lang} onBack={() => { setBooks(storageService.getBooks()); setView(ViewState.SHELF); }} onStatsUpdate={() => setBooks(storageService.getBooks())} />
               </MotionDiv>
             )}
           </AnimatePresence>
         </div>
 
+        {/* Overlay Modals */}
         <AnimatePresence>
           {isAddingBook && (
-            <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] flex items-center justify-center p-0 md:p-6 bg-black/98 backdrop-blur-3xl">
+            <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] flex items-center justify-center p-0 md:p-6 bg-black/98 backdrop-blur-3xl">
               <MotionDiv initial={{ scale: 0.95, y: 30 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/5 p-8 md:p-12 rounded-none md:rounded-[4rem] w-full max-w-xl min-h-screen md:min-h-0 shadow-2xl relative flex flex-col justify-center">
                 <button onClick={() => setIsAddingBook(false)} className="absolute top-6 right-6 md:top-10 md:right-10 p-2 rounded-full bg-white/5 text-white/20 hover:text-white transition-colors"><X size={20} className="md:size-6" /></button>
                 <h2 className="text-xl md:text-3xl font-black mb-8 md:mb-12 text-white uppercase italic flex items-center gap-4 md:gap-5 leading-none"><BookOpen size={32} className="text-[#ff0000] md:size-11" /> {t.newIntake}</h2>
@@ -273,11 +295,9 @@ const App: React.FC = () => {
               </MotionDiv>
             </MotionDiv>
           )}
-        </AnimatePresence>
 
-        <AnimatePresence>
           {isAddingShelf && (
-            <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/95 backdrop-blur-2xl">
+            <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] flex items-center justify-center p-6 bg-black/95 backdrop-blur-2xl">
               <MotionDiv initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-10 md:p-12 rounded-[2.5rem] md:rounded-[4rem] w-full max-w-md shadow-2xl text-center">
                 <h3 className="text-2xl md:text-3xl font-black uppercase italic text-white mb-8 md:mb-10">{lang === 'ar' ? 'إنشاء رف' : 'New Shelf'}</h3>
                 <input autoFocus type="text" value={newShelfName} onChange={e => setNewShelfName(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-6 text-xs md:text-sm font-bold text-white outline-none mb-8 md:mb-10 focus:border-[#ff0000]/50" placeholder={lang === 'ar' ? 'اسم الرف...' : 'Shelf Name...'} />
