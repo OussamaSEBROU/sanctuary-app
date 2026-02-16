@@ -57,8 +57,6 @@ const TOOL_ICONS = {
   note: MessageSquare
 };
 
-const STAR_THRESHOLDS = [900, 1800, 3000, 8100, 10800];
-
 export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdate }) => {
   const [isZenMode, setIsZenMode] = useState(false);
   const [isNightMode, setIsNightMode] = useState(false);
@@ -78,12 +76,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [isGoToPageOpen, setIsGoToPageOpen] = useState(false);
   const [isSoundPickerOpen, setIsSoundPickerOpen] = useState(false);
-  const [showStarAchievement, setShowStarAchievement] = useState(false);
-  const [encouragementType, setEncouragementType] = useState<'mid' | 'final' | null>(null);
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [activeSoundId, setActiveSoundId] = useState('none');
   const [targetPageInput, setTargetPageInput] = useState('');
   const [sessionSeconds, setSessionSeconds] = useState(0);
-  const [lastProcessedStars, setLastProcessedStars] = useState(book.stars);
   const [zoomScale, setZoomScale] = useState(1);
   const [isPinching, setIsPinching] = useState(false);
   const initialPinchDistance = useRef<number | null>(null);
@@ -92,10 +88,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const pageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const celebrationAudioRef = useRef<HTMLAudioElement | null>(null);
   const controlsTimeoutRef = useRef<number | null>(null);
-  const loadingIntervalRef = useRef<number | null>(null);
-  const triggeredMilestones = useRef<Set<string>>(new Set());
 
   const t = translations[lang];
   const isRTL = lang === 'ar';
@@ -108,8 +101,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         if (docEl.requestFullscreen) await docEl.requestFullscreen();
         else if ((docEl as any).webkitRequestFullscreen) await (docEl as any).webkitRequestFullscreen();
       } catch (e) {}
-      setIsZenMode(true);
-      setZoomScale(1);
+      setIsZenMode(true); setZoomScale(1); setIsToolsOpen(false);
     } else {
       if (document.fullscreenElement) await document.exitFullscreen();
       setIsZenMode(false);
@@ -135,7 +127,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   };
 
   useEffect(() => {
-    loadingIntervalRef.current = window.setInterval(() => { setLoadingMsgIdx(prev => (prev + 1) % t.loadingMessages.length); }, 2500);
     const loadPdf = async () => {
       const fileData = await pdfStorage.getFile(book.id);
       if (!fileData) { onBack(); return; }
@@ -156,7 +147,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         };
         await renderSinglePage(targetIdx);
         setIsLoading(false);
-        if (loadingIntervalRef.current) { clearInterval(loadingIntervalRef.current); loadingIntervalRef.current = null; }
         const loadRest = async () => {
           for (let i = 1; i <= 3; i++) { await renderSinglePage(targetIdx + i); await renderSinglePage(targetIdx - i); }
           for (let i = 0; i < pdf.numPages; i++) { if (!tempPages[i]) await renderSinglePage(i); }
@@ -170,20 +160,26 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       storageService.updateBookStats(book.id, 1);
       onStatsUpdate();
     }, 1000);
-    return () => { 
-      if (timerRef.current) clearInterval(timerRef.current); 
-      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-      if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
-    };
+    return () => { if (timerRef.current) clearInterval(timerRef.current); if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
   }, [book.id]);
 
   useEffect(() => { storageService.updateBookAnnotations(book.id, annotations); }, [annotations]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 0 && newPage < totalPages) {
-      setZoomScale(1); 
-      setCurrentPage(newPage);
+      setZoomScale(1); setCurrentPage(newPage);
       storageService.updateBookPage(book.id, newPage);
+    }
+  };
+
+  // Fix: Added missing jumpToPage function for the "Go to Page" form submission
+  const jumpToPage = (e: React.FormEvent) => {
+    e.preventDefault();
+    const pageNum = parseInt(targetPageInput, 10) - 1;
+    if (!isNaN(pageNum) && pageNum >= 0 && pageNum < totalPages) {
+      handlePageChange(pageNum);
+      setIsGoToPageOpen(false);
+      setTargetPageInput('');
     }
   };
 
@@ -191,7 +187,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     setActiveSoundId(sound.id);
     if (audioRef.current) {
       audioRef.current.pause();
-      if (sound.id !== 'none') { audioRef.current.src = sound.url; audioRef.current.load(); audioRef.current.play(); }
+      if (sound.id !== 'none') {
+        audioRef.current.src = sound.url;
+        audioRef.current.load();
+        audioRef.current.play().catch(e => console.error("Sound play blocked", e));
+      }
     }
     setIsSoundPickerOpen(false);
   };
@@ -258,7 +258,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     setAnnotations(prev => prev.map(a => a.id === editingAnnoId ? { ...a, ...updates } : a));
   };
 
-  const ActiveToolIcon = TOOL_ICONS[activeTool];
   const currentEditingAnno = annotations.find(a => a.id === editingAnnoId);
 
   return (
@@ -266,37 +265,51 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       className={`h-screen flex flex-col bg-black overflow-hidden relative transition-all duration-1000 ${isZenMode && !showControls ? 'cursor-none' : ''} ${fontClass}`} 
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      <audio ref={audioRef} loop hidden /><audio ref={celebrationAudioRef} hidden />
+      <audio ref={audioRef} loop hidden />
 
       <AnimatePresence>
         {isLoading && (
           <MotionDiv key="loading-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[5000] bg-black flex flex-col items-center justify-center p-8 text-center">
             <div className="relative mb-12"><MotionDiv animate={{ scale: [1, 1.1, 1], opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 2 }} className="w-32 h-32 md:w-48 md:h-48 border border-[#ff0000]/30 rounded-full flex items-center justify-center shadow-[0_0_60px_rgba(255,0,0,0.1)]"><Sparkles size={40} className="text-[#ff0000]" /></MotionDiv></div>
-            <h3 className="text-xl md:text-2xl font-black uppercase italic text-white/80 tracking-[0.3em] leading-tight">{t.loadingMessages[loadingMsgIdx]}</h3>
+            <h3 className="text-xl md:text-2xl font-black uppercase italic text-white/80 tracking-[0.3em] leading-tight">{t.loadingMessages[0]}</h3>
           </MotionDiv>
         )}
       </AnimatePresence>
 
       <AnimatePresence>
-        {showControls && !isZenMode && (
+        {showControls && (
           <MotionHeader initial={{ y: -100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -100, opacity: 0 }} 
-            className="fixed top-0 left-0 right-0 p-4 md:p-8 flex items-center justify-between z-[1100] bg-gradient-to-b from-black via-black/80 to-transparent pointer-events-none"
+            className="fixed top-0 left-0 right-0 p-3 md:p-6 flex items-center justify-between z-[1100] bg-gradient-to-b from-black via-black/40 to-transparent pointer-events-none"
           >
             <div className="flex items-center gap-2 md:gap-3 pointer-events-auto">
-              <button onClick={onBack} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white/5 rounded-full text-white/60 hover:bg-white/10 active:scale-90"><ChevronLeft size={20} className={isRTL ? "rotate-180" : ""} /></button>
-              <button onClick={() => setIsArchiveOpen(true)} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 active:scale-90"><ListOrdered size={20} /></button>
-              <button onClick={() => setIsSoundPickerOpen(true)} className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeSoundId !== 'none' ? 'bg-[#ff0000] text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}><Volume2 size={20} /></button>
-              <button onClick={() => setIsNightMode(!isNightMode)} className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full transition-all active:scale-90 ${isNightMode ? 'bg-[#ff0000] text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>{isNightMode ? <Sun size={20} /> : <Moon size={20} />}</button>
+              {!isZenMode && <button onClick={onBack} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/60 hover:bg-white/10 active:scale-90"><ChevronLeft size={18} className={isRTL ? "rotate-180" : ""} /></button>}
+              <button onClick={() => setIsArchiveOpen(true)} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 active:scale-90 transition-all group overflow-hidden relative">
+                <ListOrdered size={18} />
+                <div className="absolute inset-0 bg-white/5 translate-y-full group-hover:translate-y-0 transition-transform" />
+              </button>
+              <button onClick={() => setIsSoundPickerOpen(true)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeSoundId !== 'none' ? 'bg-[#ff0000] text-white shadow-[0_0_15px_rgba(255,0,0,0.5)]' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}><Volume2 size={18} /></button>
+              <button onClick={() => setIsNightMode(!isNightMode)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 ${isNightMode ? 'bg-[#ff0000] text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>{isNightMode ? <Sun size={18} /> : <Moon size={18} />}</button>
             </div>
-            <button onClick={toggleZenMode} className="pointer-events-auto w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-[#ff0000]/10 text-[#ff0000] border border-[#ff0000]/20"><Maximize2 size={20} /></button>
+
+            {isZenMode && (
+              <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 bg-red-600/10 border border-red-600/30 px-4 py-1.5 rounded-full backdrop-blur-md">
+                 <Clock size={12} className="text-red-600 animate-pulse" />
+                 <span className="text-[10px] md:text-xs font-black text-red-600 tracking-widest">{Math.floor(sessionSeconds/60)}m</span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 pointer-events-auto">
+              <button onClick={() => setIsToolsOpen(!isToolsOpen)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 ${isToolsOpen ? 'bg-white text-black' : 'bg-white/5 text-white/40'}`}><Palette size={18} /></button>
+              <button onClick={toggleZenMode} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full border transition-all ${isZenMode ? 'bg-red-600 border-red-600 text-white' : 'bg-white/5 border-white/10 text-white/40'}`}><Maximize2 size={18} /></button>
+            </div>
           </MotionHeader>
         )}
       </AnimatePresence>
 
       <main className="flex-1 flex items-center justify-center bg-black relative overflow-hidden" ref={containerRef}>
         {!isLoading && (
-          <div className={`relative w-full h-full flex items-center justify-center overflow-auto no-scrollbar scroll-smooth ${isZenMode ? 'p-0' : 'p-10'}`}>
-            <MotionDiv ref={pageRef} drag={activeTool === 'view' && !isPinching} dragConstraints={zoomScale > 1.05 ? undefined : { left: 0, right: 0, top: 0, bottom: 0 }} onDragEnd={(_:any, info:any) => { if (activeTool !== 'view' || isPinching || zoomScale > 1.05) return; const t = 60; if (info.offset.x < -t) handlePageChange(currentPage+1); else if (info.offset.x > t) handlePageChange(currentPage-1); }} onDoubleClick={() => { if (activeTool === 'view') setZoomScale(zoomScale > 1 ? 1 : 2.5); }} onMouseDown={(e: any) => handleStart(e.clientX, e.clientY)} onMouseMove={(e: any) => handleMove(e.clientX, e.clientY)} onMouseUp={handleEnd} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} animate={{ scale: zoomScale }} transition={{ type: 'spring', damping: 40, stiffness: 300 }} className={`relative shadow-2xl overflow-hidden touch-none ${isZenMode ? 'h-full w-full rounded-none' : 'max-h-[75vh] md:max-h-[85vh] w-auto aspect-[1/1.41] rounded-xl md:rounded-3xl'}`} style={{ backgroundColor: isNightMode ? '#001122' : '#ffffff', transformOrigin: 'center center' }}>
+          <div className={`relative w-full h-full flex items-center justify-center overflow-auto no-scrollbar scroll-smooth ${isZenMode ? 'p-0' : 'p-8'}`}>
+            <MotionDiv ref={pageRef} drag={activeTool === 'view' && !isPinching} dragConstraints={zoomScale > 1.05 ? undefined : { left: 0, right: 0, top: 0, bottom: 0 }} onDragEnd={(_:any, info:any) => { if (activeTool !== 'view' || isPinching || zoomScale > 1.05) return; const t = 60; if (info.offset.x < -t) handlePageChange(currentPage+1); else if (info.offset.x > t) handlePageChange(currentPage-1); }} onDoubleClick={() => { if (activeTool === 'view') setZoomScale(zoomScale > 1 ? 1 : 2.5); }} onMouseDown={(e: any) => handleStart(e.clientX, e.clientY)} onMouseMove={(e: any) => handleMove(e.clientX, e.clientY)} onMouseUp={handleEnd} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} animate={{ scale: zoomScale }} transition={{ type: 'spring', damping: 40, stiffness: 300 }} className={`relative shadow-2xl overflow-hidden touch-none ${isZenMode ? 'h-full w-full rounded-none' : 'max-h-[80vh] md:max-h-[85vh] w-auto aspect-[1/1.41] rounded-2xl md:rounded-3xl'}`} style={{ backgroundColor: isNightMode ? '#001122' : '#ffffff', transformOrigin: 'center center' }}>
               <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none select-none transition-all duration-500" style={{ filter: isNightMode ? 'invert(1) hue-rotate(180deg)' : 'none' }} alt="Page" />
               <div className="absolute inset-0 pointer-events-none">
                 {annotations.filter(a => a.pageIndex === currentPage).map(anno => (
@@ -314,38 +327,36 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </main>
 
-      {/* COMPACT FLOATING MODIFICATION CONTROLLER (FLASHCARD STYLE) */}
+      {/* COMPACT TRIGGER FOR TOOLS */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[2000] pointer-events-none w-full max-w-[420px] px-6">
         <AnimatePresence>
-          {showControls && (
+          {isToolsOpen && showControls && (
             <MotionDiv initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
               className="w-full bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-3 pointer-events-auto shadow-[0_30px_100px_rgba(0,0,0,0.7)] flex flex-col gap-4"
             >
-              <div className="flex items-center justify-between px-2">
-                 <div className="flex items-center gap-1 bg-white/5 rounded-full px-4 py-2 border border-white/5">
-                   <button onClick={() => handlePageChange(currentPage - 1)} className="text-white/30 hover:text-white transition-colors"><ChevronLeft size={18} /></button>
-                   <span className="text-[10px] font-black uppercase text-white px-2">{currentPage + 1} / {totalPages}</span>
-                   <button onClick={() => handlePageChange(currentPage + 1)} className="text-white/30 hover:text-white transition-colors"><ChevronRight size={18} /></button>
-                 </div>
-                 <div className="flex items-center gap-2">
-                    <button onClick={() => setIsArchiveOpen(true)} className="p-3 bg-white/5 rounded-full text-white/40 hover:bg-white/10 transition-all"><ListOrdered size={16} /></button>
-                    <button onClick={() => setIsGoToPageOpen(true)} className="p-3 bg-white/5 rounded-full text-white/40 hover:bg-white/10 transition-all"><Search size={16} /></button>
-                 </div>
-              </div>
-              <div className="bg-white/[0.03] border border-white/5 rounded-[2rem] p-2.5 flex items-center justify-between relative group">
+              {!isZenMode && (
+                <div className="flex items-center justify-between px-2">
+                   <div className="flex items-center gap-1 bg-white/5 rounded-full px-4 py-2 border border-white/5">
+                     <button onClick={() => handlePageChange(currentPage - 1)} className="text-white/30 hover:text-white transition-colors"><ChevronLeft size={16} /></button>
+                     <span className="text-[9px] font-black uppercase text-white px-2">{currentPage + 1} / {totalPages}</span>
+                     <button onClick={() => handlePageChange(currentPage + 1)} className="text-white/30 hover:text-white transition-colors"><ChevronRight size={16} /></button>
+                   </div>
+                   <button onClick={() => setIsGoToPageOpen(true)} className="p-3 bg-white/5 rounded-full text-white/40 hover:bg-white/10 transition-all"><Search size={14} /></button>
+                </div>
+              )}
+              <div className="bg-white/[0.03] border border-white/5 rounded-[2rem] p-2 flex items-center justify-between relative group">
                 <div className="flex items-center gap-1.5">
                   {(Object.keys(TOOL_ICONS) as Tool[]).map(tool => {
                     const Icon = TOOL_ICONS[tool];
                     return (
-                      <div key={tool} className="relative">
-                        <button onClick={() => setActiveTool(tool)} className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all duration-300 ${activeTool === tool ? 'bg-[#ff0000] text-white shadow-lg' : 'text-white/30 hover:bg-white/5'}`}><Icon size={18} /></button>
+                      <div key={tool} className="relative group/tool">
+                        <button onClick={() => setActiveTool(tool)} className={`w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-2xl transition-all duration-300 ${activeTool === tool ? 'bg-[#ff0000] text-white shadow-lg' : 'text-white/30 hover:bg-white/5'}`}><Icon size={16} /></button>
                         <AnimatePresence>
                           {activeTool === tool && tool !== 'view' && (
-                            <MotionDiv initial={{ y: 10, opacity: 0 }} animate={{ y: -50, opacity: 1 }} exit={{ y: 10, opacity: 0 }} className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/80 backdrop-blur-xl border border-white/10 p-1.5 rounded-full shadow-2xl z-[3000]">
+                            <MotionDiv initial={{ y: 10, opacity: 0 }} animate={{ y: -45, opacity: 1 }} exit={{ y: 10, opacity: 0 }} className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/80 backdrop-blur-xl border border-white/10 p-1.5 rounded-full shadow-2xl z-[3000]">
                               {COLORS.slice(0, 5).map(c => (
-                                <button key={c.hex} onClick={(e) => { e.stopPropagation(); setActiveColor(c.hex); }} className={`w-5 h-5 rounded-full border ${activeColor === c.hex ? 'border-white scale-110' : 'border-transparent opacity-60'}`} style={{ backgroundColor: c.hex }} />
+                                <button key={c.hex} onClick={(e) => { e.stopPropagation(); setActiveColor(c.hex); }} className={`w-4 h-4 rounded-full border ${activeColor === c.hex ? 'border-white scale-110 shadow-sm' : 'border-transparent opacity-60'}`} style={{ backgroundColor: c.hex }} />
                               ))}
-                              <Palette size={12} className="text-white/30 ml-1" />
                             </MotionDiv>
                           )}
                         </AnimatePresence>
@@ -353,8 +364,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                     );
                   })}
                 </div>
-                <div className="w-[1px] h-8 bg-white/10 mx-1" />
-                <button onClick={() => { if (isZenMode) toggleZenMode(); else toggleZenMode(); }} className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all ${isZenMode ? 'bg-[#ff0000] text-white' : 'text-white/30 bg-white/5'}`}><Maximize2 size={18} /></button>
+                <div className="w-[1px] h-6 bg-white/10 mx-1" />
+                <button onClick={() => setIsToolsOpen(false)} className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-2xl text-white/30 hover:bg-white/10"><X size={16}/></button>
               </div>
             </MotionDiv>
           )}
@@ -362,46 +373,82 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       </div>
 
       <AnimatePresence>
-        {isZenMode && (
-          <MotionDiv initial={{ y: -50, opacity: 0 }} animate={{ y: showControls ? 0 : -80, opacity: 1 }} transition={{ type: 'spring', damping: 20 }} className="fixed top-6 left-1/2 -translate-x-1/2 z-[6000] pointer-events-auto">
-            <div className="flex items-center gap-4 bg-black/40 backdrop-blur-2xl px-6 py-3 rounded-full border border-white/10 shadow-4xl">
-              <div className="flex items-center gap-2 pr-3 border-r border-white/10">
-                <Clock size={14} className="text-[#ff0000] animate-pulse" /><span className="text-[10px] font-black text-white/80">{Math.floor(sessionSeconds/60)}m</span>
+        {editingAnnoId && currentEditingAnno && (
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[4000] bg-black/60 backdrop-blur-xl flex items-center justify-center p-6">
+            <MotionDiv initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} className="bg-black/40 backdrop-blur-2xl border border-white/10 p-5 rounded-[2.5rem] w-full max-w-[320px] shadow-[0_50px_150px_rgba(0,0,0,0.8)] flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                 <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-white/5 border border-white/10" style={{ color: currentEditingAnno.color }}>
+                      {currentEditingAnno.type === 'highlight' && <Highlighter size={16} />}{currentEditingAnno.type === 'underline' && <PenTool size={16} />}{currentEditingAnno.type === 'box' && <BoxSelect size={16} />}{currentEditingAnno.type === 'note' && <MessageSquare size={16} />}
+                    </div>
+                    <div><h3 className="text-xs font-black italic uppercase text-white/90">{isRTL ? 'بيانات التعديل' : 'Intake'}</h3><p className="text-[8px] font-black uppercase text-white/30">{t.page} {currentEditingAnno.pageIndex + 1}</p></div>
+                 </div>
+                 <button onClick={() => setEditingAnnoId(null)} className="p-2 rounded-full bg-white/5 text-white/30 hover:text-white transition-all"><X size={14} /></button>
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setActiveTool(activeTool === 'highlight' ? 'view' : 'highlight')} className={`p-2 rounded-lg transition-all ${activeTool !== 'view' ? 'text-[#ff0000] bg-[#ff0000]/10' : 'text-white/40 hover:text-white'}`}><Highlighter size={16}/></button>
-                <button onClick={() => setIsArchiveOpen(true)} className="p-2 text-white/40 hover:text-white transition-all"><ListOrdered size={16}/></button>
-                <button onClick={() => setIsNightMode(!isNightMode)} className={`p-2 rounded-lg transition-all ${isNightMode ? 'text-[#ff0000]' : 'text-white/40 hover:text-white'}`}>{isNightMode ? <Sun size={16}/> : <Moon size={16}/>}</button>
-                <button onClick={() => setIsSoundPickerOpen(true)} className={`p-2 rounded-lg transition-all ${activeSoundId !== 'none' ? 'text-[#ff0000]' : 'text-white/40 hover:text-white'}`}><Volume2 size={16}/></button>
+              <div className="space-y-3 flex-1 overflow-y-auto custom-scroll pr-2">
+                <input type="text" value={currentEditingAnno.title || ''} onChange={(e) => updateEditingAnnotation({ title: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-[10px] font-bold text-white outline-none focus:border-[#ff0000]/50" placeholder="..." />
+                <textarea value={currentEditingAnno.text || ''} onChange={(e) => updateEditingAnnotation({ text: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-[10px] font-bold text-white outline-none focus:border-[#ff0000]/50 min-h-[80px] resize-none" placeholder="..." />
+                <div className="flex flex-wrap gap-1.5">{COLORS.slice(0,6).map(c => (<button key={c.hex} onClick={() => updateEditingAnnotation({ color: c.hex })} className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all ${currentEditingAnno.color === c.hex ? 'border-white scale-110 shadow-lg' : 'border-transparent opacity-60'}`} style={{ backgroundColor: c.hex }}>{currentEditingAnno.color === c.hex && <Check size={10} className="text-white" />}</button>))}</div>
               </div>
-            </div>
+              <div className="flex gap-2.5 mt-4 pt-3 border-t border-white/5">
+                <button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} className="w-10 h-10 bg-red-600/10 border border-red-600/20 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><Trash2 size={16} /></button>
+                <button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-2.5 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-[#ff0000] hover:text-white transition-all flex items-center justify-center gap-2"><Check size={12} />{isRTL ? 'حفظ' : 'Store'}</button>
+              </div>
+            </MotionDiv>
           </MotionDiv>
         )}
       </AnimatePresence>
 
       <AnimatePresence>
-        {editingAnnoId && currentEditingAnno && (
-          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[4000] bg-black/60 backdrop-blur-xl flex items-center justify-center p-6">
-            <MotionDiv initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} className="bg-black/40 backdrop-blur-2xl border border-white/10 p-6 rounded-[2.5rem] w-full max-w-[340px] shadow-[0_50px_150px_rgba(0,0,0,0.8)] flex flex-col">
-              <div className="flex items-center justify-between mb-6">
-                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/10" style={{ color: currentEditingAnno.color }}>
-                      {currentEditingAnno.type === 'highlight' && <Highlighter size={18} />}{currentEditingAnno.type === 'underline' && <PenTool size={18} />}{currentEditingAnno.type === 'box' && <BoxSelect size={18} />}{currentEditingAnno.type === 'note' && <MessageSquare size={18} />}
-                    </div>
-                    <div><h3 className="text-sm font-black italic uppercase text-white/90">{isRTL ? 'بيانات التعديل' : 'Intake'}</h3><p className="text-[8px] font-black uppercase text-white/30">{t.page} {currentEditingAnno.pageIndex + 1}</p></div>
-                 </div>
-                 <button onClick={() => setEditingAnnoId(null)} className="p-2 rounded-full bg-white/5 text-white/30 hover:text-white transition-all"><X size={16} /></button>
+        {isSoundPickerOpen && (
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 pointer-events-auto">
+            <div className="bg-[#0b140b] border border-white/10 p-6 md:p-8 rounded-[2.5rem] w-full max-w-sm shadow-3xl">
+              <div className="flex justify-between items-center mb-6"><h3 className="text-lg font-black italic tracking-widest">{t.soundscape}</h3><button onClick={() => setIsSoundPickerOpen(false)} className="hover:text-[#ff0000] transition-colors"><X size={20}/></button></div>
+              <div className="grid gap-2">
+                {SOUNDS.map(sound => (
+                  <button key={sound.id} onClick={() => playSound(sound)} className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${activeSoundId === sound.id ? 'bg-[#ff0000]/20 border-[#ff0000]/50' : 'bg-white/5 border-transparent hover:bg-white/10'}`}>
+                    <div className="flex items-center gap-3"><sound.icon size={16} className={activeSoundId === sound.id ? "text-[#ff0000]" : "text-white/40"} /><span className="text-[10px] font-bold uppercase tracking-widest">{t[sound.id as keyof typeof t] || sound.id}</span></div>
+                    {activeSoundId === sound.id && <div className="w-2 h-2 rounded-full bg-[#ff0000] shadow-[0_0_8px_#ff0000]" />}
+                  </button>
+                ))}
               </div>
-              <div className="space-y-4 flex-1 overflow-y-auto custom-scroll pr-2">
-                <div className="space-y-1.5"><label className="text-[8px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'عنوان التعديل' : 'Title'}</label><input type="text" value={currentEditingAnno.title || ''} onChange={(e) => updateEditingAnnotation({ title: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-[#ff0000]/50" placeholder="..." /></div>
-                <div className="space-y-1.5"><label className="text-[8px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'ملاحظات' : 'Notes'}</label><textarea value={currentEditingAnno.text || ''} onChange={(e) => updateEditingAnnotation({ text: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-[#ff0000]/50 min-h-[90px] resize-none" placeholder="..." /></div>
-                <div className="space-y-2"><label className="text-[8px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'اللون' : 'Color'}</label><div className="flex flex-wrap gap-2">{COLORS.slice(0,6).map(c => (<button key={c.hex} onClick={() => updateEditingAnnotation({ color: c.hex })} className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-all ${currentEditingAnno.color === c.hex ? 'border-white scale-110 shadow-lg' : 'border-transparent opacity-60'}`} style={{ backgroundColor: c.hex }}>{currentEditingAnno.color === c.hex && <Check size={12} className="text-white" />}</button>))}</div></div>
-              </div>
-              <div className="flex gap-3 mt-6 pt-4 border-t border-white/5">
-                <button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} className="w-12 h-12 bg-red-600/10 border border-red-600/20 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><Trash2 size={18} /></button>
-                <button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-3 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#ff0000] hover:text-white transition-all flex items-center justify-center gap-2"><Check size={14} />{isRTL ? 'حفظ' : 'Store'}</button>
-              </div>
+            </div>
+          </MotionDiv>
+        )}
+        {isGoToPageOpen && (
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-6 text-center">
+            <MotionDiv initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-sm shadow-5xl">
+              <h3 className="text-lg font-black uppercase mb-6 tracking-widest">{t.goToPage}</h3>
+              <form onSubmit={jumpToPage}>
+                <input autoFocus type="number" value={targetPageInput} onChange={(e) => setTargetPageInput(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-2xl font-black text-center text-white outline-none mb-6 focus:border-[#ff0000]/50 shadow-inner" placeholder={`1 - ${totalPages}`} />
+                <div className="flex gap-3"><button type="button" onClick={() => setIsGoToPageOpen(false)} className="flex-1 py-3 text-white/30 uppercase font-black text-[9px] tracking-widest">{t.discard}</button><button type="submit" className="flex-1 bg-[#ff0000] py-3 rounded-2xl font-black uppercase text-[9px] tracking-widest shadow-lg">{t.jump}</button></div>
+              </form>
             </MotionDiv>
+          </MotionDiv>
+        )}
+        {isArchiveOpen && (
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/40 backdrop-blur-[60px] p-6 flex items-center justify-center pointer-events-auto">
+             <MotionDiv initial={{ y: 50 }} animate={{ y: 0 }} className="w-full max-w-xl bg-[#0b140b] border border-white/10 rounded-[2.5rem] p-6 max-h-[75vh] overflow-hidden flex flex-col shadow-4xl">
+                <div className="flex justify-between items-center mb-6 bg-white/[0.02] p-3 rounded-xl shrink-0">
+                  <h2 className="text-xl font-black italic uppercase tracking-tighter">{t.wisdomIndex}</h2>
+                  <button onClick={() => setIsArchiveOpen(false)} className="hover:text-[#ff0000] transition-colors p-1.5 bg-white/5 rounded-full"><X size={16}/></button>
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scroll space-y-3 pr-2">
+                  {annotations.length === 0 ? <p className="text-center opacity-20 py-20 uppercase font-black tracking-widest text-xs">{t.noAnnotations}</p> : 
+                    [...annotations].sort((a,b) => a.pageIndex - b.pageIndex).map(anno => (
+                    <div key={anno.id} className="p-4 bg-white/[0.03] rounded-xl border border-white/5 hover:border-[#ff0000]/30 transition-all flex items-start justify-between gap-3">
+                      <div className="cursor-pointer flex-1" onClick={() => { handlePageChange(anno.pageIndex); setIsArchiveOpen(false); }}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: anno.color }} />
+                          <span className="text-[9px] font-black text-[#ff0000] uppercase tracking-widest">{t.page} {anno.pageIndex + 1}</span>
+                        </div>
+                        <h4 className="text-xs font-black text-white/90 truncate">{anno.title || '...'}</h4>
+                      </div>
+                      <button onClick={() => { setEditingAnnoId(anno.id); setIsArchiveOpen(false); }} className="p-2 text-white/20 hover:text-white transition-all rounded-lg bg-white/5 hover:bg-[#ff0000]/20"><Edit3 size={14} /></button>
+                    </div>
+                  ))}
+                </div>
+             </MotionDiv>
           </MotionDiv>
         )}
       </AnimatePresence>
