@@ -225,20 +225,17 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     };
   }, [book.id]);
 
-  // MILSTONE CHECKER: Mid-point and Final Push
   useEffect(() => {
     if (nextThreshold) {
       const midPoint = prevThreshold + (nextThreshold - prevThreshold) / 2;
-      const finalPush = nextThreshold - 300; // 5 minutes before
+      const finalPush = nextThreshold - 300; 
 
-      // Check Mid Point (Trigger once per star)
       const midId = `mid_${nextThreshold}`;
       if (book.timeSpentSeconds >= midPoint && book.timeSpentSeconds < midPoint + 5 && !triggeredMilestones.current.has(midId)) {
         triggeredMilestones.current.add(midId);
         setEncouragementType('mid');
       }
 
-      // Check Final Push (Trigger once per star)
       const finalId = `final_${nextThreshold}`;
       if (book.timeSpentSeconds >= finalPush && book.timeSpentSeconds < finalPush + 5 && !triggeredMilestones.current.has(finalId)) {
         triggeredMilestones.current.add(finalId);
@@ -466,35 +463,56 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </main>
 
+      {/* ZEN MODE TOP BAR - Requested Horizontal Layout */}
       <AnimatePresence>
         {isZenMode && (
-          <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: showControls ? 1 : 0.1, x: 0 }}
-            className="fixed top-6 right-6 z-[6000] pointer-events-auto flex flex-col items-end gap-3"
+          <MotionDiv initial={{ y: -50, opacity: 0 }} animate={{ y: showControls ? 0 : -100, opacity: 1 }}
+            className="fixed top-0 left-0 right-0 z-[6000] pointer-events-auto flex justify-center p-4 md:p-6"
           >
-            <div className="flex items-center gap-3">
-              <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 flex items-center gap-2">
-                <Clock size={12} className="text-[#ff0000] animate-pulse" />
-                <span className="text-[10px] font-black text-white/80">{sessionMinutes}m</span>
+            <div className="flex items-center gap-2 md:gap-4 bg-black/40 backdrop-blur-2xl px-4 md:px-8 py-2 md:py-3.5 rounded-full border border-white/10 shadow-4xl">
+              {/* Reading Timer */}
+              <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/5 mr-2">
+                <Clock size={14} className="text-[#ff0000] animate-pulse" />
+                <span className="text-[10px] md:text-xs font-black text-white/80">{sessionMinutes}m</span>
               </div>
-              <button onClick={toggleZenMode} className="w-12 h-12 flex items-center justify-center rounded-full bg-[#ff0000] text-white shadow-xl border border-white/20 backdrop-blur-xl active:scale-90">
-                <Minimize2 size={20} />
+
+              <div className="w-[1px] h-6 bg-white/10 mx-1 hidden md:block" />
+
+              {/* Wisdom Index (Edit/Adjustment icon) */}
+              <button onClick={() => setIsArchiveOpen(true)}
+                className="w-10 h-10 flex items-center justify-center rounded-full text-white/40 hover:bg-white/10 hover:text-white transition-all active:scale-90"
+              >
+                <Layers size={18} />
               </button>
-            </div>
-            <div className="flex flex-col gap-2 p-1.5 bg-black/40 backdrop-blur-xl border border-white/10 rounded-[2rem] shadow-2xl">
+
+              {/* Modification Toggle (Edit Tool) */}
               <button onClick={() => setActiveTool(activeTool === 'view' ? 'highlight' : 'view')}
-                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${activeTool !== 'view' ? 'bg-[#ff0000] text-white shadow-[0_0_15px_rgba(255,0,0,0.5)]' : 'text-white/40 hover:bg-white/10'}`}
+                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeTool !== 'view' ? 'bg-[#ff0000] text-white' : 'text-white/40 hover:bg-white/10'}`}
               >
                 <Highlighter size={18} />
               </button>
+              
+              {/* Night Mode Toggle */}
               <button onClick={() => setIsNightMode(!isNightMode)}
-                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${isNightMode ? 'bg-[#ff0000] text-white shadow-[0_0_15px_rgba(255,0,0,0.5)]' : 'text-white/40 hover:bg-white/10'}`}
+                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${isNightMode ? 'bg-[#ff0000] text-white' : 'text-white/40 hover:bg-white/10'}`}
               >
                 {isNightMode ? <Sun size={18} /> : <Moon size={18} />}
               </button>
+
+              {/* Soundscape Picker */}
               <button onClick={() => setIsSoundPickerOpen(true)}
-                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${activeSoundId !== 'none' ? 'bg-[#ff0000] text-white shadow-[0_0_15px_rgba(255,0,0,0.5)]' : 'text-white/40 hover:bg-white/10'}`}
+                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeSoundId !== 'none' ? 'bg-[#ff0000] text-white' : 'text-white/40 hover:bg-white/10'}`}
               >
                 <Volume2 size={18} />
+              </button>
+
+              <div className="w-[1px] h-6 bg-white/10 mx-1" />
+
+              {/* Exit Button */}
+              <button onClick={toggleZenMode} 
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-[#ff0000] text-white shadow-lg active:scale-90 hover:brightness-110"
+              >
+                <Minimize2 size={18} />
               </button>
             </div>
           </MotionDiv>
@@ -528,7 +546,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         </AnimatePresence>
       </div>
 
-      {/* FULL-SCREEN CELEBRATION OVERLAY */}
       <AnimatePresence>
         {showStarAchievement && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -539,39 +556,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             >
                <div className="absolute inset-0 bg-[#ff0000]/20 blur-[100px] animate-pulse rounded-full" />
                <Trophy size={window.innerWidth < 768 ? 120 : 200} className="text-[#ff0000] drop-shadow-[0_0_50px_rgba(255,0,0,0.8)] relative z-10" />
-               <MotionDiv animate={{ scale: [1, 1.5, 1], opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}
-                 className="absolute -top-10 -right-10 text-yellow-400"
-               >
-                 <Sparkles size={60} />
-               </MotionDiv>
             </MotionDiv>
-            
-            <h2 className="text-4xl md:text-7xl font-black italic uppercase tracking-tighter text-white mb-6 drop-shadow-2xl">
-              {t.starAchieved}
-            </h2>
-            <p className="text-sm md:text-xl font-bold uppercase tracking-[0.3em] text-[#ff0000]/80 mb-12 max-w-2xl leading-relaxed">
-              {t.starMotivation}
-            </p>
-            
-            <button onClick={() => setShowStarAchievement(false)}
-              className="px-12 py-5 bg-[#ff0000] text-white rounded-full font-black text-xs md:text-sm uppercase tracking-[0.5em] shadow-[0_20px_50px_rgba(255,0,0,0.4)] hover:scale-110 active:scale-95 transition-all"
-            >
-              {t.continueJourney}
-            </button>
-            
-            {/* Confetti-like particles */}
-            {[...Array(12)].map((_, i) => (
-              <MotionDiv key={i} initial={{ x: 0, y: 0, opacity: 0 }} animate={{ x: (Math.random() - 0.5) * 800, y: (Math.random() - 0.5) * 800, opacity: [0, 1, 0] }}
-                transition={{ duration: 2, repeat: Infinity, delay: i * 0.1 }}
-                className="absolute w-2 h-2 bg-[#ff0000] rounded-full pointer-events-none"
-              />
-            ))}
+            <h2 className="text-4xl md:text-7xl font-black italic uppercase tracking-tighter text-white mb-6 drop-shadow-2xl">{t.starAchieved}</h2>
+            <p className="text-sm md:text-xl font-bold uppercase tracking-[0.3em] text-[#ff0000]/80 mb-12 max-w-2xl leading-relaxed">{t.starMotivation}</p>
+            <button onClick={() => setShowStarAchievement(false)} className="px-12 py-5 bg-[#ff0000] text-white rounded-full font-black text-xs md:text-sm uppercase tracking-[0.5em] shadow-[0_20px_50px_rgba(255,0,0,0.4)] hover:scale-110 active:scale-95 transition-all">{t.continueJourney}</button>
           </MotionDiv>
         )}
-      </AnimatePresence>
 
-      {/* FULL-SCREEN MOTIVATION OVERLAY (MID & FINAL) */}
-      <AnimatePresence>
         {encouragementType && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[9998] bg-black/90 backdrop-blur-3xl flex flex-col items-center justify-center p-10 text-center pointer-events-auto"
@@ -582,32 +573,19 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   <div className="inline-flex p-6 bg-blue-500/10 rounded-full border border-blue-500/20 mb-10 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
                     <Rocket size={60} className="text-blue-500 animate-bounce" />
                   </div>
-                  <h3 className="text-3xl md:text-6xl font-black italic uppercase text-white mb-6 tracking-tighter">
-                    {isRTL ? 'منتصف الطريق بنجاح!' : 'HALFWAY THERE!'}
-                  </h3>
-                  <p className="text-xs md:text-lg font-bold uppercase tracking-widest text-white/40 mb-12 leading-relaxed">
-                    {isRTL ? 'لقد قطعت نصف المسافة نحو النجمة التالية. تركيزك مذهل، استمر في التقدم ولا تتوقف الآن.' : 'You have conquered half the distance to the next star. Your focus is sharp. Keep the momentum!'}
-                  </p>
+                  <h3 className="text-3xl md:text-6xl font-black italic uppercase text-white mb-6 tracking-tighter">{isRTL ? 'منتصف الطريق بنجاح!' : 'HALFWAY THERE!'}</h3>
+                  <p className="text-xs md:text-lg font-bold uppercase tracking-widest text-white/40 mb-12 leading-relaxed">{isRTL ? 'لقد قطعت نصف المسافة نحو النجمة التالية. تركيزك مذهل، استمر في التقدم ولا تتوقف الآن.' : 'You have conquered half the distance to the next star. Your focus is sharp. Keep the momentum!'}</p>
                 </>
               ) : (
                 <>
                   <div className="inline-flex p-6 bg-[#ff0000]/10 rounded-full border border-[#ff0000]/20 mb-10 shadow-[0_0_30px_rgba(255,0,0,0.2)]">
                     <Zap size={60} className="text-[#ff0000] animate-pulse" />
                   </div>
-                  <h3 className="text-3xl md:text-6xl font-black italic uppercase text-[#ff0000] mb-6 tracking-tighter">
-                    {isRTL ? 'أنت على وشك النهاية!' : 'ALMOST AT THE SUMMIT!'}
-                  </h3>
-                  <p className="text-xs md:text-lg font-bold uppercase tracking-widest text-white/60 mb-12 leading-relaxed">
-                    {isRTL ? 'بقي 5 دقائق فقط! شعلة المعرفة توشك على الانفجار بنجمة جديدة. ارفع مستوى تركيزك للأقصى!' : 'Only 5 minutes remain! The light of knowledge is about to ignite a new star. Maximize your focus!'}
-                  </p>
+                  <h3 className="text-3xl md:text-6xl font-black italic uppercase text-[#ff0000] mb-6 tracking-tighter">{isRTL ? 'أنت على وشك النهاية!' : 'ALMOST AT THE SUMMIT!'}</h3>
+                  <p className="text-xs md:text-lg font-bold uppercase tracking-widest text-white/60 mb-12 leading-relaxed">{isRTL ? 'بقي 5 دقائق فقط! شعلة المعرفة توشك على الانفجار بنجمة جديدة. ارفع مستوى تركيزك للأقصى!' : 'Only 5 minutes remain! The light of knowledge is about to ignite a new star. Maximize your focus!'}</p>
                 </>
               )}
-              
-              <button onClick={() => setEncouragementType(null)}
-                className="px-10 py-4 border border-white/10 bg-white/5 text-white rounded-full font-black text-[10px] md:text-xs uppercase tracking-[0.4em] hover:bg-[#ff0000] hover:border-[#ff0000] transition-all"
-              >
-                {isRTL ? 'متابعة الاستغراق' : 'STAY IN FLOW'}
-              </button>
+              <button onClick={() => setEncouragementType(null)} className="px-10 py-4 border border-white/10 bg-white/5 text-white rounded-full font-black text-[10px] md:text-xs uppercase tracking-[0.4em] hover:bg-[#ff0000] hover:border-[#ff0000] transition-all">{isRTL ? 'متابعة الاستغراق' : 'STAY IN FLOW'}</button>
             </MotionDiv>
           </MotionDiv>
         )}
@@ -616,14 +594,24 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       <AnimatePresence>
         {isArchiveOpen && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/40 backdrop-blur-[60px] p-6 flex items-center justify-center">
-             <MotionDiv initial={{ y: 50 }} animate={{ y: 0 }} className="w-full max-w-2xl bg-white/[0.03] border border-white/[0.08] rounded-[3rem] p-8 max-h-[80vh] overflow-y-auto custom-scroll shadow-4xl">
-                <div className="flex justify-between items-center mb-8 bg-white/[0.02] p-4 rounded-2xl"><h2 className="text-2xl font-black italic uppercase tracking-tighter">{t.wisdomIndex}</h2><button onClick={() => setIsArchiveOpen(false)} className="hover:text-[#ff0000] transition-colors"><X size={24}/></button></div>
-                {annotations.length === 0 ? <p className="text-center opacity-20 py-20 uppercase font-black tracking-widest">{t.noAnnotations}</p> : annotations.map(anno => (
-                  <div key={anno.id} onClick={() => { handlePageChange(anno.pageIndex); setIsArchiveOpen(false); }} className="p-6 bg-white/[0.03] rounded-2xl mb-4 border border-white/5 cursor-pointer hover:border-[#ff0000]/30 hover:bg-white/[0.06] transition-all group">
-                    <span className="text-[10px] font-black text-[#ff0000] uppercase tracking-widest">{t.page} {anno.pageIndex + 1}</span>
-                    <p className="text-white/60 italic mt-2 line-clamp-3 group-hover:text-white transition-colors">"{anno.text || '...'}"</p>
-                  </div>
-                ))}
+             <MotionDiv initial={{ y: 50 }} animate={{ y: 0 }} className="w-full max-w-2xl bg-[#0b140b] border border-white/10 rounded-[3rem] p-8 max-h-[80vh] overflow-hidden flex flex-col shadow-4xl">
+                <div className="flex justify-between items-center mb-8 bg-white/[0.02] p-4 rounded-2xl shrink-0">
+                  <h2 className="text-2xl font-black italic uppercase tracking-tighter">{t.wisdomIndex}</h2>
+                  <button onClick={() => setIsArchiveOpen(false)} className="hover:text-[#ff0000] transition-colors p-2 bg-white/5 rounded-full"><X size={20}/></button>
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scroll space-y-4">
+                  {annotations.length === 0 ? <p className="text-center opacity-20 py-20 uppercase font-black tracking-widest">{t.noAnnotations}</p> : annotations.map(anno => (
+                    <div key={anno.id} className="p-6 bg-white/[0.03] rounded-2xl border border-white/5 hover:border-[#ff0000]/30 hover:bg-white/[0.06] transition-all group flex items-start justify-between gap-4">
+                      <div className="cursor-pointer flex-1" onClick={() => { handlePageChange(anno.pageIndex); setIsArchiveOpen(false); }}>
+                        <span className="text-[10px] font-black text-[#ff0000] uppercase tracking-widest">{t.page} {anno.pageIndex + 1}</span>
+                        <p className="text-white/60 italic mt-2 line-clamp-3 group-hover:text-white transition-colors">"{anno.text || '...'}"</p>
+                      </div>
+                      <button onClick={() => setAnnotations(annotations.filter(a => a.id !== anno.id))} className="p-2 text-white/10 hover:text-red-600 transition-all rounded-lg hover:bg-white/5">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
              </MotionDiv>
           </MotionDiv>
         )}
