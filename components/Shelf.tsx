@@ -19,10 +19,6 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
   const [activeIndex, setActiveIndex] = useState(0);
   const t = translations[lang];
 
-  const totalShelfSeconds = useMemo(() => {
-    return books.reduce((acc, b) => acc + b.timeSpentSeconds, 0);
-  }, [books]);
-
   if (books.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-8">
@@ -42,40 +38,29 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
     );
   }
 
-  const activeBook = books[activeIndex];
-  const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    return `${h}h ${m}m`;
-  };
-
-  // Using any for info parameter to bypass PanInfo export issue
   const handleDragEnd = (event: any, info: any) => {
     const swipeThreshold = 50;
     if (info.offset.x < -swipeThreshold) {
-      // Swipe Left -> Next
       setActiveIndex(prev => (prev + 1) % books.length);
     } else if (info.offset.x > swipeThreshold) {
-      // Swipe Right -> Prev
       setActiveIndex(prev => (prev - 1 + books.length) % books.length);
     }
   };
 
   return (
-    <div className="relative h-full flex flex-col items-center justify-start overflow-hidden w-full pt-4 md:pt-0 px-4">
-      {/* 3D Carousel Stage with Drag Support */}
+    <div className="relative w-full flex-1 flex flex-col items-center justify-start overflow-visible pt-0 px-4">
+      {/* 3D Carousel Stage - Raised Upward */}
       <MotionDiv 
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         onDragEnd={handleDragEnd}
-        className="relative w-full h-[350px] md:h-[550px] flex items-center justify-center perspective-1000 mt-2 md:mt-4 touch-none cursor-grab active:cursor-grabbing"
+        className="relative w-full h-[400px] md:h-[600px] flex items-center justify-center perspective-1000 -mt-10 md:-mt-16 touch-none cursor-grab active:cursor-grabbing"
       >
         <AnimatePresence mode="popLayout">
           {books.map((book, index) => {
             const isCenter = index === activeIndex;
             const diff = index - activeIndex;
             
-            // Limit rendered items for performance
             if (Math.abs(diff) > 2) return null;
 
             return (
@@ -83,33 +68,35 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
                 key={book.id}
                 initial={{ opacity: 0, scale: 0.6 }}
                 animate={{ 
-                  opacity: isCenter ? 1 : 0.3, 
-                  x: diff * (window.innerWidth < 768 ? 140 : 300), 
-                  scale: isCenter ? 1 : 0.75, 
-                  rotateY: diff * (window.innerWidth < 768 ? -25 : -35),
+                  opacity: isCenter ? 1 : 0.5, 
+                  x: diff * (window.innerWidth < 768 ? 160 : 340), 
+                  scale: isCenter ? 1.05 : 0.8, 
+                  rotateY: diff * (window.innerWidth < 768 ? -20 : -30),
                   zIndex: 20 - Math.abs(diff),
-                  filter: isCenter ? 'blur(0px)' : 'blur(4px)'
+                  filter: 'blur(0px)' // Removed all blur for maximum clarity
                 }}
                 exit={{ opacity: 0, scale: 0.5 }}
                 transition={{ type: 'spring', stiffness: 350, damping: 35 }}
                 onClick={() => isCenter ? onSelectBook(book) : setActiveIndex(index)}
-                className="absolute w-[200px] h-[280px] md:w-[340px] md:h-[500px]"
+                className="absolute w-[220px] h-[310px] md:w-[380px] md:h-[540px]"
               >
-                <div className={`relative w-full h-full rounded-[2.5rem] overflow-hidden border-2 transition-all duration-500
-                   ${isCenter ? 'border-[#ff0000] shadow-[0_0_60px_rgba(255,0,0,0.5)]' : 'border-white/5 opacity-60'}`}>
+                <div className={`relative w-full h-full rounded-[2.5rem] overflow-hidden border transition-all duration-500
+                   ${isCenter ? 'border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.8)]' : 'border-white/5'}`}>
                   <img src={book.cover} alt={book.title} className="w-full h-full object-cover select-none pointer-events-none" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent flex flex-col justify-end p-6 md:p-10 pointer-events-none">
-                    <p className="text-base md:text-3xl font-black truncate leading-tight uppercase tracking-tighter text-white">{book.title}</p>
-                    <p className="text-[9px] md:text-sm text-[#ff0000] font-black uppercase tracking-widest mt-1.5">{book.author}</p>
+                  
+                  {/* Title Overlay for clarity */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent flex flex-col justify-end p-6 md:p-12 pointer-events-none">
+                    <p className="text-lg md:text-3xl font-black truncate leading-tight uppercase tracking-tighter text-white drop-shadow-lg">{book.title}</p>
+                    <p className="text-[10px] md:text-sm text-[#ff0000] font-black uppercase tracking-widest mt-1.5">{book.author}</p>
                   </div>
                   
                   {isCenter && (
                     <MotionDiv 
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[2px] opacity-0 hover:opacity-100 transition-opacity"
+                      className="absolute inset-0 flex items-center justify-center bg-black/10 backdrop-blur-[1px] opacity-0 hover:opacity-100 transition-opacity"
                     >
-                      <div className="bg-white text-black px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest">
+                      <div className="bg-white text-black px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest shadow-2xl">
                         {lang === 'ar' ? 'دخول' : 'Enter'}
                       </div>
                     </MotionDiv>
@@ -121,53 +108,12 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
         </AnimatePresence>
       </MotionDiv>
 
-      {/* Book & Shelf Metadata */}
-      <MotionDiv 
-        key={activeBook.id} 
-        initial={{ opacity: 0, y: 20 }} 
-        animate={{ opacity: 1, y: 0 }} 
-        className="mt-12 md:mt-8 text-center w-full px-6 pb-20"
-      >
-        <div className="flex items-center justify-center gap-6 md:gap-12 bg-white/5 border border-white/10 py-5 px-8 md:px-16 rounded-[3rem] inline-flex backdrop-blur-3xl shadow-2xl">
-          {/* Active Book Stars */}
-          <div className="flex flex-col items-center">
-             <div className="flex gap-1 mb-2">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={14} className={i < activeBook.stars ? 'text-[#ff0000] fill-[#ff0000] drop-shadow-[0_0_8px_rgba(255,0,0,0.7)]' : 'text-white/5'} />
-              ))}
-            </div>
-            <span className="text-[7px] md:text-[9px] uppercase font-black opacity-30 tracking-widest">{t.stars}</span>
-          </div>
-          
-          <div className="h-8 md:h-10 w-[1px] bg-white/10" />
-          
-          {/* Active Book Cumulative Time */}
-          <div className="flex flex-col items-center">
-            <div className="flex items-center gap-2 text-xs md:text-lg font-black text-white">
-              <Clock size={14} className="text-[#ff0000]" />
-              {formatTime(activeBook.timeSpentSeconds)}
-            </div>
-            <span className="text-[7px] md:text-[9px] uppercase font-black opacity-30 tracking-widest">{t.cumulativeTime}</span>
-          </div>
-
-          <div className="h-8 md:h-10 w-[1px] bg-white/10" />
-
-          {/* TOTAL SHELF CUMULATIVE TIME */}
-          <div className="flex flex-col items-center">
-            <div className="flex items-center gap-2 text-xs md:text-lg font-black text-[#ff0000] glow-red">
-              <Layers size={14} className="text-[#ff0000]" />
-              {formatTime(totalShelfSeconds)}
-            </div>
-            <span className="text-[7px] md:text-[9px] uppercase font-black opacity-30 tracking-widest">{lang === 'ar' ? 'إجمالي الرف' : 'Shelf Total'}</span>
-          </div>
-        </div>
-
-        <div className="mt-8">
-           <p className="text-[9px] font-black uppercase tracking-[0.4em] opacity-20 animate-pulse">
-             {lang === 'ar' ? 'اسحب للتنقل • انقر للدخول' : 'Swipe to Browse • Click to Enter'}
-           </p>
-        </div>
-      </MotionDiv>
+      {/* Navigation Hint */}
+      <div className="mt-8 mb-12">
+         <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-10 animate-pulse">
+           {lang === 'ar' ? 'اسحب للتنقل • انقر للدخول' : 'Swipe to Browse • Click to Enter'}
+         </p>
+      </div>
     </div>
   );
 };
