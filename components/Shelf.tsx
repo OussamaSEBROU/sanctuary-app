@@ -21,16 +21,16 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
 
   if (books.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-8">
-        <MotionDiv initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center w-full max-w-lg">
-          <button onClick={onAddBook} className="group relative w-full aspect-[4/3] border-2 border-dashed border-white/5 rounded-[2.5rem] bg-white/5 hover:border-[#ff0000]/30 transition-all flex flex-col items-center justify-center gap-6 overflow-hidden">
+      <div className="flex flex-col items-center justify-center min-h-[50vh] px-8">
+        <MotionDiv initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center w-full max-w-sm">
+          <button onClick={onAddBook} className="group relative w-full aspect-[1/1.2] border-2 border-dashed border-white/10 rounded-[3rem] bg-white/[0.02] hover:border-[#ff0000]/40 transition-all flex flex-col items-center justify-center gap-8 overflow-hidden shadow-2xl">
             <div className="absolute inset-0 bg-gradient-to-br from-[#ff0000]/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="p-6 rounded-full bg-white/5 border border-white/10 group-hover:scale-110 group-hover:bg-[#ff0000]/10 group-hover:border-[#ff0000]/30 transition-all">
-               <Upload size={32} className="text-white/20 group-hover:text-[#ff0000]" />
+            <div className="w-24 h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-110 group-hover:bg-[#ff0000]/10 group-hover:border-[#ff0000]/30 transition-all">
+               <Upload size={40} className="text-white/20 group-hover:text-[#ff0000]" />
             </div>
-            <div className="flex flex-col items-center gap-2">
-              <span className="text-[11px] font-black tracking-[0.3em] uppercase text-white/20 group-hover:text-[#ff0000]">{t.addToSanctuary}</span>
-              <p className="text-[10px] text-white/10 group-hover:text-white/30 uppercase font-bold">{lang === 'ar' ? 'قم برفع ملف PDF للبدء' : 'Upload a PDF to begin'}</p>
+            <div className="flex flex-col items-center gap-3 px-6">
+              <span className="text-[12px] font-black tracking-[0.4em] uppercase text-white/40 group-hover:text-[#ff0000] transition-colors">{t.addToSanctuary}</span>
+              <p className="text-[10px] text-white/10 group-hover:text-white/30 uppercase font-bold text-center leading-relaxed">{lang === 'ar' ? 'قم برفع ملف PDF للبدء في بناء محرابك الخاص' : 'Upload a PDF to begin building your private sanctuary'}</p>
             </div>
           </button>
         </MotionDiv>
@@ -54,7 +54,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         onDragEnd={handleDragEnd}
-        className="relative w-full h-[400px] md:h-[600px] flex items-center justify-center perspective-1000 -mt-10 md:-mt-16 touch-none cursor-grab active:cursor-grabbing"
+        className="relative w-full h-[400px] md:h-[600px] flex items-center justify-center perspective-1000 -mt-12 md:-mt-20 touch-none cursor-grab active:cursor-grabbing"
       >
         <AnimatePresence mode="popLayout">
           {books.map((book, index) => {
@@ -68,24 +68,24 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
                 key={book.id}
                 initial={{ opacity: 0, scale: 0.6 }}
                 animate={{ 
-                  opacity: isCenter ? 1 : 0.5, 
-                  x: diff * (window.innerWidth < 768 ? 160 : 340), 
-                  scale: isCenter ? 1.05 : 0.8, 
-                  rotateY: diff * (window.innerWidth < 768 ? -20 : -30),
+                  opacity: isCenter ? 1 : 0.35, 
+                  x: diff * (window.innerWidth < 768 ? 140 : 320), 
+                  scale: isCenter ? 1.05 : 0.75, 
+                  rotateY: diff * (window.innerWidth < 768 ? -25 : -35),
                   zIndex: 20 - Math.abs(diff),
-                  filter: 'blur(0px)' // Removed all blur for maximum clarity
+                  filter: isCenter ? 'blur(0px) contrast(1)' : 'blur(8px) contrast(0.7)' 
                 }}
                 exit={{ opacity: 0, scale: 0.5 }}
                 transition={{ type: 'spring', stiffness: 350, damping: 35 }}
                 onClick={() => isCenter ? onSelectBook(book) : setActiveIndex(index)}
                 className="absolute w-[220px] h-[310px] md:w-[380px] md:h-[540px]"
               >
-                <div className={`relative w-full h-full rounded-[2.5rem] overflow-hidden border transition-all duration-500
-                   ${isCenter ? 'border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.8)]' : 'border-white/5'}`}>
+                <div className={`relative w-full h-full rounded-[2.5rem] overflow-hidden border transition-all duration-700
+                   ${isCenter ? 'border-white/40 shadow-[0_30px_80px_rgba(0,0,0,0.9)]' : 'border-white/5 shadow-none'}`}>
                   <img src={book.cover} alt={book.title} className="w-full h-full object-cover select-none pointer-events-none" />
                   
                   {/* Title Overlay for clarity */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent flex flex-col justify-end p-6 md:p-12 pointer-events-none">
+                  <div className={`absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent flex flex-col justify-end p-6 md:p-12 pointer-events-none transition-opacity duration-500 ${isCenter ? 'opacity-100' : 'opacity-0'}`}>
                     <p className="text-lg md:text-3xl font-black truncate leading-tight uppercase tracking-tighter text-white drop-shadow-lg">{book.title}</p>
                     <p className="text-[10px] md:text-sm text-[#ff0000] font-black uppercase tracking-widest mt-1.5">{book.author}</p>
                   </div>
@@ -94,7 +94,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
                     <MotionDiv 
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="absolute inset-0 flex items-center justify-center bg-black/10 backdrop-blur-[1px] opacity-0 hover:opacity-100 transition-opacity"
+                      className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 hover:opacity-100 transition-opacity"
                     >
                       <div className="bg-white text-black px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest shadow-2xl">
                         {lang === 'ar' ? 'دخول' : 'Enter'}
@@ -109,7 +109,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
       </MotionDiv>
 
       {/* Navigation Hint */}
-      <div className="mt-8 mb-12">
+      <div className="mt-4 mb-8">
          <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-10 animate-pulse">
            {lang === 'ar' ? 'اسحب للتنقل • انقر للدخول' : 'Swipe to Browse • Click to Enter'}
          </p>
