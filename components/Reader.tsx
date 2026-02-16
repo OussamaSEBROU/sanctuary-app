@@ -11,7 +11,7 @@ import {
   ListOrdered, Star, Volume2, CloudLightning, Waves, 
   Moon, Bird, Flame, VolumeX, Sparkles, Search, Droplets, PartyPopper,
   Minimize2, Edit3, Award, Layers, LogOut, Sun, Clock, Loader2, Zap, Rocket, Trophy,
-  Palette, FileText, Check
+  Palette, FileText, Check, Settings2
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -461,7 +461,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                     style={{ left: `${anno.x}%`, top: `${anno.y}%`, width: anno.width ? `${anno.width}%` : '0%', height: anno.height ? `${anno.height}%` : '0%', 
                       backgroundColor: anno.type === 'highlight' ? `${anno.color}66` : 'transparent', borderBottom: anno.type === 'underline' ? `3px solid ${anno.color}` : 'none', border: anno.type === 'box' ? `2px solid ${anno.color}` : 'none' }}
                   >
-                    {anno.type === 'note' && <div className="w-6 h-6 md:w-8 md:h-8 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-2xl border-2 border-white transition-transform hover:scale-125" style={{ backgroundColor: anno.color }}><MessageSquare size={10} className="md:size-4 text-white m-auto" /></div>}
+                    {anno.type === 'note' && <div className="w-6 h-6 md:w-8 md:h-8 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-2xl border-2 border-white transition-transform hover:scale-125 flex items-center justify-center" style={{ backgroundColor: anno.color }}><MessageSquare size={10} className="md:size-4 text-white" /></div>}
                   </div>
                 ))}
                 {currentRect && (
@@ -497,14 +497,14 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </AnimatePresence>
 
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1100] flex flex-col items-center gap-2 w-[90vw] max-w-[420px] pointer-events-none">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1100] flex flex-col items-center gap-2 w-full max-w-[420px] px-6 pointer-events-none">
         <AnimatePresence>
           {showControls && (
             <MotionDiv initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }} 
               className={`w-full flex items-center justify-between bg-black/85 backdrop-blur-3xl border border-white/10 px-4 py-1.5 rounded-full shadow-3xl pointer-events-auto ${isZenMode ? 'hidden' : ''}`}
             >
               <div className="flex items-center gap-2">
-                <button onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)} className={`w-8 h-8 flex items-center justify-center rounded-full ${isToolsMenuOpen ? 'bg-white text-black' : 'bg-white/5 text-[#ff0000]'}`}><ActiveToolIcon size={16} /></button>
+                <button onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)} className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${isToolsMenuOpen ? 'bg-white text-black' : 'bg-white/5 text-[#ff0000]'}`}><ActiveToolIcon size={16} /></button>
                 <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-full border border-white/5">
                    {[...Array(5)].map((_, i) => (
                      <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < book.stars ? 'bg-[#ff0000]' : 'bg-white/10'}`} />
@@ -524,81 +524,92 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         </AnimatePresence>
       </div>
 
+      {/* Floating Tools Dock */}
       <AnimatePresence>
         {isToolsMenuOpen && !isZenMode && (
           <MotionDiv initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }}
-            className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-black/90 backdrop-blur-3xl border border-white/10 p-4 rounded-[2rem] flex items-center gap-2 z-[1200] shadow-4xl"
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-2xl border border-white/10 p-2.5 rounded-[2.5rem] flex items-center gap-1.5 z-[1200] shadow-4xl max-w-[90vw]"
           >
-            {(Object.keys(TOOL_ICONS) as Tool[]).map(tool => {
-              const Icon = TOOL_ICONS[tool];
-              return (
-                <button key={tool} onClick={() => setActiveTool(tool)} className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${activeTool === tool ? 'bg-[#ff0000] text-white shadow-lg' : 'text-white/30 hover:bg-white/10'}`}><Icon size={18} /></button>
-              );
-            })}
-            <div className="w-[1px] h-6 bg-white/10 mx-2" />
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-[150px]">
+            <div className="flex items-center gap-1">
+              {(Object.keys(TOOL_ICONS) as Tool[]).map(tool => {
+                const Icon = TOOL_ICONS[tool];
+                return (
+                  <button key={tool} onClick={() => setActiveTool(tool)} className={`w-9 h-9 flex items-center justify-center rounded-full transition-all ${activeTool === tool ? 'bg-[#ff0000] text-white shadow-lg' : 'text-white/40 hover:bg-white/10'}`}><Icon size={16} /></button>
+                );
+              })}
+            </div>
+            <div className="w-[1px] h-5 bg-white/10 mx-1.5" />
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-[120px] md:max-w-none">
               {COLORS.map(c => (
-                <button key={c.hex} onClick={() => setActiveColor(c.hex)} className={`w-6 h-6 rounded-full shrink-0 border-2 transition-all ${activeColor === c.hex ? 'border-white scale-110' : 'border-transparent'}`} style={{ backgroundColor: c.hex }} />
+                <button key={c.hex} onClick={() => setActiveColor(c.hex)} className={`w-6 h-6 rounded-full shrink-0 border-2 transition-all ${activeColor === c.hex ? 'border-white scale-110 shadow-lg' : 'border-transparent opacity-80'}`} style={{ backgroundColor: c.hex }} />
               ))}
             </div>
           </MotionDiv>
         )}
       </AnimatePresence>
 
+      {/* Professional Modification Details Modal */}
       <AnimatePresence>
         {editingAnnoId && currentEditingAnno && (
-          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3000] bg-black/40 backdrop-blur-[100px] flex items-center justify-center p-6">
-            <MotionDiv initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/10 p-8 md:p-12 rounded-[3rem] w-full max-w-xl shadow-5xl overflow-hidden relative">
-              <button onClick={() => setEditingAnnoId(null)} className="absolute top-8 right-8 p-2 rounded-full bg-white/5 text-white/40 hover:text-white transition-all"><X size={24} /></button>
-              
-              <div className="flex items-center gap-4 mb-10">
-                <div className="p-4 rounded-2xl bg-white/5" style={{ color: currentEditingAnno.color }}>
-                  {currentEditingAnno.type === 'highlight' && <Highlighter size={28} />}
-                  {currentEditingAnno.type === 'underline' && <PenTool size={28} />}
-                  {currentEditingAnno.type === 'box' && <Square size={28} />}
-                  {currentEditingAnno.type === 'note' && <MessageSquare size={28} />}
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black italic uppercase tracking-tighter">{isRTL ? 'تفاصيل التعديل' : 'Modification Details'}</h3>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-white/30">{t.page} {currentEditingAnno.pageIndex + 1}</p>
-                </div>
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[4000] bg-black/60 backdrop-blur-xl flex items-center justify-center p-6">
+            <MotionDiv initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} 
+              className="bg-[#0b140b]/90 border border-white/10 p-6 md:p-10 rounded-[2.5rem] w-full max-w-lg shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden relative flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-8">
+                 <div className="flex items-center gap-4">
+                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10" style={{ color: currentEditingAnno.color }}>
+                      {currentEditingAnno.type === 'highlight' && <Highlighter size={22} />}
+                      {currentEditingAnno.type === 'underline' && <PenTool size={22} />}
+                      {currentEditingAnno.type === 'box' && <Square size={22} />}
+                      {currentEditingAnno.type === 'note' && <MessageSquare size={22} />}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">{isRTL ? 'تفاصيل التعديل' : 'Modification Details'}</h3>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-white/30">{t.page} {currentEditingAnno.pageIndex + 1}</p>
+                    </div>
+                 </div>
+                 <button onClick={() => setEditingAnnoId(null)} className="p-2.5 rounded-full bg-white/5 text-white/30 hover:text-white transition-all"><X size={20} /></button>
               </div>
 
-              <div className="space-y-8">
-                <div>
-                  <label className="text-[9px] font-black uppercase tracking-widest opacity-30 mb-3 block">{isRTL ? 'عنوان التعديل' : 'Modification Title'}</label>
+              <div className="space-y-6 flex-1 overflow-y-auto custom-scroll pr-2">
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'عنوان التعديل' : 'Modification Title'}</label>
                   <input type="text" value={currentEditingAnno.title || ''} onChange={(e) => updateEditingAnnotation({ title: e.target.value })} 
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm font-bold text-white outline-none focus:border-[#ff0000]/50" 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold text-white outline-none focus:border-[#ff0000]/50 placeholder:text-white/10" 
                     placeholder={isRTL ? 'مثال: ملاحظة مهمة حول المنطق...' : 'Example: Important note on logic...'} />
                 </div>
 
-                <div>
-                  <label className="text-[9px] font-black uppercase tracking-widest opacity-30 mb-3 block">{isRTL ? 'ملاحظات وتفاصيل' : 'Description / Notes'}</label>
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'ملاحظات وتفاصيل' : 'Description / Notes'}</label>
                   <textarea value={currentEditingAnno.text || ''} onChange={(e) => updateEditingAnnotation({ text: e.target.value })} 
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm font-bold text-white outline-none focus:border-[#ff0000]/50 min-h-[150px] resize-none" 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold text-white outline-none focus:border-[#ff0000]/50 min-h-[120px] resize-none placeholder:text-white/10" 
                     placeholder={isRTL ? 'اكتب ملاحظاتك العميقة هنا...' : 'Write your deep reflections here...'} />
                 </div>
 
-                <div>
-                  <label className="text-[9px] font-black uppercase tracking-widest opacity-30 mb-3 block">{isRTL ? 'تخصيص اللون' : 'Color Palette'}</label>
-                  <div className="flex flex-wrap gap-3">
+                <div className="space-y-3">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'تخصيص اللون' : 'Color Palette'}</label>
+                  <div className="flex flex-wrap gap-2.5">
                     {COLORS.map(c => (
                       <button key={c.hex} onClick={() => updateEditingAnnotation({ color: c.hex })} 
-                        className={`w-10 h-10 rounded-full border-4 transition-all ${currentEditingAnno.color === c.hex ? 'border-white scale-110 shadow-lg' : 'border-transparent'}`} 
-                        style={{ backgroundColor: c.hex }} />
+                        className={`w-9 h-9 rounded-full border-2 transition-all flex items-center justify-center ${currentEditingAnno.color === c.hex ? 'border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'border-transparent opacity-80'}`} 
+                        style={{ backgroundColor: c.hex }}
+                      >
+                         {currentEditingAnno.color === c.hex && <Check size={14} className="text-white drop-shadow-lg" />}
+                      </button>
                     ))}
                   </div>
                 </div>
+              </div>
 
-                <div className="flex gap-4 pt-4">
-                  <button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} 
-                    className="flex-1 bg-red-600/10 border border-red-600/20 text-red-600 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-3">
-                    <Trash2 size={16} /> {isRTL ? 'حذف التعديل' : 'Remove Entry'}
-                  </button>
-                  <button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-[#ff0000] hover:text-white transition-all shadow-xl">
-                    {isRTL ? 'حفظ الحكمة' : 'Store Wisdom'}
-                  </button>
-                </div>
+              <div className="flex gap-4 mt-10 pt-4 border-t border-white/5">
+                <button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} 
+                  className="w-14 h-14 bg-red-600/10 border border-red-600/20 text-red-600 rounded-2xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-xl shadow-red-600/5">
+                  <Trash2 size={18} />
+                </button>
+                <button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-[#ff0000] hover:text-white transition-all shadow-2xl flex items-center justify-center gap-3">
+                  <Check size={14} />
+                  {isRTL ? 'حفظ الحكمة' : 'Store Wisdom'}
+                </button>
               </div>
             </MotionDiv>
           </MotionDiv>
