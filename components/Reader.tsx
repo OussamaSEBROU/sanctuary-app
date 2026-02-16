@@ -37,10 +37,12 @@ const COLORS = [
 
 const SOUNDS = [
   { id: 'none', icon: VolumeX, url: '' },
-  { id: 'rain', icon: CloudLightning, url: 'https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3' },
-  { id: 'sea', icon: Waves, url: 'https://assets.mixkit.co/active_storage/sfx/1187/1187-preview.mp3' },
-  { id: 'birds', icon: Bird, url: 'https://assets.mixkit.co/active_storage/sfx/2437/2437-preview.mp3' },
-  { id: 'fire', icon: Flame, url: 'https://assets.mixkit.co/active_storage/sfx/2436/2436-preview.mp3' }
+  { id: 'rain', icon: CloudLightning, url: '/assets/sounds/rain.mp3' },
+  { id: 'sea', icon: Waves, url: '/assets/sounds/sea.mp3' },
+  { id: 'river', icon: Droplets, url: '/assets/sounds/river.mp3' },
+  { id: 'night', icon: Moon, url: '/assets/sounds/night.mp3' },
+  { id: 'birds', icon: Bird, url: '/assets/sounds/birds.mp3' },
+  { id: 'fire', icon: Flame, url: '/assets/sounds/fire.mp3' }
 ];
 
 const TOOL_ICONS = {
@@ -263,7 +265,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     >
       <audio ref={audioRef} loop hidden />
 
-      {/* Quantum Transition Overlay */}
       <AnimatePresence>
         {(isLoading || isJumping) && (
           <MotionDiv key="transition-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[5000] bg-black/60 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center pointer-events-none">
@@ -293,7 +294,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       </AnimatePresence>
 
       <main className="flex-1 flex items-center justify-center bg-black relative overflow-hidden" ref={containerRef}>
-        {/* Adobe Reader Style Sidebar */}
         <AnimatePresence>
           {isThumbnailsOpen && (
             <MotionDiv initial={{ x: -100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -100, opacity: 0 }} className="fixed left-0 top-0 bottom-0 w-24 md:w-32 bg-black/80 backdrop-blur-2xl z-[1500] border-r border-white/5 flex flex-col pt-24 pb-8 overflow-y-auto no-scrollbar scroll-smooth">
@@ -343,57 +343,58 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </main>
 
-      {/* FIXED ZEN NAVIGATION UI */}
+      {/* FOOTER ZEN CONTROLS */}
       <div className="fixed bottom-6 left-0 right-0 z-[2000] pointer-events-none px-6 flex flex-col items-center gap-4">
         <AnimatePresence>
           {showControls && (
             <MotionDiv initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="flex flex-col items-center gap-4 pointer-events-auto">
               
-              {/* Reading Time - Red Subtle */}
+              {/* MODIFICATIONS BAR - HORIZONTAL & SMALL & FUNCTIONAL */}
+              <AnimatePresence>
+                {isToolsOpen && (
+                  <MotionDiv initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="bg-black/80 backdrop-blur-3xl border border-white/10 px-4 py-2 rounded-full shadow-4xl flex items-center gap-3 mb-2">
+                    {(Object.keys(TOOL_ICONS) as Tool[]).map(tool => {
+                      const Icon = TOOL_ICONS[tool];
+                      const isActive = activeTool === tool;
+                      return (
+                        <div key={tool} className="relative flex items-center">
+                          <button onClick={() => setActiveTool(tool)} className={`w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300 ${isActive ? 'bg-red-600 text-white shadow-xl scale-110' : 'text-white/30 hover:bg-white/5'}`}><Icon size={14}/></button>
+                          {isActive && tool !== 'view' && (
+                            <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/95 p-1.5 rounded-full border border-white/10 shadow-2xl">
+                              {COLORS.map(c => (
+                                <button key={c.hex} onClick={() => setActiveColor(c.hex)} className={`w-3.5 h-3.5 rounded-full border transition-all ${activeColor === c.hex ? 'border-white scale-125 shadow-[0_0_8px_white]' : 'border-transparent opacity-60 hover:opacity-100'}`} style={{ backgroundColor: c.hex }} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </MotionDiv>
+                )}
+              </AnimatePresence>
+
+              {/* Reading Time - Minutes only */}
               <div className="bg-red-600/10 border border-red-600/30 px-5 py-1.5 rounded-full backdrop-blur-xl flex items-center gap-2 shadow-2xl">
                  <Clock size={12} className="text-red-600 animate-pulse" />
-                 <span className="text-[10px] md:text-xs font-black text-red-600 tracking-widest">{Math.floor(sessionSeconds/60)}m {sessionSeconds%60}s</span>
+                 <span className="text-[10px] md:text-xs font-black text-red-600 tracking-widest">{Math.floor(sessionSeconds/60)}m</span>
               </div>
 
-              {/* Central Control Hub */}
+              {/* Central Navigation Hub */}
               <div className="bg-black/60 backdrop-blur-3xl border border-white/10 rounded-full p-2 flex items-center gap-2 shadow-4xl">
-                 <button onClick={() => setIsThumbnailsOpen(!isThumbnailsOpen)} className={`w-9 h-9 flex items-center justify-center rounded-full transition-all ${isThumbnailsOpen ? 'bg-white text-black' : 'text-white/40 hover:bg-white/5'}`}><LayoutGrid size={16}/></button>
+                 <button onClick={() => setIsThumbnailsOpen(!isThumbnailsOpen)} className={`w-9 h-9 flex items-center justify-center rounded-full transition-all ${isThumbnailsOpen ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:bg-white/5'}`}><LayoutGrid size={16}/></button>
                  <div className="flex items-center gap-1 bg-white/5 rounded-full px-4 py-1.5 border border-white/5">
-                   <button onClick={() => handlePageChange(currentPage-1)} className="text-white/30 hover:text-white"><ChevronLeft size={16}/></button>
-                   <span className="text-[10px] font-black text-white px-2">{currentPage+1}/{totalPages}</span>
-                   <button onClick={() => handlePageChange(currentPage+1)} className="text-white/30 hover:text-white"><ChevronRight size={16}/></button>
+                   <button onClick={() => handlePageChange(currentPage-1)} className="text-white/30 hover:text-white transition-colors"><ChevronLeft size={16}/></button>
+                   <span className="text-[10px] font-black text-white px-2 min-w-[40px] text-center">{currentPage+1}/{totalPages}</span>
+                   <button onClick={() => handlePageChange(currentPage+1)} className="text-white/30 hover:text-white transition-colors"><ChevronRight size={16}/></button>
                  </div>
-                 <button onClick={() => setIsGoToPageOpen(true)} className="w-9 h-9 flex items-center justify-center rounded-full text-white/40 hover:bg-white/5"><Search size={16}/></button>
+                 <button onClick={() => setIsGoToPageOpen(true)} className="w-9 h-9 flex items-center justify-center rounded-full text-white/40 hover:bg-white/5 transition-colors"><Search size={16}/></button>
               </div>
             </MotionDiv>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Annotation Edit & Tools Popups */}
-      <AnimatePresence>
-        {isToolsOpen && showControls && (
-          <MotionDiv initial={{ x: 100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 100, opacity: 0 }} className="fixed right-6 bottom-32 z-[3000] pointer-events-auto bg-black/80 backdrop-blur-3xl border border-white/10 p-3 rounded-[2.5rem] shadow-4xl flex flex-col gap-3">
-             {(Object.keys(TOOL_ICONS) as Tool[]).map(tool => {
-                const Icon = TOOL_ICONS[tool];
-                const isActive = activeTool === tool;
-                return (
-                  <div key={tool} className="relative group/tool">
-                    <button onClick={() => setActiveTool(tool)} className={`w-11 h-11 flex items-center justify-center rounded-2xl transition-all duration-300 ${isActive ? 'bg-red-600 text-white shadow-xl scale-110' : 'text-white/30 hover:bg-white/5'}`}><Icon size={18}/></button>
-                    {isActive && tool !== 'view' && (
-                      <MotionDiv initial={{ x: 10, opacity: 0 }} animate={{ x: -70, opacity: 1 }} className="absolute top-0 left-0 flex items-center gap-2 bg-black/90 p-2 rounded-full border border-white/10">
-                        {COLORS.map(c => (
-                          <button key={c.hex} onClick={() => setActiveColor(c.hex)} className={`w-4 h-4 rounded-full border transition-all ${activeColor === c.hex ? 'border-white scale-125' : 'border-transparent opacity-60'}`} style={{ backgroundColor: c.hex }} />
-                        ))}
-                      </MotionDiv>
-                    )}
-                  </div>
-                );
-             })}
-          </MotionDiv>
-        )}
-      </AnimatePresence>
-
+      {/* Popups */}
       <AnimatePresence>
         {isGoToPageOpen && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-6 pointer-events-auto">
@@ -406,9 +407,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             </MotionDiv>
           </MotionDiv>
         )}
-      </AnimatePresence>
 
-      <AnimatePresence>
         {isSoundPickerOpen && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 pointer-events-auto">
             <div className="bg-[#0b140b] border border-white/10 p-6 md:p-8 rounded-[2.5rem] w-full max-w-xs shadow-3xl">
@@ -424,10 +423,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             </div>
           </MotionDiv>
         )}
-      </AnimatePresence>
-      
-      {/* Archive View */}
-      <AnimatePresence>
+
         {isArchiveOpen && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/40 backdrop-blur-[40px] p-6 flex items-center justify-center pointer-events-auto">
              <MotionDiv initial={{ y: 50 }} animate={{ y: 0 }} className="w-full max-w-xl bg-[#0b140b] border border-white/10 rounded-[2.5rem] p-6 max-h-[70vh] overflow-hidden flex flex-col shadow-4xl">
@@ -453,10 +449,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
              </MotionDiv>
           </MotionDiv>
         )}
-      </AnimatePresence>
 
-      {/* Annotation Edit Detail View */}
-      <AnimatePresence>
         {editingAnnoId && currentEditingAnno && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[4000] bg-black/60 backdrop-blur-xl flex items-center justify-center p-6 pointer-events-auto">
             <MotionDiv initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-black/40 backdrop-blur-2xl border border-white/10 p-5 rounded-[2rem] w-full max-w-[300px] shadow-5xl flex flex-col">
