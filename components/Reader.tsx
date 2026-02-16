@@ -10,7 +10,8 @@ import {
   PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
   ListOrdered, Star, Volume2, CloudLightning, Waves, 
   Moon, Bird, Flame, VolumeX, Sparkles, Search, Droplets, PartyPopper,
-  Minimize2, Edit3, Award, Layers, LogOut, Sun, Clock, Loader2, Zap, Rocket, Trophy
+  Minimize2, Edit3, Award, Layers, LogOut, Sun, Clock, Loader2, Zap, Rocket, Trophy,
+  Palette, FileText, Check
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -361,6 +362,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     setIsDrawing(false); setCurrentRect(null);
   };
 
+  const updateEditingAnnotation = (updates: Partial<Annotation>) => {
+    if (!editingAnnoId) return;
+    setAnnotations(prev => prev.map(a => a.id === editingAnnoId ? { ...a, ...updates } : a));
+  };
+
   const handleDragEnd = (_event: any, info: any) => {
     if (activeTool !== 'view' || isPinching) return;
     if (zoomScale > 1.05) return;
@@ -377,6 +383,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const sessionMinutes = Math.floor(sessionSeconds / 60);
   const ActiveToolIcon = TOOL_ICONS[activeTool];
   const dragConstraints = zoomScale > 1.05 ? undefined : { left: 0, right: 0, top: 0, bottom: 0 };
+  const currentEditingAnno = annotations.find(a => a.id === editingAnnoId);
 
   return (
     <div 
@@ -450,70 +457,41 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none select-none transition-all duration-500" style={{ filter: isNightMode ? 'invert(1) hue-rotate(180deg)' : 'none' }} alt="Page" />
               <div className="absolute inset-0 pointer-events-none">
                 {annotations.filter(a => a.pageIndex === currentPage).map(anno => (
-                  <div key={anno.id} className="absolute pointer-events-auto cursor-help" onClick={() => setEditingAnnoId(anno.id)}
+                  <div key={anno.id} className="absolute pointer-events-auto cursor-pointer" onClick={() => setEditingAnnoId(anno.id)}
                     style={{ left: `${anno.x}%`, top: `${anno.y}%`, width: anno.width ? `${anno.width}%` : '0%', height: anno.height ? `${anno.height}%` : '0%', 
-                      backgroundColor: anno.type === 'highlight' ? `${anno.color}66` : 'transparent', borderBottom: anno.type === 'underline' ? `2px solid ${anno.color}` : 'none', border: anno.type === 'box' ? `2px solid ${anno.color}` : 'none' }}
+                      backgroundColor: anno.type === 'highlight' ? `${anno.color}66` : 'transparent', borderBottom: anno.type === 'underline' ? `3px solid ${anno.color}` : 'none', border: anno.type === 'box' ? `2px solid ${anno.color}` : 'none' }}
                   >
-                    {anno.type === 'note' && <div className="w-6 h-6 md:w-8 md:h-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff0000] text-white flex items-center justify-center shadow-2xl border-2 border-white"><MessageSquare size={10} className="md:size-4" /></div>}
+                    {anno.type === 'note' && <div className="w-6 h-6 md:w-8 md:h-8 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-2xl border-2 border-white transition-transform hover:scale-125" style={{ backgroundColor: anno.color }}><MessageSquare size={10} className="md:size-4 text-white m-auto" /></div>}
                   </div>
                 ))}
+                {currentRect && (
+                  <div className="absolute border-2 border-dashed pointer-events-none" 
+                    style={{ left: `${currentRect.x}%`, top: `${currentRect.y}%`, width: `${currentRect.w}%`, height: `${activeTool === 'underline' ? 0.8 : currentRect.h}%`, borderColor: activeColor, backgroundColor: activeTool === 'highlight' ? `${activeColor}33` : 'transparent' }} 
+                  />
+                )}
               </div>
             </MotionDiv>
           </div>
         )}
       </main>
 
-      {/* ZEN MODE TOP BAR - Requested Horizontal Layout */}
       <AnimatePresence>
         {isZenMode && (
           <MotionDiv initial={{ y: -50, opacity: 0 }} animate={{ y: showControls ? 0 : -100, opacity: 1 }}
             className="fixed top-0 left-0 right-0 z-[6000] pointer-events-auto flex justify-center p-4 md:p-6"
           >
             <div className="flex items-center gap-2 md:gap-4 bg-black/40 backdrop-blur-2xl px-4 md:px-8 py-2 md:py-3.5 rounded-full border border-white/10 shadow-4xl">
-              {/* Reading Timer */}
               <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/5 mr-2">
                 <Clock size={14} className="text-[#ff0000] animate-pulse" />
                 <span className="text-[10px] md:text-xs font-black text-white/80">{sessionMinutes}m</span>
               </div>
-
               <div className="w-[1px] h-6 bg-white/10 mx-1 hidden md:block" />
-
-              {/* Wisdom Index (Edit/Adjustment icon) */}
-              <button onClick={() => setIsArchiveOpen(true)}
-                className="w-10 h-10 flex items-center justify-center rounded-full text-white/40 hover:bg-white/10 hover:text-white transition-all active:scale-90"
-              >
-                <Layers size={18} />
-              </button>
-
-              {/* Modification Toggle (Edit Tool) */}
-              <button onClick={() => setActiveTool(activeTool === 'view' ? 'highlight' : 'view')}
-                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeTool !== 'view' ? 'bg-[#ff0000] text-white' : 'text-white/40 hover:bg-white/10'}`}
-              >
-                <Highlighter size={18} />
-              </button>
-              
-              {/* Night Mode Toggle */}
-              <button onClick={() => setIsNightMode(!isNightMode)}
-                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${isNightMode ? 'bg-[#ff0000] text-white' : 'text-white/40 hover:bg-white/10'}`}
-              >
-                {isNightMode ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-
-              {/* Soundscape Picker */}
-              <button onClick={() => setIsSoundPickerOpen(true)}
-                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeSoundId !== 'none' ? 'bg-[#ff0000] text-white' : 'text-white/40 hover:bg-white/10'}`}
-              >
-                <Volume2 size={18} />
-              </button>
-
+              <button onClick={() => setIsArchiveOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-full text-white/40 hover:bg-white/10 hover:text-white transition-all active:scale-90"><Layers size={18} /></button>
+              <button onClick={() => setActiveTool(activeTool === 'view' ? 'highlight' : 'view')} className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeTool !== 'view' ? 'bg-[#ff0000] text-white' : 'text-white/40 hover:bg-white/10'}`}><Highlighter size={18} /></button>
+              <button onClick={() => setIsNightMode(!isNightMode)} className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${isNightMode ? 'bg-[#ff0000] text-white' : 'text-white/40 hover:bg-white/10'}`}>{isNightMode ? <Sun size={18} /> : <Moon size={18} />}</button>
+              <button onClick={() => setIsSoundPickerOpen(true)} className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeSoundId !== 'none' ? 'bg-[#ff0000] text-white' : 'text-white/40 hover:bg-white/10'}`}><Volume2 size={18} /></button>
               <div className="w-[1px] h-6 bg-white/10 mx-1" />
-
-              {/* Exit Button */}
-              <button onClick={toggleZenMode} 
-                className="w-10 h-10 flex items-center justify-center rounded-full bg-[#ff0000] text-white shadow-lg active:scale-90 hover:brightness-110"
-              >
-                <Minimize2 size={18} />
-              </button>
+              <button onClick={toggleZenMode} className="w-10 h-10 flex items-center justify-center rounded-full bg-[#ff0000] text-white shadow-lg active:scale-90 hover:brightness-110"><Minimize2 size={18} /></button>
             </div>
           </MotionDiv>
         )}
@@ -547,13 +525,129 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       </div>
 
       <AnimatePresence>
+        {isToolsMenuOpen && !isZenMode && (
+          <MotionDiv initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }}
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-black/90 backdrop-blur-3xl border border-white/10 p-4 rounded-[2rem] flex items-center gap-2 z-[1200] shadow-4xl"
+          >
+            {(Object.keys(TOOL_ICONS) as Tool[]).map(tool => {
+              const Icon = TOOL_ICONS[tool];
+              return (
+                <button key={tool} onClick={() => setActiveTool(tool)} className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${activeTool === tool ? 'bg-[#ff0000] text-white shadow-lg' : 'text-white/30 hover:bg-white/10'}`}><Icon size={18} /></button>
+              );
+            })}
+            <div className="w-[1px] h-6 bg-white/10 mx-2" />
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-[150px]">
+              {COLORS.map(c => (
+                <button key={c.hex} onClick={() => setActiveColor(c.hex)} className={`w-6 h-6 rounded-full shrink-0 border-2 transition-all ${activeColor === c.hex ? 'border-white scale-110' : 'border-transparent'}`} style={{ backgroundColor: c.hex }} />
+              ))}
+            </div>
+          </MotionDiv>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingAnnoId && currentEditingAnno && (
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3000] bg-black/40 backdrop-blur-[100px] flex items-center justify-center p-6">
+            <MotionDiv initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/10 p-8 md:p-12 rounded-[3rem] w-full max-w-xl shadow-5xl overflow-hidden relative">
+              <button onClick={() => setEditingAnnoId(null)} className="absolute top-8 right-8 p-2 rounded-full bg-white/5 text-white/40 hover:text-white transition-all"><X size={24} /></button>
+              
+              <div className="flex items-center gap-4 mb-10">
+                <div className="p-4 rounded-2xl bg-white/5" style={{ color: currentEditingAnno.color }}>
+                  {currentEditingAnno.type === 'highlight' && <Highlighter size={28} />}
+                  {currentEditingAnno.type === 'underline' && <PenTool size={28} />}
+                  {currentEditingAnno.type === 'box' && <Square size={28} />}
+                  {currentEditingAnno.type === 'note' && <MessageSquare size={28} />}
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black italic uppercase tracking-tighter">{isRTL ? 'تفاصيل التعديل' : 'Modification Details'}</h3>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-white/30">{t.page} {currentEditingAnno.pageIndex + 1}</p>
+                </div>
+              </div>
+
+              <div className="space-y-8">
+                <div>
+                  <label className="text-[9px] font-black uppercase tracking-widest opacity-30 mb-3 block">{isRTL ? 'عنوان التعديل' : 'Modification Title'}</label>
+                  <input type="text" value={currentEditingAnno.title || ''} onChange={(e) => updateEditingAnnotation({ title: e.target.value })} 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm font-bold text-white outline-none focus:border-[#ff0000]/50" 
+                    placeholder={isRTL ? 'مثال: ملاحظة مهمة حول المنطق...' : 'Example: Important note on logic...'} />
+                </div>
+
+                <div>
+                  <label className="text-[9px] font-black uppercase tracking-widest opacity-30 mb-3 block">{isRTL ? 'ملاحظات وتفاصيل' : 'Description / Notes'}</label>
+                  <textarea value={currentEditingAnno.text || ''} onChange={(e) => updateEditingAnnotation({ text: e.target.value })} 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm font-bold text-white outline-none focus:border-[#ff0000]/50 min-h-[150px] resize-none" 
+                    placeholder={isRTL ? 'اكتب ملاحظاتك العميقة هنا...' : 'Write your deep reflections here...'} />
+                </div>
+
+                <div>
+                  <label className="text-[9px] font-black uppercase tracking-widest opacity-30 mb-3 block">{isRTL ? 'تخصيص اللون' : 'Color Palette'}</label>
+                  <div className="flex flex-wrap gap-3">
+                    {COLORS.map(c => (
+                      <button key={c.hex} onClick={() => updateEditingAnnotation({ color: c.hex })} 
+                        className={`w-10 h-10 rounded-full border-4 transition-all ${currentEditingAnno.color === c.hex ? 'border-white scale-110 shadow-lg' : 'border-transparent'}`} 
+                        style={{ backgroundColor: c.hex }} />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} 
+                    className="flex-1 bg-red-600/10 border border-red-600/20 text-red-600 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-3">
+                    <Trash2 size={16} /> {isRTL ? 'حذف التعديل' : 'Remove Entry'}
+                  </button>
+                  <button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-[#ff0000] hover:text-white transition-all shadow-xl">
+                    {isRTL ? 'حفظ الحكمة' : 'Store Wisdom'}
+                  </button>
+                </div>
+              </div>
+            </MotionDiv>
+          </MotionDiv>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isArchiveOpen && (
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/40 backdrop-blur-[60px] p-6 flex items-center justify-center">
+             <MotionDiv initial={{ y: 50 }} animate={{ y: 0 }} className="w-full max-w-2xl bg-[#0b140b] border border-white/10 rounded-[3rem] p-8 max-h-[80vh] overflow-hidden flex flex-col shadow-4xl">
+                <div className="flex justify-between items-center mb-8 bg-white/[0.02] p-4 rounded-2xl shrink-0">
+                  <h2 className="text-2xl font-black italic uppercase tracking-tighter">{t.wisdomIndex}</h2>
+                  <button onClick={() => setIsArchiveOpen(false)} className="hover:text-[#ff0000] transition-colors p-2 bg-white/5 rounded-full"><X size={20}/></button>
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scroll space-y-4 pr-2">
+                  {annotations.length === 0 ? <p className="text-center opacity-20 py-20 uppercase font-black tracking-widest">{t.noAnnotations}</p> : 
+                    [...annotations].sort((a,b) => a.pageIndex - b.pageIndex).map(anno => (
+                    <div key={anno.id} className="p-6 bg-white/[0.03] rounded-2xl border border-white/5 hover:border-[#ff0000]/30 hover:bg-white/[0.06] transition-all group flex items-start justify-between gap-4">
+                      <div className="cursor-pointer flex-1" onClick={() => { handlePageChange(anno.pageIndex); setIsArchiveOpen(false); }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: anno.color }} />
+                          <span className="text-[10px] font-black text-[#ff0000] uppercase tracking-widest">{t.page} {anno.pageIndex + 1}</span>
+                          <span className="text-[8px] font-bold opacity-20 uppercase">{anno.type}</span>
+                        </div>
+                        <h4 className="text-sm font-black text-white/90 mb-1">{anno.title || (isRTL ? 'تعديل بدون عنوان' : 'Untitled Modification')}</h4>
+                        <p className="text-white/40 text-xs italic line-clamp-2 leading-relaxed">{anno.text || '...'}</p>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <button onClick={() => { setEditingAnnoId(anno.id); setIsArchiveOpen(false); }} className="p-2.5 text-white/20 hover:text-white transition-all rounded-lg bg-white/5 hover:bg-[#ff0000]/20">
+                          <Edit3 size={16} />
+                        </button>
+                        <button onClick={() => setAnnotations(annotations.filter(a => a.id !== anno.id))} className="p-2.5 text-white/10 hover:text-red-600 transition-all rounded-lg hover:bg-white/5">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+             </MotionDiv>
+          </MotionDiv>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showStarAchievement && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center p-10 text-center pointer-events-auto"
           >
-            <MotionDiv initial={{ scale: 0.5, rotate: -20, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ type: 'spring', damping: 12 }}
-              className="relative mb-12"
-            >
+            <MotionDiv initial={{ scale: 0.5, rotate: -20, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ type: 'spring', damping: 12 }} className="relative mb-12">
                <div className="absolute inset-0 bg-[#ff0000]/20 blur-[100px] animate-pulse rounded-full" />
                <Trophy size={window.innerWidth < 768 ? 120 : 200} className="text-[#ff0000] drop-shadow-[0_0_50px_rgba(255,0,0,0.8)] relative z-10" />
             </MotionDiv>
@@ -592,29 +686,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       </AnimatePresence>
 
       <AnimatePresence>
-        {isArchiveOpen && (
-          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/40 backdrop-blur-[60px] p-6 flex items-center justify-center">
-             <MotionDiv initial={{ y: 50 }} animate={{ y: 0 }} className="w-full max-w-2xl bg-[#0b140b] border border-white/10 rounded-[3rem] p-8 max-h-[80vh] overflow-hidden flex flex-col shadow-4xl">
-                <div className="flex justify-between items-center mb-8 bg-white/[0.02] p-4 rounded-2xl shrink-0">
-                  <h2 className="text-2xl font-black italic uppercase tracking-tighter">{t.wisdomIndex}</h2>
-                  <button onClick={() => setIsArchiveOpen(false)} className="hover:text-[#ff0000] transition-colors p-2 bg-white/5 rounded-full"><X size={20}/></button>
-                </div>
-                <div className="flex-1 overflow-y-auto custom-scroll space-y-4">
-                  {annotations.length === 0 ? <p className="text-center opacity-20 py-20 uppercase font-black tracking-widest">{t.noAnnotations}</p> : annotations.map(anno => (
-                    <div key={anno.id} className="p-6 bg-white/[0.03] rounded-2xl border border-white/5 hover:border-[#ff0000]/30 hover:bg-white/[0.06] transition-all group flex items-start justify-between gap-4">
-                      <div className="cursor-pointer flex-1" onClick={() => { handlePageChange(anno.pageIndex); setIsArchiveOpen(false); }}>
-                        <span className="text-[10px] font-black text-[#ff0000] uppercase tracking-widest">{t.page} {anno.pageIndex + 1}</span>
-                        <p className="text-white/60 italic mt-2 line-clamp-3 group-hover:text-white transition-colors">"{anno.text || '...'}"</p>
-                      </div>
-                      <button onClick={() => setAnnotations(annotations.filter(a => a.id !== anno.id))} className="p-2 text-white/10 hover:text-red-600 transition-all rounded-lg hover:bg-white/5">
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-             </MotionDiv>
-          </MotionDiv>
-        )}
         {isSoundPickerOpen && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4">
             <div className="bg-[#0b140b] border border-white/10 p-8 rounded-[3rem] w-full max-w-md shadow-3xl">
