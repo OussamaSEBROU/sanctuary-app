@@ -22,12 +22,17 @@ import {
   BookOpen, 
   Globe, 
   LayoutDashboard,
-  Clock
+  Clock,
+  Star
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 declare const pdfjsLib: any;
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// Using any to bypass motion property type errors
+const MotionDiv = motion.div as any;
+const MotionAside = motion.aside as any;
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>(ViewState.SHELF);
@@ -59,6 +64,17 @@ const App: React.FC = () => {
   const t = translations[lang];
   const filteredBooks = books.filter(b => b.shelfId === activeShelfId);
   const fontClass = lang === 'ar' ? 'font-ar' : 'font-en';
+
+  // Calculate current shelf stats
+  const shelfStats = useMemo(() => {
+    const shelfBooks = books.filter(b => b.shelfId === activeShelfId);
+    const totalSeconds = shelfBooks.reduce((acc, b) => acc + b.timeSpentSeconds, 0);
+    const totalStars = shelfBooks.reduce((acc, b) => acc + b.stars, 0);
+    return {
+      minutes: Math.floor(totalSeconds / 60),
+      stars: totalStars
+    };
+  }, [books, activeShelfId]);
 
   // Calculate global daily focus
   const totalTodayMinutes = useMemo(() => {
@@ -153,8 +169,8 @@ const App: React.FC = () => {
         <AnimatePresence>
           {isSidebarOpen && (
             <>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[500]" />
-              <motion.aside
+              <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[500]" />
+              <MotionAside
                 initial={{ x: lang === 'ar' ? '100%' : '-100%' }}
                 animate={{ x: 0 }}
                 exit={{ x: lang === 'ar' ? '100%' : '-100%' }}
@@ -206,7 +222,7 @@ const App: React.FC = () => {
                 </div>
                 
                 <div className="p-6 md:p-8 border-t border-white/5 bg-black/40"><div className="flex items-center gap-3 md:gap-4"><Activity size={18} className="text-[#ff0000]" /><div><span className="text-[8px] font-black uppercase tracking-widest opacity-20 leading-none mb-1 block">{t.status}</span><span className="text-[10px] md:text-xs font-black uppercase tracking-tighter">{t.activeSession}</span></div></div></div>
-              </motion.aside>
+              </MotionAside>
             </>
           )}
         </AnimatePresence>
@@ -223,7 +239,7 @@ const App: React.FC = () => {
               </button>
               
               {/* Daily Focus Metric */}
-              <motion.div 
+              <MotionDiv 
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 className="flex items-center gap-3 bg-black/40 backdrop-blur-xl px-5 py-2.5 rounded-full border border-[#ff0000]/20 shadow-xl"
@@ -233,7 +249,7 @@ const App: React.FC = () => {
                   <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mb-0.5">{t.todayFocus}</span>
                   <span className="text-[11px] font-black text-[#ff0000]">{totalTodayMinutes} {lang === 'ar' ? 'دقيقة' : 'min'}</span>
                 </div>
-              </motion.div>
+              </MotionDiv>
             </div>
           )}
         </div>
@@ -241,7 +257,7 @@ const App: React.FC = () => {
         <div className="flex-1 relative overflow-hidden flex flex-col">
           <AnimatePresence mode="wait">
             {view === ViewState.SHELF && (
-              <motion.div key="shelf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col relative">
+              <MotionDiv key="shelf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col relative">
                 <header className="flex flex-col items-center text-center pt-20 md:pt-12 pb-4 md:pb-6 shrink-0">
                   <h1 className="text-[clamp(2.2rem,12vw,8.5rem)] font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[1.1] pt-4 text-center w-full max-w-full">
                     {t.title}
@@ -249,6 +265,26 @@ const App: React.FC = () => {
                   <p className="shining-text text-[11px] md:text-base font-bold mt-3 md:mt-4 px-8 md:px-12 max-w-2xl tracking-[0.2em] md:tracking-[0.4em] leading-relaxed opacity-80">
                     {t.philosophy}
                   </p>
+
+                  {/* CUMULATIVE SHELF STATS (GREEN AREA) */}
+                  <div className="mt-8 flex items-center gap-6 md:gap-12 bg-black/30 backdrop-blur-2xl px-6 md:px-10 py-3 md:py-4 rounded-full border border-white/5 shadow-2xl relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent animate-shimmer" />
+                    <div className="flex flex-col items-center relative z-10">
+                      <div className="flex items-center gap-2">
+                        <Clock size={14} className="text-[#ff0000]" />
+                        <span className="text-base md:text-xl font-black text-white">{shelfStats.minutes} {lang === 'ar' ? 'د' : 'm'}</span>
+                      </div>
+                      <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-30">{t.cumulativeTime}</span>
+                    </div>
+                    <div className="w-[1px] h-8 bg-white/10 relative z-10" />
+                    <div className="flex flex-col items-center relative z-10">
+                      <div className="flex items-center gap-2">
+                        <Star size={14} className="text-[#ff0000] fill-[#ff0000]" />
+                        <span className="text-base md:text-xl font-black text-white">{shelfStats.stars}</span>
+                      </div>
+                      <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-30">{t.stars}</span>
+                    </div>
+                  </div>
                 </header>
                 <div className="flex-1"><Shelf books={filteredBooks} lang={lang} onSelectBook={(b) => { setSelectedBook(b); setView(ViewState.READER); }} onAddBook={() => setIsAddingBook(true)} /></div>
                 
@@ -256,27 +292,27 @@ const App: React.FC = () => {
                 <div className="absolute bottom-6 left-0 right-0 text-center pointer-events-none opacity-20">
                   <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.6em] text-white font-en">Developed By Oussama SEBROU</span>
                 </div>
-              </motion.div>
+              </MotionDiv>
             )}
             
             {view === ViewState.DASHBOARD && (
-              <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 overflow-y-auto custom-scroll">
+              <MotionDiv key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 overflow-y-auto custom-scroll">
                 <Dashboard books={books} shelves={shelves} lang={lang} onBack={() => setView(ViewState.SHELF)} />
-              </motion.div>
+              </MotionDiv>
             )}
 
             {view === ViewState.READER && selectedBook && (
-              <motion.div key="reader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[1000]">
+              <MotionDiv key="reader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[1000]">
                 <Reader book={selectedBook} lang={lang} onBack={() => { setBooks(storageService.getBooks()); setView(ViewState.SHELF); }} onStatsUpdate={() => setBooks(storageService.getBooks())} />
-              </motion.div>
+              </MotionDiv>
             )}
           </AnimatePresence>
         </div>
 
         <AnimatePresence>
           {isAddingBook && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] flex items-center justify-center p-0 md:p-6 bg-black/98 backdrop-blur-3xl">
-              <motion.div initial={{ scale: 0.95, y: 30 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/5 p-8 md:p-12 rounded-none md:rounded-[4rem] w-full max-w-xl min-h-screen md:min-h-0 shadow-2xl relative flex flex-col justify-center">
+            <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] flex items-center justify-center p-0 md:p-6 bg-black/98 backdrop-blur-3xl">
+              <MotionDiv initial={{ scale: 0.95, y: 30 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/5 p-8 md:p-12 rounded-none md:rounded-[4rem] w-full max-w-xl min-h-screen md:min-h-0 shadow-2xl relative flex flex-col justify-center">
                 <button onClick={() => setIsAddingBook(false)} className="absolute top-6 right-6 md:top-10 md:right-10 p-2 rounded-full bg-white/5 text-white/20 hover:text-white transition-colors"><X size={20} className="md:size-6" /></button>
                 <h2 className="text-xl md:text-3xl font-black mb-8 md:mb-12 text-white uppercase italic flex items-center gap-4 md:gap-5 leading-none"><BookOpen size={32} className="text-[#ff0000] md:size-11" /> {t.newIntake}</h2>
                 <div className="space-y-6 md:space-y-8">
@@ -290,20 +326,20 @@ const App: React.FC = () => {
                   </div>
                   <button onClick={handleAddBook} disabled={!newBookTitle || !pendingFileData} className="w-full bg-white text-black py-4 md:py-6 rounded-[1.5rem] md:rounded-[2rem] font-black text-[10px] md:text-xs uppercase shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all tracking-[0.3em] md:tracking-[0.5em]">{t.save}</button>
                 </div>
-              </motion.div>
-            </motion.div>
+              </MotionDiv>
+            </MotionDiv>
           )}
         </AnimatePresence>
 
         <AnimatePresence>
           {isAddingShelf && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/95 backdrop-blur-2xl">
-              <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-10 md:p-12 rounded-[2.5rem] md:rounded-[4rem] w-full max-w-md shadow-2xl text-center">
+            <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/95 backdrop-blur-2xl">
+              <MotionDiv initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-10 md:p-12 rounded-[2.5rem] md:rounded-[4rem] w-full max-w-md shadow-2xl text-center">
                 <h3 className="text-2xl md:text-3xl font-black uppercase italic text-white mb-8 md:mb-10">{lang === 'ar' ? 'إنشاء رف' : 'New Shelf'}</h3>
                 <input autoFocus type="text" value={newShelfName} onChange={e => setNewShelfName(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-6 text-xs md:text-sm font-bold text-white outline-none mb-8 md:mb-10 focus:border-[#ff0000]/50" placeholder={lang === 'ar' ? 'اسم الرف...' : 'Shelf Name...'} />
                 <button onClick={handleAddShelf} className="w-full bg-[#ff0000] py-4 md:py-6 rounded-[1.5rem] md:rounded-[2rem] font-black text-[10px] md:text-xs uppercase shadow-2xl hover:scale-105 transition-transform text-white tracking-[0.3em] md:tracking-[0.4em]">{t.establish}</button>
-              </motion.div>
-            </motion.div>
+              </MotionDiv>
+            </MotionDiv>
           )}
         </AnimatePresence>
       </div>
