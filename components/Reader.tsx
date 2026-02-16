@@ -70,6 +70,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   
   const [activeTool, setActiveTool] = useState<Tool>('view');
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
   const [activeColor, setActiveColor] = useState(COLORS[0].hex);
   const [annotations, setAnnotations] = useState<Annotation[]>(book.annotations || []);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -471,7 +472,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       </main>
 
       {/* NEW PROFESSIONAL FLOATING MODIFICATION CONTROLLER (FLASHCARD STYLE) */}
-      <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[2000] pointer-events-none w-full max-w-[420px] px-6">
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[2000] pointer-events-none w-full max-w-[420px] px-6">
         <AnimatePresence>
           {showControls && (
             <MotionDiv initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
@@ -523,66 +524,66 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         </AnimatePresence>
       </div>
 
-      {/* Professional Modification Details Modal */}
+      {/* Professional Modification Details Modal - Semi-Transparent Flashcard Style */}
       <AnimatePresence>
         {editingAnnoId && currentEditingAnno && (
-          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[4000] bg-black/70 backdrop-blur-2xl flex items-center justify-center p-6">
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[4000] bg-black/60 backdrop-blur-xl flex items-center justify-center p-6">
             <MotionDiv initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} 
-              className="bg-[#0b140b]/95 border border-white/10 p-8 md:p-12 rounded-[3rem] w-full max-w-lg shadow-[0_50px_150px_rgba(0,0,0,0.9)] overflow-hidden relative flex flex-col"
+              className="bg-black/40 backdrop-blur-2xl border border-white/10 p-6 md:p-10 rounded-[2.5rem] w-full max-w-sm shadow-[0_50px_150px_rgba(0,0,0,0.8)] overflow-hidden relative flex flex-col"
             >
-              <div className="flex items-center justify-between mb-10">
-                 <div className="flex items-center gap-5">
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10" style={{ color: currentEditingAnno.color }}>
-                      {currentEditingAnno.type === 'highlight' && <Highlighter size={26} />}
-                      {currentEditingAnno.type === 'underline' && <PenTool size={26} />}
-                      {currentEditingAnno.type === 'box' && <BoxSelect size={26} />}
-                      {currentEditingAnno.type === 'note' && <MessageSquare size={26} />}
+              <div className="flex items-center justify-between mb-8">
+                 <div className="flex items-center gap-4">
+                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10" style={{ color: currentEditingAnno.color }}>
+                      {currentEditingAnno.type === 'highlight' && <Highlighter size={22} />}
+                      {currentEditingAnno.type === 'underline' && <PenTool size={22} />}
+                      {currentEditingAnno.type === 'box' && <BoxSelect size={22} />}
+                      {currentEditingAnno.type === 'note' && <MessageSquare size={22} />}
                     </div>
                     <div>
-                      <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white">{isRTL ? 'بيانات التعديل' : 'Modification Intake'}</h3>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-white/40">{t.page} {currentEditingAnno.pageIndex + 1}</p>
+                      <h3 className="text-xl font-black italic uppercase tracking-tighter text-white/90">{isRTL ? 'بيانات التعديل' : 'Modification Intake'}</h3>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-white/30">{t.page} {currentEditingAnno.pageIndex + 1}</p>
                     </div>
                  </div>
-                 <button onClick={() => setEditingAnnoId(null)} className="p-3 rounded-full bg-white/5 text-white/30 hover:text-white transition-all"><X size={22} /></button>
+                 <button onClick={() => setEditingAnnoId(null)} className="p-2.5 rounded-full bg-white/5 text-white/30 hover:text-white transition-all"><X size={20} /></button>
               </div>
 
-              <div className="space-y-8 flex-1 overflow-y-auto custom-scroll pr-3">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'عنوان التعديل' : 'Modification Title'}</label>
+              <div className="space-y-6 flex-1 overflow-y-auto custom-scroll pr-2">
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'عنوان التعديل' : 'Modification Title'}</label>
                   <input type="text" value={currentEditingAnno.title || ''} onChange={(e) => updateEditingAnnotation({ title: e.target.value })} 
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-base font-bold text-white outline-none focus:border-[#ff0000]/50 placeholder:text-white/10" 
-                    placeholder={isRTL ? 'مثال: ملاحظة مهمة حول المنطق...' : 'Example: Important note on logic...'} />
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold text-white outline-none focus:border-[#ff0000]/50 placeholder:text-white/10" 
+                    placeholder={isRTL ? 'مثال: ملاحظة مهمة...' : 'Example: Important note...'} />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'ملاحظات وتفاصيل' : 'Description / Notes'}</label>
+                  <textarea value={currentEditingAnno.text || ''} onChange={(e) => updateEditingAnnotation({ text: e.target.value })} 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold text-white outline-none focus:border-[#ff0000]/50 min-h-[120px] resize-none placeholder:text-white/10" 
+                    placeholder={isRTL ? 'اكتب ملاحظاتك العميقة...' : 'Write your notes...'} />
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'ملاحظات وتفاصيل' : 'Description / Notes'}</label>
-                  <textarea value={currentEditingAnno.text || ''} onChange={(e) => updateEditingAnnotation({ text: e.target.value })} 
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-base font-bold text-white outline-none focus:border-[#ff0000]/50 min-h-[160px] resize-none placeholder:text-white/10" 
-                    placeholder={isRTL ? 'اكتب ملاحظاتك العميقة هنا...' : 'Write your deep reflections here...'} />
-                </div>
-
-                <div className="space-y-4">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'تخصيص اللون' : 'Color Palette'}</label>
-                  <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'تخصيص اللون' : 'Color Palette'}</label>
+                  <div className="flex flex-wrap gap-2.5">
                     {COLORS.map(c => (
                       <button key={c.hex} onClick={() => updateEditingAnnotation({ color: c.hex })} 
-                        className={`aspect-square rounded-2xl border-4 transition-all flex items-center justify-center ${currentEditingAnno.color === c.hex ? 'border-white scale-110' : 'border-transparent opacity-80'}`} 
+                        className={`w-8 h-8 rounded-full border-2 transition-all flex items-center justify-center ${currentEditingAnno.color === c.hex ? 'border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'border-transparent opacity-80'}`} 
                         style={{ backgroundColor: c.hex }}
                       >
-                         {currentEditingAnno.color === c.hex && <Check size={18} className="text-white drop-shadow-xl" />}
+                         {currentEditingAnno.color === c.hex && <Check size={14} className="text-white" />}
                       </button>
                     ))}
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-4 mt-12 pt-6 border-t border-white/5">
+              <div className="flex gap-4 mt-8 pt-4 border-t border-white/5">
                 <button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} 
-                  className="w-16 h-16 bg-red-600/10 border border-red-600/20 text-red-600 rounded-3xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-xl">
-                  <Trash2 size={24} />
+                  className="w-14 h-14 bg-red-600/10 border border-red-600/20 text-red-600 rounded-2xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-xl">
+                  <Trash2 size={20} />
                 </button>
-                <button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-5 rounded-3xl font-black uppercase text-[12px] tracking-widest hover:bg-[#ff0000] hover:text-white transition-all shadow-2xl flex items-center justify-center gap-4">
-                  <Check size={18} />
+                <button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-[#ff0000] hover:text-white transition-all shadow-2xl flex items-center justify-center gap-3">
+                  <Check size={16} />
                   {isRTL ? 'حفظ الحكمة' : 'Store Wisdom'}
                 </button>
               </div>
