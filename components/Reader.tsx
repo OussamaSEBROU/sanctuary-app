@@ -9,7 +9,7 @@ import {
   PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
   ListOrdered, Star, Volume2, CloudLightning, Waves, 
   Moon, Bird, Flame, VolumeX, Sparkles, Search, Droplets, PartyPopper,
-  Minimize2, Edit3, Award, Layers, LogOut, Sun
+  Minimize2, Edit3, Award, Layers, LogOut, Sun, Loader2
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -66,6 +66,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [currentPage, setCurrentPage] = useState(book.lastPage || 0);
   const [isLoading, setIsLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(0);
+  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   
   const [activeTool, setActiveTool] = useState<Tool>('view');
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
@@ -96,12 +97,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const celebrationAudioRef = useRef<HTMLAudioElement | null>(null);
   const controlsTimeoutRef = useRef<number | null>(null);
+  const loadingIntervalRef = useRef<number | null>(null);
 
   const t = translations[lang];
   const isRTL = lang === 'ar';
   const fontClass = isRTL ? 'font-ar' : 'font-en';
 
-  const nextThreshold = STAR_THRESHOLDS.find(t => book.timeSpentSeconds < t);
+  const nextThreshold = STAR_THRESHOLDS.find(th => book.timeSpentSeconds < th);
   const remainingSeconds = nextThreshold ? nextThreshold - book.timeSpentSeconds : 0;
   const minsToNextStar = Math.ceil(remainingSeconds / 60);
 
@@ -125,12 +127,21 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   };
 
   useEffect(() => {
+    // Cycle through loading messages
+    loadingIntervalRef.current = window.setInterval(() => {
+      setLoadingMsgIdx(prev => (prev + 1) % t.loadingMessages.length);
+    }, 2500);
+
     const loadPdf = async () => {
       const fileData = await pdfStorage.getFile(book.id);
       if (!fileData) { onBack(); return; }
       try {
         const pdf = await pdfjsLib.getDocument({ data: fileData }).promise;
         setTotalPages(pdf.numPages);
+        
+        // Target index for loading
+        const targetIdx = book.lastPage || 0;
+        
         // Load pages incrementally to improve startup performance
         for (let i = 1; i <= Math.min(pdf.numPages, 400); i++) {
           const p = await pdf.getPage(i);
@@ -138,8 +149,18 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
           const cv = document.createElement('canvas');
           cv.height = vp.height; cv.width = vp.width;
           await p.render({ canvasContext: cv.getContext('2d')!, viewport: vp }).promise;
-          setPages(prev => [...prev, cv.toDataURL('image/jpeg', 0.85)]);
-          if (i === 1) setIsLoading(false);
+          const dataUrl = cv.toDataURL('image/jpeg', 0.85);
+          
+          setPages(prev => [...prev, dataUrl]);
+          
+          // Hide loading overlay only when the target page is ready
+          if (i >= targetIdx + 1) {
+            setIsLoading(false);
+            if (loadingIntervalRef.current) {
+              clearInterval(loadingIntervalRef.current);
+              loadingIntervalRef.current = null;
+            }
+          }
         }
       } catch (err) { console.error(err); }
     };
@@ -154,6 +175,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     return () => { 
       if (timerRef.current) clearInterval(timerRef.current); 
       if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
     };
   }, [book.id]);
 
@@ -347,6 +369,63 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       <audio ref={celebrationAudioRef} hidden />
 
       <AnimatePresence>
+        {isLoading && (
+          <motion.div 
+            key="loading-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[5000] bg-[#000a00] flex flex-col items-center justify-center p-8 text-center"
+          >
+            <div className="relative mb-12">
+               <motion.div 
+                 animate={{ rotate: 360, scale: [1, 1.1, 1] }} 
+                 transition={{ rotate: { repeat: Infinity, duration: 4, ease: "linear" }, scale: { repeat: Infinity, duration: 2 } }}
+                 className="w-32 h-32 md:w-48 md:h-48 border-b-2 border-r-2 border-[#ff0000] rounded-full absolute inset-0 opacity-20 blur-sm"
+               />
+               <motion.div 
+                 animate={{ rotate: -360 }} 
+                 transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
+                 className="w-32 h-32 md:w-48 md:h-48 border-t-2 border-l-2 border-[#ff0000] rounded-full relative flex items-center justify-center"
+               >
+                 <Sparkles className="text-[#ff0000] size-10 md:size-16 animate-pulse" />
+               </motion.div>
+            </div>
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={loadingMsgIdx}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-4 max-w-md"
+              >
+                <h3 className="text-xl md:text-2xl font-black uppercase italic text-white tracking-widest leading-tight">
+                  {t.loadingMessages[loadingMsgIdx]}
+                </h3>
+                {book.lastPage && book.lastPage > 0 && (
+                  <p className="text-[10px] md:text-xs text-[#ff0000] font-black uppercase tracking-[0.4em] opacity-80 animate-pulse">
+                    {isRTL ? `جاري العودة إلى الصفحة ${book.lastPage + 1}...` : `Resuming Journey to Page ${book.lastPage + 1}...`}
+                  </p>
+                )}
+              </motion.div>
+            </AnimatePresence>
+
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 2 }}
+              className="mt-12 p-6 rounded-2xl bg-white/5 border border-white/10 max-w-sm"
+            >
+              <p className="text-[10px] md:text-xs text-white/40 font-bold leading-relaxed italic">
+                {t.loadingNote}
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showControls && !isZenMode && (
           <MotionHeader 
             initial={{ y: -100, opacity: 0 }} 
@@ -458,21 +537,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 )}
               </div>
             </MotionDiv>
-          </div>
-        )}
-
-        {isLoading && (
-          <div className="flex flex-col items-center gap-8 max-w-xs text-center">
-            <div className="relative w-16 h-16 md:w-20 md:h-20">
-              <MotionDiv animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }} className="absolute inset-0 border-2 border-t-[#ff0000] border-r-transparent border-b-transparent border-l-transparent rounded-full shadow-[0_0_20px_#ff0000]" />
-              <div className="absolute inset-1.5 border border-white/5 rounded-full" />
-            </div>
-            <div className="space-y-4">
-              <p className="text-[9px] font-black uppercase tracking-[0.6em] text-[#ff0000] animate-pulse">Reconstructing...</p>
-              <p className="text-[10px] md:text-xs text-white/40 font-bold leading-relaxed px-4 italic">
-                {t.loadingNote}
-              </p>
-            </div>
           </div>
         )}
       </main>
