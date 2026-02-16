@@ -37,6 +37,7 @@ const App: React.FC = () => {
   const [books, setBooks] = useState<Book[]>([]);
   const [shelves, setShelves] = useState<ShelfData[]>([]);
   const [activeShelfId, setActiveShelfId] = useState<string>('default');
+  const [activeBookIndex, setActiveBookIndex] = useState(0); // رفع الحالة للتحكم في الإحصائيات العلوية
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [isAddingBook, setIsAddingBook] = useState(false);
   const [isAddingShelf, setIsAddingShelf] = useState(false);
@@ -59,12 +60,17 @@ const App: React.FC = () => {
   const filteredBooks = books.filter(b => b.shelfId === activeShelfId);
   const fontClass = lang === 'ar' ? 'font-ar' : 'font-en';
 
-  const shelfStats = useMemo(() => {
-    const shelfBooks = books.filter(b => b.shelfId === activeShelfId);
-    const totalSeconds = shelfBooks.reduce((acc, b) => acc + b.timeSpentSeconds, 0);
-    const totalStars = shelfBooks.reduce((acc, b) => acc + b.stars, 0);
-    return { minutes: Math.floor(totalSeconds / 60), stars: totalStars };
-  }, [books, activeShelfId]);
+  // حساب إحصائيات الكتاب النشط حالياً في العرض
+  const activeBookStats = useMemo(() => {
+    if (filteredBooks.length > 0 && filteredBooks[activeBookIndex]) {
+      const book = filteredBooks[activeBookIndex];
+      return {
+        minutes: Math.floor(book.timeSpentSeconds / 60),
+        stars: book.stars || 0
+      };
+    }
+    return { minutes: 0, stars: 0 };
+  }, [filteredBooks, activeBookIndex]);
 
   const totalTodayMinutes = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -132,7 +138,7 @@ const App: React.FC = () => {
   return (
     <Layout lang={lang}>
       <div className={`flex flex-col h-screen-safe overflow-hidden ${fontClass}`}>
-        {/* Sidebar Navigation */}
+        {/* Sidebar Navigation - Fixed z-index and functionality */}
         <AnimatePresence>
           {isSidebarOpen && (
             <React.Fragment key="sidebar-container">
@@ -141,35 +147,33 @@ const App: React.FC = () => {
                 animate={{ opacity: 1 }} 
                 exit={{ opacity: 0 }} 
                 onClick={() => setIsSidebarOpen(false)} 
-                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[2000]" 
+                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[4000] pointer-events-auto" 
               />
               <MotionAside
                 initial={{ x: lang === 'ar' ? '100%' : '-100%' }} 
                 animate={{ x: 0 }} 
                 exit={{ x: lang === 'ar' ? '100%' : '-100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className={`fixed top-0 bottom-0 ${lang === 'ar' ? 'right-0' : 'left-0'} w-[85vw] md:w-80 bg-[#050f05] border-none z-[2100] flex flex-col shadow-2xl overflow-hidden`}
+                className={`fixed top-0 bottom-0 ${lang === 'ar' ? 'right-0' : 'left-0'} w-[85vw] md:w-80 bg-[#050f05] border-none z-[4100] flex flex-col shadow-2xl overflow-hidden pointer-events-auto`}
               >
                 <div className="p-6 md:p-8 flex items-center justify-between border-b border-white/5 shrink-0">
                    <div className="flex items-center gap-3">
                     <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-[#ff0000] flex items-center justify-center shadow-[0_0_20px_rgba(255,0,0,0.3)]">
                       <Sparkles size={16} className="text-white" />
                     </div>
-                    <h2 className="text-lg md:text-xl font-black uppercase tracking-tighter">{t.menu}</h2>
+                    <h2 className="text-lg md:text-xl font-black uppercase tracking-tighter text-white">{t.menu}</h2>
                    </div>
                    <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-full bg-white/5 text-white/40 hover:text-white transition-all"><X size={18}/></button>
                 </div>
                 
                 <div className="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 space-y-8 md:space-y-10">
-                  {/* Dashboard Quick Access */}
                   <button onClick={() => { setView(ViewState.DASHBOARD); setIsSidebarOpen(false); }} className="w-full flex items-center gap-4 p-4 md:p-5 rounded-[1.5rem] md:rounded-[2rem] bg-[#ff0000]/10 border border-[#ff0000]/20 hover:bg-[#ff0000] hover:border-[#ff0000] transition-all group">
                     <div className="p-2 md:p-3 rounded-lg md:rounded-xl bg-white/10 group-hover:bg-white/20"><LayoutDashboard size={20} className="text-[#ff0000] group-hover:text-white" /></div>
                     <div className="flex flex-col items-start"><span className="text-[10px] md:text-xs font-black uppercase tracking-widest group-hover:text-white">{t.dashboard}</span><span className="text-[8px] md:text-[9px] uppercase font-black opacity-30 group-hover:opacity-60 group-hover:text-white">{t.cognitiveMetrics}</span></div>
                   </button>
                   
-                  {/* Language Selection */}
                   <section className="space-y-3 md:space-y-4">
-                    <div className="flex items-center gap-3 opacity-20 px-2"><Globe size={12} /><span className="text-[9px] font-black uppercase tracking-widest">{t.language}</span></div>
+                    <div className="flex items-center gap-3 opacity-20 px-2"><Globe size={12} className="text-white" /><span className="text-[9px] font-black uppercase tracking-widest text-white">{t.language}</span></div>
                     <div className="flex flex-col gap-2">
                       {['ar', 'en'].map((l) => (
                         <button key={l} onClick={() => { setLang(l as Language); setIsSidebarOpen(false); }} className={`w-full p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all flex items-center justify-between ${lang === l ? 'bg-white text-black border-white' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'}`}>
@@ -180,15 +184,14 @@ const App: React.FC = () => {
                     </div>
                   </section>
                   
-                  {/* Collections / Shelves */}
                   <section className="space-y-3 md:space-y-4 pb-12">
                     <div className="flex items-center justify-between px-2">
-                      <div className="flex items-center gap-3 opacity-20"><Library size={12} /><span className="text-[9px] font-black uppercase tracking-widest">{t.collections}</span></div>
+                      <div className="flex items-center gap-3 opacity-20"><Library size={12} className="text-white" /><span className="text-[9px] font-black uppercase tracking-widest text-white">{t.collections}</span></div>
                       <button onClick={() => setIsAddingShelf(true)} className="p-1.5 bg-[#ff0000]/20 rounded-full text-[#ff0000] hover:scale-110 transition-transform"><Plus size={12}/></button>
                     </div>
                     <div className="flex flex-col gap-1.5">
                       {shelves.map(shelf => (
-                        <div key={shelf.id} onClick={() => { setActiveShelfId(shelf.id); setView(ViewState.SHELF); setIsSidebarOpen(false); }} className={`group w-full text-left px-4 md:px-5 py-3 md:py-4 rounded-xl md:rounded-2xl border transition-all text-[10px] md:text-xs font-bold flex items-center justify-between cursor-pointer ${activeShelfId === shelf.id ? 'bg-[#ff0000]/10 border-[#ff0000]/30 text-white' : 'bg-transparent border-transparent text-white/30 hover:bg-white/5'}`}>
+                        <div key={shelf.id} onClick={() => { setActiveShelfId(shelf.id); setActiveBookIndex(0); setView(ViewState.SHELF); setIsSidebarOpen(false); }} className={`group w-full text-left px-4 md:px-5 py-3 md:py-4 rounded-xl md:rounded-2xl border transition-all text-[10px] md:text-xs font-bold flex items-center justify-between cursor-pointer ${activeShelfId === shelf.id ? 'bg-[#ff0000]/10 border-[#ff0000]/30 text-white' : 'bg-transparent border-transparent text-white/30 hover:bg-white/5'}`}>
                           <div className="flex items-center gap-3 md:gap-4 truncate"><div className={`w-1.5 h-1.5 rounded-full shrink-0 ${activeShelfId === shelf.id ? 'bg-[#ff0000]' : 'bg-white/10'}`} /><span className="truncate">{shelf.name}</span></div>
                           {shelf.id !== 'default' && <button onClick={(e) => handleDeleteShelf(e, shelf.id)} className="p-2 text-white/0 group-hover:text-white/20 hover:text-red-600 transition-all rounded-lg hover:bg-white/5"><Trash2 size={12} /></button>}
                         </div>
@@ -201,11 +204,11 @@ const App: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Global Fixed Controls */}
-        <div className="fixed top-0 left-0 right-0 z-[1000] p-4 md:p-8 pointer-events-none flex justify-between items-start">
+        {/* Global Fixed Controls - Elevated z-index to ensure visibility and clickability */}
+        <div className="fixed top-0 left-0 right-0 z-[3000] p-4 md:p-8 pointer-events-none flex justify-between items-start">
           <button 
             onClick={() => setIsSidebarOpen(true)} 
-            className="p-3.5 md:p-5 rounded-full bg-black/60 backdrop-blur-2xl border border-white/10 pointer-events-auto hover:bg-[#ff0000] hover:border-[#ff0000] transition-all shadow-2xl group active:scale-95"
+            className="p-3.5 md:p-5 rounded-full bg-black/60 backdrop-blur-2xl border border-white/10 pointer-events-auto hover:bg-[#ff0000] hover:border-[#ff0000] transition-all shadow-2xl group active:scale-95 z-[3001]"
           >
             <Menu size={20} className="group-hover:text-white text-white/40 md:size-6"/>
           </button>
@@ -234,27 +237,37 @@ const App: React.FC = () => {
                 <header className="flex flex-col items-center text-center pt-20 md:pt-14 pb-2 md:pb-4 shrink-0 overflow-visible">
                   <h1 className="text-[clamp(2.5rem,14vw,9.5rem)] font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[1.0] text-center w-full max-w-full drop-shadow-2xl">{t.title}</h1>
                   <p className="shining-text text-[11px] md:text-base font-bold mt-2 md:mt-3 px-8 md:px-12 max-w-2xl tracking-[0.4em] leading-relaxed opacity-90 italic">{t.philosophy}</p>
+                  
+                  {/* Book Specific Stats in Header - Linked to active index */}
                   <div className="mt-4 md:mt-6 flex items-center gap-4 md:gap-8 bg-black/40 backdrop-blur-3xl px-5 md:px-8 py-2 md:py-3 rounded-full border border-white/10 shadow-3xl relative overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent animate-shimmer" />
-                    <div className="flex flex-col items-center relative z-10">
+                    <MotionDiv key={`min-${activeBookIndex}`} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center relative z-10">
                       <div className="flex items-center gap-2">
                         <Clock size={12} className="text-[#ff0000]" />
-                        <span className="text-sm md:text-lg font-black text-white">{shelfStats.minutes} {lang === 'ar' ? 'د' : 'm'}</span>
+                        <span className="text-sm md:text-lg font-black text-white">{activeBookStats.minutes} {lang === 'ar' ? 'د' : 'm'}</span>
                       </div>
-                      <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest opacity-20">{t.cumulativeTime}</span>
-                    </div>
+                      <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest opacity-20">{lang === 'ar' ? 'دقائق الكتاب' : 'Book Minutes'}</span>
+                    </MotionDiv>
                     <div className="w-[1px] h-5 md:h-6 bg-white/10 relative z-10" />
-                    <div className="flex flex-col items-center relative z-10">
+                    <MotionDiv key={`star-${activeBookIndex}`} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center relative z-10">
                       <div className="flex items-center gap-2">
                         <Star size={12} className="text-[#ff0000] fill-[#ff0000]" />
-                        <span className="text-sm md:text-lg font-black text-white">{shelfStats.stars}</span>
+                        <span className="text-sm md:text-lg font-black text-white">{activeBookStats.stars}</span>
                       </div>
                       <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest opacity-20">{t.stars}</span>
-                    </div>
+                    </MotionDiv>
                   </div>
                 </header>
+                
                 <div className="flex-1 flex flex-col justify-center items-center">
-                  <Shelf books={filteredBooks} lang={lang} onSelectBook={(b) => { setSelectedBook(b); setView(ViewState.READER); }} onAddBook={() => setIsAddingBook(true)} />
+                  <Shelf 
+                    books={filteredBooks} 
+                    lang={lang} 
+                    activeIndex={activeBookIndex}
+                    onActiveIndexChange={setActiveBookIndex}
+                    onSelectBook={(b) => { setSelectedBook(b); setView(ViewState.READER); }} 
+                    onAddBook={() => setIsAddingBook(true)} 
+                  />
                 </div>
                 <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none opacity-5">
                   <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.6em] text-white">Developed By Oussama SEBROU</span>
