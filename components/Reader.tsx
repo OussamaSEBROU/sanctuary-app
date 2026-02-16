@@ -11,7 +11,7 @@ import {
   ListOrdered, Star, Volume2, CloudLightning, Waves, 
   Moon, Bird, Flame, VolumeX, Sparkles, Search, Droplets, PartyPopper,
   Minimize2, Edit3, Award, Layers, LogOut, Sun, Clock, Loader2, Zap, Rocket, Trophy,
-  Palette, FileText, Check, Settings2
+  Palette, FileText, Check, Settings2, BoxSelect
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -53,7 +53,7 @@ const TOOL_ICONS = {
   view: MousePointer2,
   highlight: Highlighter,
   underline: PenTool,
-  box: Square,
+  box: BoxSelect,
   note: MessageSquare
 };
 
@@ -70,7 +70,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   
   const [activeTool, setActiveTool] = useState<Tool>('view');
-  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
   const [activeColor, setActiveColor] = useState(COLORS[0].hex);
   const [annotations, setAnnotations] = useState<Annotation[]>(book.annotations || []);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -161,7 +160,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     if (controlsTimeoutRef.current) window.clearTimeout(controlsTimeoutRef.current);
     controlsTimeoutRef.current = window.setTimeout(() => {
       setShowControls(false);
-      setIsToolsMenuOpen(false);
     }, 4500);
   };
 
@@ -230,20 +228,17 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     if (nextThreshold) {
       const midPoint = prevThreshold + (nextThreshold - prevThreshold) / 2;
       const finalPush = nextThreshold - 300; 
-
       const midId = `mid_${nextThreshold}`;
       if (book.timeSpentSeconds >= midPoint && book.timeSpentSeconds < midPoint + 5 && !triggeredMilestones.current.has(midId)) {
         triggeredMilestones.current.add(midId);
         setEncouragementType('mid');
       }
-
       const finalId = `final_${nextThreshold}`;
       if (book.timeSpentSeconds >= finalPush && book.timeSpentSeconds < finalPush + 5 && !triggeredMilestones.current.has(finalId)) {
         triggeredMilestones.current.add(finalId);
         setEncouragementType('final');
       }
     }
-    
     if (book.stars > lastProcessedStars) {
       setLastProcessedStars(book.stars);
       triggerCelebration();
@@ -475,139 +470,119 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </main>
 
-      <AnimatePresence>
-        {isZenMode && (
-          <MotionDiv initial={{ y: -50, opacity: 0 }} animate={{ y: showControls ? 0 : -100, opacity: 1 }}
-            className="fixed top-0 left-0 right-0 z-[6000] pointer-events-auto flex justify-center p-4 md:p-6"
-          >
-            <div className="flex items-center gap-2 md:gap-4 bg-black/40 backdrop-blur-2xl px-4 md:px-8 py-2 md:py-3.5 rounded-full border border-white/10 shadow-4xl">
-              <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/5 mr-2">
-                <Clock size={14} className="text-[#ff0000] animate-pulse" />
-                <span className="text-[10px] md:text-xs font-black text-white/80">{sessionMinutes}m</span>
-              </div>
-              <div className="w-[1px] h-6 bg-white/10 mx-1 hidden md:block" />
-              <button onClick={() => setIsArchiveOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-full text-white/40 hover:bg-white/10 hover:text-white transition-all active:scale-90"><Layers size={18} /></button>
-              <button onClick={() => setActiveTool(activeTool === 'view' ? 'highlight' : 'view')} className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeTool !== 'view' ? 'bg-[#ff0000] text-white' : 'text-white/40 hover:bg-white/10'}`}><Highlighter size={18} /></button>
-              <button onClick={() => setIsNightMode(!isNightMode)} className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${isNightMode ? 'bg-[#ff0000] text-white' : 'text-white/40 hover:bg-white/10'}`}>{isNightMode ? <Sun size={18} /> : <Moon size={18} />}</button>
-              <button onClick={() => setIsSoundPickerOpen(true)} className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeSoundId !== 'none' ? 'bg-[#ff0000] text-white' : 'text-white/40 hover:bg-white/10'}`}><Volume2 size={18} /></button>
-              <div className="w-[1px] h-6 bg-white/10 mx-1" />
-              <button onClick={toggleZenMode} className="w-10 h-10 flex items-center justify-center rounded-full bg-[#ff0000] text-white shadow-lg active:scale-90 hover:brightness-110"><Minimize2 size={18} /></button>
-            </div>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
-
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1100] flex flex-col items-center gap-2 w-full max-w-[420px] px-6 pointer-events-none">
+      {/* NEW PROFESSIONAL FLOATING MODIFICATION CONTROLLER (FLASHCARD STYLE) */}
+      <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[2000] pointer-events-none w-full max-w-[420px] px-6">
         <AnimatePresence>
           {showControls && (
-            <MotionDiv initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }} 
-              className={`w-full flex items-center justify-between bg-black/85 backdrop-blur-3xl border border-white/10 px-4 py-1.5 rounded-full shadow-3xl pointer-events-auto ${isZenMode ? 'hidden' : ''}`}
+            <MotionDiv initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
+              className="w-full bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-3 pointer-events-auto shadow-[0_30px_100px_rgba(0,0,0,0.7)] flex flex-col gap-4"
             >
-              <div className="flex items-center gap-2">
-                <button onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)} className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${isToolsMenuOpen ? 'bg-white text-black' : 'bg-white/5 text-[#ff0000]'}`}><ActiveToolIcon size={16} /></button>
-                <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-full border border-white/5">
-                   {[...Array(5)].map((_, i) => (
-                     <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < book.stars ? 'bg-[#ff0000]' : 'bg-white/10'}`} />
-                   ))}
+              {/* Pagination and View Controls */}
+              <div className="flex items-center justify-between px-2">
+                 <div className="flex items-center gap-1 bg-white/5 rounded-full px-4 py-2 border border-white/5">
+                   <button onClick={() => handlePageChange(currentPage - 1)} className="text-white/30 hover:text-white transition-colors"><ChevronLeft size={18} /></button>
+                   <span className="text-[10px] font-black uppercase text-white px-2">{currentPage + 1} / {totalPages}</span>
+                   <button onClick={() => handlePageChange(currentPage + 1)} className="text-white/30 hover:text-white transition-colors"><ChevronRight size={18} /></button>
+                 </div>
+                 
+                 <div className="flex items-center gap-2">
+                    <button onClick={() => setIsArchiveOpen(true)} className="p-3 bg-white/5 rounded-full text-white/40 hover:bg-white/10 transition-all"><ListOrdered size={16} /></button>
+                    <button onClick={() => setIsGoToPageOpen(true)} className="p-3 bg-white/5 rounded-full text-white/40 hover:bg-white/10 transition-all"><Search size={16} /></button>
+                 </div>
+              </div>
+
+              {/* Tool Selection Panel (Professional & Mobile Friendly) */}
+              <div className="bg-white/[0.03] border border-white/5 rounded-[2rem] p-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  {(Object.keys(TOOL_ICONS) as Tool[]).map(tool => {
+                    const Icon = TOOL_ICONS[tool];
+                    return (
+                      <button key={tool} onClick={() => setActiveTool(tool)} 
+                        className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all duration-300 ${activeTool === tool ? 'bg-[#ff0000] text-white shadow-lg' : 'text-white/30 hover:bg-white/5'}`}
+                      >
+                        <Icon size={18} />
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <div className="w-[1px] h-8 bg-white/10 mx-1" />
+
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-[140px]">
+                  {COLORS.slice(0, 5).map(c => (
+                    <button key={c.hex} onClick={() => setActiveColor(c.hex)} 
+                      className={`w-6 h-6 rounded-full shrink-0 border-2 transition-all ${activeColor === c.hex ? 'border-white scale-110' : 'border-transparent opacity-60'}`} 
+                      style={{ backgroundColor: c.hex }} 
+                    />
+                  ))}
+                  <button onClick={() => setEditingAnnoId(annotations.length > 0 ? annotations[annotations.length-1].id : null)} className="w-6 h-6 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-white/40 hover:text-white"><Palette size={12} /></button>
                 </div>
               </div>
-              <div className="flex items-center gap-0.5 flex-1 justify-center">
-                <button onClick={() => handlePageChange(currentPage - 1)} className="p-1.5 text-white/20 hover:text-[#ff0000]"><ChevronLeft size={16}/></button>
-                <button onClick={() => setIsGoToPageOpen(true)} className="px-3 py-0.5 bg-white/5 rounded-full border border-white/5">
-                  <span className="text-[9px] font-black text-white/50">{currentPage + 1} / {totalPages}</span>
-                </button>
-                <button onClick={() => handlePageChange(currentPage + 1)} className="p-1.5 text-white/20 hover:text-[#ff0000]"><ChevronRight size={16}/></button>
-              </div>
-              <button onClick={() => setIsGoToPageOpen(true)} className="w-8 h-8 flex items-center justify-center text-white/20"><Search size={14} /></button>
             </MotionDiv>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Floating Tools Dock */}
-      <AnimatePresence>
-        {isToolsMenuOpen && !isZenMode && (
-          <MotionDiv initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }}
-            className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-2xl border border-white/10 p-2.5 rounded-[2.5rem] flex items-center gap-1.5 z-[1200] shadow-4xl max-w-[90vw]"
-          >
-            <div className="flex items-center gap-1">
-              {(Object.keys(TOOL_ICONS) as Tool[]).map(tool => {
-                const Icon = TOOL_ICONS[tool];
-                return (
-                  <button key={tool} onClick={() => setActiveTool(tool)} className={`w-9 h-9 flex items-center justify-center rounded-full transition-all ${activeTool === tool ? 'bg-[#ff0000] text-white shadow-lg' : 'text-white/40 hover:bg-white/10'}`}><Icon size={16} /></button>
-                );
-              })}
-            </div>
-            <div className="w-[1px] h-5 bg-white/10 mx-1.5" />
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-[120px] md:max-w-none">
-              {COLORS.map(c => (
-                <button key={c.hex} onClick={() => setActiveColor(c.hex)} className={`w-6 h-6 rounded-full shrink-0 border-2 transition-all ${activeColor === c.hex ? 'border-white scale-110 shadow-lg' : 'border-transparent opacity-80'}`} style={{ backgroundColor: c.hex }} />
-              ))}
-            </div>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
-
       {/* Professional Modification Details Modal */}
       <AnimatePresence>
         {editingAnnoId && currentEditingAnno && (
-          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[4000] bg-black/60 backdrop-blur-xl flex items-center justify-center p-6">
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[4000] bg-black/70 backdrop-blur-2xl flex items-center justify-center p-6">
             <MotionDiv initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} 
-              className="bg-[#0b140b]/90 border border-white/10 p-6 md:p-10 rounded-[2.5rem] w-full max-w-lg shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden relative flex flex-col"
+              className="bg-[#0b140b]/95 border border-white/10 p-8 md:p-12 rounded-[3rem] w-full max-w-lg shadow-[0_50px_150px_rgba(0,0,0,0.9)] overflow-hidden relative flex flex-col"
             >
-              <div className="flex items-center justify-between mb-8">
-                 <div className="flex items-center gap-4">
-                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10" style={{ color: currentEditingAnno.color }}>
-                      {currentEditingAnno.type === 'highlight' && <Highlighter size={22} />}
-                      {currentEditingAnno.type === 'underline' && <PenTool size={22} />}
-                      {currentEditingAnno.type === 'box' && <Square size={22} />}
-                      {currentEditingAnno.type === 'note' && <MessageSquare size={22} />}
+              <div className="flex items-center justify-between mb-10">
+                 <div className="flex items-center gap-5">
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10" style={{ color: currentEditingAnno.color }}>
+                      {currentEditingAnno.type === 'highlight' && <Highlighter size={26} />}
+                      {currentEditingAnno.type === 'underline' && <PenTool size={26} />}
+                      {currentEditingAnno.type === 'box' && <BoxSelect size={26} />}
+                      {currentEditingAnno.type === 'note' && <MessageSquare size={26} />}
                     </div>
                     <div>
-                      <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">{isRTL ? 'تفاصيل التعديل' : 'Modification Details'}</h3>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-white/30">{t.page} {currentEditingAnno.pageIndex + 1}</p>
+                      <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white">{isRTL ? 'بيانات التعديل' : 'Modification Intake'}</h3>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-white/40">{t.page} {currentEditingAnno.pageIndex + 1}</p>
                     </div>
                  </div>
-                 <button onClick={() => setEditingAnnoId(null)} className="p-2.5 rounded-full bg-white/5 text-white/30 hover:text-white transition-all"><X size={20} /></button>
+                 <button onClick={() => setEditingAnnoId(null)} className="p-3 rounded-full bg-white/5 text-white/30 hover:text-white transition-all"><X size={22} /></button>
               </div>
 
-              <div className="space-y-6 flex-1 overflow-y-auto custom-scroll pr-2">
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'عنوان التعديل' : 'Modification Title'}</label>
+              <div className="space-y-8 flex-1 overflow-y-auto custom-scroll pr-3">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'عنوان التعديل' : 'Modification Title'}</label>
                   <input type="text" value={currentEditingAnno.title || ''} onChange={(e) => updateEditingAnnotation({ title: e.target.value })} 
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold text-white outline-none focus:border-[#ff0000]/50 placeholder:text-white/10" 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-base font-bold text-white outline-none focus:border-[#ff0000]/50 placeholder:text-white/10" 
                     placeholder={isRTL ? 'مثال: ملاحظة مهمة حول المنطق...' : 'Example: Important note on logic...'} />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'ملاحظات وتفاصيل' : 'Description / Notes'}</label>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'ملاحظات وتفاصيل' : 'Description / Notes'}</label>
                   <textarea value={currentEditingAnno.text || ''} onChange={(e) => updateEditingAnnotation({ text: e.target.value })} 
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold text-white outline-none focus:border-[#ff0000]/50 min-h-[120px] resize-none placeholder:text-white/10" 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-base font-bold text-white outline-none focus:border-[#ff0000]/50 min-h-[160px] resize-none placeholder:text-white/10" 
                     placeholder={isRTL ? 'اكتب ملاحظاتك العميقة هنا...' : 'Write your deep reflections here...'} />
                 </div>
 
-                <div className="space-y-3">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'تخصيص اللون' : 'Color Palette'}</label>
-                  <div className="flex flex-wrap gap-2.5">
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-white/20 px-1">{isRTL ? 'تخصيص اللون' : 'Color Palette'}</label>
+                  <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
                     {COLORS.map(c => (
                       <button key={c.hex} onClick={() => updateEditingAnnotation({ color: c.hex })} 
-                        className={`w-9 h-9 rounded-full border-2 transition-all flex items-center justify-center ${currentEditingAnno.color === c.hex ? 'border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'border-transparent opacity-80'}`} 
+                        className={`aspect-square rounded-2xl border-4 transition-all flex items-center justify-center ${currentEditingAnno.color === c.hex ? 'border-white scale-110' : 'border-transparent opacity-80'}`} 
                         style={{ backgroundColor: c.hex }}
                       >
-                         {currentEditingAnno.color === c.hex && <Check size={14} className="text-white drop-shadow-lg" />}
+                         {currentEditingAnno.color === c.hex && <Check size={18} className="text-white drop-shadow-xl" />}
                       </button>
                     ))}
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-4 mt-10 pt-4 border-t border-white/5">
+              <div className="flex gap-4 mt-12 pt-6 border-t border-white/5">
                 <button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} 
-                  className="w-14 h-14 bg-red-600/10 border border-red-600/20 text-red-600 rounded-2xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-xl shadow-red-600/5">
-                  <Trash2 size={18} />
+                  className="w-16 h-16 bg-red-600/10 border border-red-600/20 text-red-600 rounded-3xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-xl">
+                  <Trash2 size={24} />
                 </button>
-                <button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-[#ff0000] hover:text-white transition-all shadow-2xl flex items-center justify-center gap-3">
-                  <Check size={14} />
+                <button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-5 rounded-3xl font-black uppercase text-[12px] tracking-widest hover:bg-[#ff0000] hover:text-white transition-all shadow-2xl flex items-center justify-center gap-4">
+                  <Check size={18} />
                   {isRTL ? 'حفظ الحكمة' : 'Store Wisdom'}
                 </button>
               </div>
@@ -667,7 +642,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             <button onClick={() => setShowStarAchievement(false)} className="px-12 py-5 bg-[#ff0000] text-white rounded-full font-black text-xs md:text-sm uppercase tracking-[0.5em] shadow-[0_20px_50px_rgba(255,0,0,0.4)] hover:scale-110 active:scale-95 transition-all">{t.continueJourney}</button>
           </MotionDiv>
         )}
-
+        
         {encouragementType && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[9998] bg-black/90 backdrop-blur-3xl flex flex-col items-center justify-center p-10 text-center pointer-events-auto"
