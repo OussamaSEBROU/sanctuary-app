@@ -10,7 +10,7 @@ import {
   PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
   ListOrdered, Star, Volume2, CloudLightning, Waves, 
   Moon, Bird, Flame, VolumeX, Sparkles, Search, Droplets, PartyPopper,
-  Minimize2, Edit3, Award, Layers, LogOut, Sun
+  Minimize2, Edit3, Award, Layers, LogOut, Sun, Loader2
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -67,7 +67,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [isLoading, setIsLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(0);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
-  const [pagesProcessed, setPagesProcessed] = useState(0);
   
   const [activeTool, setActiveTool] = useState<Tool>('view');
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
@@ -131,7 +130,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     }
   };
 
-  // Sync state with ESC key or browser back from fullscreen
   useEffect(() => {
     const handleFsChange = () => {
       if (!document.fullscreenElement && isZenMode) {
@@ -174,28 +172,47 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         setTotalPages(pdf.numPages);
         
         const targetIdx = book.lastPage || 0;
-        const pageAccumulator: string[] = [];
-        
-        for (let i = 1; i <= Math.min(pdf.numPages, 500); i++) {
-          const p = await pdf.getPage(i);
+        const tempPages = new Array(pdf.numPages).fill(null);
+
+        // Helper function to render a specific page
+        const renderSinglePage = async (idx: number) => {
+          if (idx < 0 || idx >= pdf.numPages || tempPages[idx]) return;
+          const p = await pdf.getPage(idx + 1);
           const vp = p.getViewport({ scale: 2 });
           const cv = document.createElement('canvas');
           cv.height = vp.height; cv.width = vp.width;
           await p.render({ canvasContext: cv.getContext('2d')!, viewport: vp }).promise;
-          const dataUrl = cv.toDataURL('image/jpeg', 0.85);
-          
-          pageAccumulator.push(dataUrl);
-          setPages([...pageAccumulator]);
-          setPagesProcessed(i);
-          
-          if (i >= targetIdx + 1 && isLoading) {
-            setIsLoading(false);
-            if (loadingIntervalRef.current) {
-              clearInterval(loadingIntervalRef.current);
-              loadingIntervalRef.current = null;
+          tempPages[idx] = cv.toDataURL('image/jpeg', 0.85);
+          setPages([...tempPages]);
+        };
+
+        // 1. PRIORITY: Load the current page first and show reader immediately
+        await renderSinglePage(targetIdx);
+        setIsLoading(false);
+        if (loadingIntervalRef.current) {
+          clearInterval(loadingIntervalRef.current);
+          loadingIntervalRef.current = null;
+        }
+
+        // 2. BACKGROUND: Load neighbors for smooth swiping
+        const loadNeighbors = async () => {
+          for (let i = 1; i <= 3; i++) {
+            await renderSinglePage(targetIdx + i);
+            await renderSinglePage(targetIdx - i);
+          }
+        };
+        await loadNeighbors();
+
+        // 3. LAZY: Load everything else in the background
+        const loadRest = async () => {
+          for (let i = 0; i < pdf.numPages; i++) {
+            if (!tempPages[i]) {
+              await renderSinglePage(i);
             }
           }
-        }
+        };
+        loadRest();
+
       } catch (err) { console.error(err); }
     };
     loadPdf();
@@ -388,7 +405,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   const sessionMinutes = Math.floor(sessionSeconds / 60);
   const ActiveToolIcon = TOOL_ICONS[activeTool];
-  const targetPageNum = book.lastPage ? book.lastPage + 1 : 1;
   const dragConstraints = zoomScale > 1.05 ? undefined : { left: 0, right: 0, top: 0, bottom: 0 };
 
   return (
@@ -408,22 +424,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[5000] bg-[#000a00] flex flex-col items-center justify-center p-8 text-center"
+            className="fixed inset-0 z-[5000] bg-black flex flex-col items-center justify-center p-8 text-center"
           >
             <div className="relative mb-12">
                <MotionDiv 
-                 animate={{ rotate: 360 }} 
-                 transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
-                 className="w-32 h-32 md:w-48 md:h-48 border-2 border-[#ff0000]/10 border-t-[#ff0000] rounded-full absolute inset-0 shadow-[0_0_40px_rgba(255,0,0,0.2)]"
-               />
-               <MotionDiv 
-                 animate={{ rotate: -360 }} 
-                 transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
-                 className="w-24 h-24 md:w-36 md:h-36 border border-white/5 border-b-white/20 rounded-full relative flex items-center justify-center"
+                 animate={{ scale: [1, 1.1, 1], opacity: [0.3, 1, 0.3] }} 
+                 transition={{ repeat: Infinity, duration: 2 }}
+                 className="w-32 h-32 md:w-48 md:h-48 border border-[#ff0000]/30 rounded-full flex items-center justify-center shadow-[0_0_60px_rgba(255,0,0,0.1)]"
                >
-                 <div className="text-[#ff0000] animate-pulse">
-                    <Sparkles size={24} className="md:size-32" />
-                 </div>
+                  <Sparkles size={40} className="text-[#ff0000]" />
                </MotionDiv>
             </div>
             <AnimatePresence mode="wait">
@@ -434,19 +443,12 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-4 max-w-md"
               >
-                <h3 className="text-xl md:text-3xl font-black uppercase italic text-white tracking-widest leading-tight">
+                <h3 className="text-xl md:text-2xl font-black uppercase italic text-white/80 tracking-[0.3em] leading-tight">
                   {t.loadingMessages[loadingMsgIdx]}
                 </h3>
-                <div className="flex flex-col items-center gap-3">
-                  <div className="flex items-center gap-4 bg-white/5 px-6 py-2 rounded-full border border-white/10">
-                    <span className="text-[10px] md:text-xs font-black text-white/40 uppercase tracking-widest">
-                      {isRTL ? 'إعادة بناء الصفحة' : 'Reconstructing Page'}
-                    </span>
-                    <span className="text-xs md:text-sm font-black text-[#ff0000]">
-                      {pagesProcessed} <span className="opacity-20 mx-1">/</span> {targetPageNum}
-                    </span>
-                  </div>
-                </div>
+                <p className="text-[10px] uppercase font-bold text-white/20 mt-4 tracking-widest animate-pulse">
+                  {isRTL ? 'استعادة الوعي المعرفي' : 'Restoring Cognitive Awareness'}
+                </p>
               </MotionDiv>
             </AnimatePresence>
           </MotionDiv>
@@ -524,12 +526,18 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 transformOrigin: 'center center'
               }}
             >
-              <img 
-                src={pages[currentPage]} 
-                className={`w-full h-full object-contain pointer-events-none select-none transition-all duration-500 ${isZenMode ? 'max-h-screen' : ''}`} 
-                alt="Page" 
-                style={{ filter: isNightMode ? 'invert(1) hue-rotate(180deg)' : 'none' }}
-              />
+              {pages[currentPage] ? (
+                <img 
+                  src={pages[currentPage]} 
+                  className={`w-full h-full object-contain pointer-events-none select-none transition-all duration-500 ${isZenMode ? 'max-h-screen' : ''}`} 
+                  alt="Page" 
+                  style={{ filter: isNightMode ? 'invert(1) hue-rotate(180deg)' : 'none' }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-white/5 animate-pulse">
+                  <Loader2 size={30} className="text-white/20 animate-spin" />
+                </div>
+              )}
               <div className="absolute inset-0 pointer-events-none">
                 {annotations.filter(a => a.pageIndex === currentPage).map(anno => (
                   <div key={anno.id} className="absolute pointer-events-auto cursor-help" onClick={() => setEditingAnnoId(anno.id)}
@@ -645,7 +653,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       </AnimatePresence>
 
       <AnimatePresence>
-        {/* Other Modals (Sound, GoToPage, Editing) remain the same */}
         {isSoundPickerOpen && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4">
             <div className="bg-[#0b140b] border border-white/10 p-8 md:p-10 rounded-[3rem] md:rounded-[4rem] w-full max-w-md shadow-3xl overflow-hidden flex flex-col max-h-[80vh]">
