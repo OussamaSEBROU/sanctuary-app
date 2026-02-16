@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useAnimation } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Book, Language, Annotation } from '../types';
 import { translations } from '../i18n/translations';
 import { storageService } from '../services/storageService';
@@ -10,11 +9,12 @@ import {
   PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
   ListOrdered, Star, Volume2, CloudLightning, Waves, 
   Moon, Bird, Flame, VolumeX, Sparkles, Search, Droplets, PartyPopper,
-  Minimize2, Edit3, Award, Layers, LogOut, Sun, Loader2
+  Minimize2, Edit3, Award, Layers, LogOut, Sun
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
 
+// Use consistent naming for motion components to avoid build errors
 const MotionDiv = motion.div as any;
 const MotionHeader = motion.header as any;
 
@@ -87,7 +87,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [lastProcessedStars, setLastProcessedStars] = useState(book.stars);
 
-  // Stability States
+  // Zoom and Stability State
   const [zoomScale, setZoomScale] = useState(1);
   const [isPinching, setIsPinching] = useState(false);
   const initialPinchDistance = useRef<number | null>(null);
@@ -359,7 +359,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   const sessionMinutes = Math.floor(sessionSeconds / 60);
   const ActiveToolIcon = TOOL_ICONS[activeTool];
-  const targetPage = book.lastPage ? book.lastPage + 1 : 1;
+  const targetPageNum = book.lastPage ? book.lastPage + 1 : 1;
 
   // Calculate constraints based on zoom
   const dragConstraints = zoomScale > 1.05 ? undefined : { left: 0, right: 0, top: 0, bottom: 0 };
@@ -376,7 +376,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
       <AnimatePresence>
         {isLoading && (
-          <motion.div 
+          <MotionDiv 
             key="loading-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -384,12 +384,12 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             className="fixed inset-0 z-[5000] bg-[#000a00] flex flex-col items-center justify-center p-8 text-center"
           >
             <div className="relative mb-12">
-               <motion.div 
+               <MotionDiv 
                  animate={{ rotate: 360 }} 
                  transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
                  className="w-32 h-32 md:w-48 md:h-48 border-2 border-[#ff0000]/10 border-t-[#ff0000] rounded-full absolute inset-0 shadow-[0_0_40px_rgba(255,0,0,0.2)]"
                />
-               <motion.div 
+               <MotionDiv 
                  animate={{ rotate: -360 }} 
                  transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
                  className="w-24 h-24 md:w-36 md:h-36 border border-white/5 border-b-white/20 rounded-full relative flex items-center justify-center"
@@ -397,11 +397,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                  <div className="text-[#ff0000] animate-pulse">
                     <Sparkles size={24} className="md:size-32" />
                  </div>
-               </motion.div>
+               </MotionDiv>
             </div>
 
             <AnimatePresence mode="wait">
-              <motion.div
+              <MotionDiv
                 key={loadingMsgIdx}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -418,13 +418,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                       {isRTL ? 'إعادة بناء الصفحة' : 'Reconstructing Page'}
                     </span>
                     <span className="text-xs md:text-sm font-black text-[#ff0000]">
-                      {pagesProcessed} <span className="opacity-20 mx-1">/</span> {targetPage}
+                      {pagesProcessed} <span className="opacity-20 mx-1">/</span> {targetPageNum}
                     </span>
                   </div>
                 </div>
-              </motion.div>
+              </MotionDiv>
             </AnimatePresence>
-          </motion.div>
+          </MotionDiv>
         )}
       </AnimatePresence>
 
@@ -484,10 +484,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               drag={activeTool === 'view' && !isPinching}
               dragConstraints={dragConstraints}
               dragElastic={zoomScale > 1.05 ? 0 : 0.1}
+              dragMomentum={zoomScale <= 1.05} // Disable momentum when zoomed to prevent jittery drifting
               onDragEnd={handleDragEnd}
               onDoubleClick={handleDoubleClick}
-              onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
-              onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
+              onMouseDown={(e: any) => handleStart(e.clientX, e.clientY)}
+              onMouseMove={(e: any) => handleMove(e.clientX, e.clientY)}
               onMouseUp={handleEnd}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
@@ -684,7 +685,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                         <div className="flex items-center justify-between z-10 relative">
                            <div className="px-4 py-1.5 md:px-6 md:py-2.5 bg-[#ff0000]/10 text-[#ff0000] text-[10px] md:text-[12px] font-black rounded-full uppercase border border-[#ff0000]/20 tracking-widest">{t.page} {anno.pageIndex + 1}</div>
                            <button 
-                             onClick={(e) => { e.stopPropagation(); setAnnotations(annotations.filter(a => a.id !== anno.id)); }} 
+                             onClick={(e: any) => { e.stopPropagation(); setAnnotations(annotations.filter(a => a.id !== anno.id)); }} 
                              className="text-white/5 hover:text-[#ff0000] transition-all p-2 md:p-3 bg-white/[0.03] rounded-full hover:scale-110"
                            >
                              <Trash2 size={window.innerWidth < 768 ? 18 : 24}/>
@@ -703,7 +704,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                              RECALL SOURCE <ChevronRight size={window.innerWidth < 768 ? 14 : 18} />
                            </span>
                         </div>
-                      </motion.div>
+                      </MotionDiv>
                     ))}
                   </div>
                 </div>
@@ -731,7 +732,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   </MotionDiv>
                 ))}
              </div>
-             <motion.div initial={{ scale: 0.5, y: 100 }} animate={{ scale: 1, y: 0 }} className="flex flex-col items-center text-center max-w-2xl z-10">
+             <MotionDiv initial={{ scale: 0.5, y: 100 }} animate={{ scale: 1, y: 0 }} className="flex flex-col items-center text-center max-w-2xl z-10">
                 <div className="relative mb-8 md:mb-16">
                   <div className="relative p-12 md:p-20 bg-[#ff0000]/10 rounded-full border border-[#ff0000]/30 shadow-[0_0_200px_rgba(255,0,0,0.8)] animate-pulse">
                     <Award size={window.innerWidth < 768 ? 80 : 150} className="text-[#ff0000] drop-shadow-[0_0_50px_#ff0000]" />
@@ -745,7 +746,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 >
                   {t.continueJourney}
                 </button>
-             </motion.div>
+             </MotionDiv>
           </MotionDiv>
         )}
 
@@ -795,8 +796,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             <div className="bg-[#0b140b] border border-white/10 p-8 md:p-14 rounded-none md:rounded-[4rem] w-full max-w-2xl min-h-screen md:min-h-0 shadow-4xl flex flex-col justify-center">
               <div className="flex items-center justify-between mb-10"><h3 className="text-xl md:text-2xl font-black uppercase italic flex items-center gap-4"><Edit3 size={window.innerWidth < 768 ? 24 : 32} className="text-[#ff0000]" /> {t.editDetails}</h3><button onClick={() => setEditingAnnoId(null)} className="p-2 hover:text-[#ff0000] transition-colors"><X size={window.innerWidth < 768 ? 24 : 32}/></button></div>
               <div className="space-y-6">
-                <input autoFocus type="text" placeholder={lang === 'ar' ? 'عنوان التعديل...' : 'Mod Title...'} value={annotations.find(a => a.id === editingAnnoId)?.title || ''} onChange={(e) => setAnnotations(annotations.map(a => a.id === editingAnnoId ? { ...a, title: e.target.value } : a))} className="w-full bg-white/5 border border-white/10 rounded-2xl md:rounded-3xl p-5 md:p-7 text-white font-bold outline-none focus:border-[#ff0000]/40 text-base md:text-lg shadow-inner" />
-                <textarea value={annotations.find(a => a.id === editingAnnoId)?.text || ''} onChange={(e) => setAnnotations(annotations.map(a => a.id === editingAnnoId ? { ...a, text: e.target.value } : a))} className="w-full h-40 md:h-48 bg-white/5 border border-white/10 rounded-2xl md:rounded-3xl p-5 md:p-7 text-white outline-none focus:border-[#ff0000]/30 resize-none text-base md:text-lg shadow-inner" placeholder={lang === 'ar' ? 'اكتب حكمتك هنا...' : 'Inscribe your wisdom...'} />
+                <input autoFocus type="text" placeholder={lang === 'ar' ? 'عنوان التعديل...' : 'Mod Title...'} value={annotations.find(a => a.id === editingAnnoId)?.title || ''} onChange={(e: any) => setAnnotations(annotations.map(a => a.id === editingAnnoId ? { ...a, title: e.target.value } : a))} className="w-full bg-white/5 border border-white/10 rounded-2xl md:rounded-3xl p-5 md:p-7 text-white font-bold outline-none focus:border-[#ff0000]/40 text-base md:text-lg shadow-inner" />
+                <textarea value={annotations.find(a => a.id === editingAnnoId)?.text || ''} onChange={(e: any) => setAnnotations(annotations.map(a => a.id === editingAnnoId ? { ...a, text: e.target.value } : a))} className="w-full h-40 md:h-48 bg-white/5 border border-white/10 rounded-2xl md:rounded-3xl p-5 md:p-7 text-white outline-none focus:border-[#ff0000]/30 resize-none text-base md:text-lg shadow-inner" placeholder={lang === 'ar' ? 'اكتب حكمتك هنا...' : 'Inscribe your wisdom...'} />
               </div>
               <div className="flex gap-4 md:gap-6 mt-10 md:mt-12"><button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} className="flex-1 bg-red-600/10 text-red-600 py-4 md:py-6 rounded-xl md:rounded-[2rem] font-black uppercase text-[10px] tracking-[0.1em] md:tracking-[0.2em]">{t.discard}</button><button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-4 md:py-6 rounded-xl md:rounded-[2rem] font-black uppercase text-[10px] tracking-[0.1em] md:tracking-[0.2em] shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all">{t.save}</button></div>
             </div>
