@@ -59,7 +59,6 @@ const App: React.FC = () => {
   const filteredBooks = books.filter(b => b.shelfId === activeShelfId);
   const fontClass = lang === 'ar' ? 'font-ar' : 'font-en';
 
-  // Stats strictly scoped to active shelf
   const shelfStats = useMemo(() => {
     const shelfBooks = books.filter(b => b.shelfId === activeShelfId);
     const totalSeconds = shelfBooks.reduce((acc, b) => acc + b.timeSpentSeconds, 0);
@@ -157,7 +156,7 @@ const App: React.FC = () => {
                     <div className="flex flex-col items-start"><span className="text-[10px] md:text-xs font-black uppercase tracking-widest group-hover:text-white">{t.dashboard}</span><span className="text-[8px] md:text-[9px] uppercase font-black opacity-30 group-hover:opacity-60 group-hover:text-white">{t.cognitiveMetrics}</span></div>
                   </button>
                   <section className="space-y-3 md:space-y-4">
-                    <div className="flex items-center gap-3 opacity-20 px-2"><Globe size={12} /><span className="text-[9px] font-black uppercase tracking-widest">{t.language}</span></div>
+                    <div className="flex items-center gap-3 opacity-20 px-2"><Globe2 size={12} /><span className="text-[9px] font-black uppercase tracking-widest">{t.language}</span></div>
                     <div className="flex flex-col gap-2">
                       {['ar', 'en'].map((l) => (
                         <button key={l} onClick={() => { setLang(l as Language); setIsSidebarOpen(false); }} className={`w-full p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all flex items-center justify-between ${lang === l ? 'bg-white text-black border-white' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'}`}>
@@ -214,29 +213,29 @@ const App: React.FC = () => {
                 <header className="flex flex-col items-center text-center pt-20 md:pt-14 pb-2 md:pb-4 shrink-0 overflow-visible">
                   <h1 className="text-[clamp(2.5rem,14vw,9.5rem)] font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[1.0] text-center w-full max-w-full drop-shadow-2xl">{t.title}</h1>
                   <p className="shining-text text-[11px] md:text-base font-bold mt-2 md:mt-3 px-8 md:px-12 max-w-2xl tracking-[0.4em] leading-relaxed opacity-90 italic">{t.philosophy}</p>
-                  <div className="mt-4 md:mt-6 flex items-center gap-6 md:gap-10 bg-black/40 backdrop-blur-3xl px-6 md:px-10 py-3 md:py-4 rounded-full border border-white/10 shadow-3xl relative overflow-hidden group">
+                  <div className="mt-4 md:mt-6 flex items-center gap-4 md:gap-8 bg-black/40 backdrop-blur-3xl px-5 md:px-8 py-2 md:py-3 rounded-full border border-white/10 shadow-3xl relative overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent animate-shimmer" />
                     <div className="flex flex-col items-center relative z-10">
                       <div className="flex items-center gap-2">
-                        <Clock size={14} className="text-[#ff0000]" />
-                        <span className="text-base md:text-xl font-black text-white">{shelfStats.minutes} {lang === 'ar' ? 'د' : 'm'}</span>
+                        <Clock size={12} className="text-[#ff0000]" />
+                        <span className="text-sm md:text-lg font-black text-white">{shelfStats.minutes} {lang === 'ar' ? 'د' : 'm'}</span>
                       </div>
-                      <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-20">{t.cumulativeTime}</span>
+                      <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest opacity-20">{t.cumulativeTime}</span>
                     </div>
-                    <div className="w-[1px] h-6 md:h-8 bg-white/10 relative z-10" />
+                    <div className="w-[1px] h-5 md:h-6 bg-white/10 relative z-10" />
                     <div className="flex flex-col items-center relative z-10">
                       <div className="flex items-center gap-2">
-                        <Star size={14} className="text-[#ff0000] fill-[#ff0000]" />
-                        <span className="text-base md:text-xl font-black text-white">{shelfStats.stars}</span>
+                        <Star size={12} className="text-[#ff0000] fill-[#ff0000]" />
+                        <span className="text-sm md:text-lg font-black text-white">{shelfStats.stars}</span>
                       </div>
-                      <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-20">{t.stars}</span>
+                      <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest opacity-20">{t.stars}</span>
                     </div>
                   </div>
                 </header>
                 <div className="flex-1 flex flex-col justify-center items-center">
                   <Shelf books={filteredBooks} lang={lang} onSelectBook={(b) => { setSelectedBook(b); setView(ViewState.READER); }} onAddBook={() => setIsAddingBook(true)} />
                 </div>
-                <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none opacity-10">
+                <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none opacity-5">
                   <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.6em] text-white">Developed By Oussama SEBROU</span>
                 </div>
               </MotionDiv>
