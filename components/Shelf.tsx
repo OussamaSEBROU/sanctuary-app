@@ -1,9 +1,12 @@
 
-import React, { useState } from 'react';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Book, Language } from '../types';
 import { translations } from '../i18n/translations';
-import { Star, Clock, Upload } from 'lucide-react';
+import { Star, Clock, Upload, Layers } from 'lucide-react';
+
+// Using any to bypass motion property type errors
+const MotionDiv = motion.div as any;
 
 interface ShelfProps {
   books: Book[];
@@ -16,10 +19,14 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
   const [activeIndex, setActiveIndex] = useState(0);
   const t = translations[lang];
 
+  const totalShelfSeconds = useMemo(() => {
+    return books.reduce((acc, b) => acc + b.timeSpentSeconds, 0);
+  }, [books]);
+
   if (books.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-8">
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center w-full max-w-lg">
+        <MotionDiv initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center w-full max-w-lg">
           <button onClick={onAddBook} className="group relative w-full aspect-[4/3] border-2 border-dashed border-white/5 rounded-[2.5rem] bg-white/5 hover:border-[#ff0000]/30 transition-all flex flex-col items-center justify-center gap-6 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-[#ff0000]/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="p-6 rounded-full bg-white/5 border border-white/10 group-hover:scale-110 group-hover:bg-[#ff0000]/10 group-hover:border-[#ff0000]/30 transition-all">
@@ -30,7 +37,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
               <p className="text-[10px] text-white/10 group-hover:text-white/30 uppercase font-bold">{lang === 'ar' ? 'قم برفع ملف PDF للبدء' : 'Upload a PDF to begin'}</p>
             </div>
           </button>
-        </motion.div>
+        </MotionDiv>
       </div>
     );
   }
@@ -42,7 +49,8 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
     return `${h}h ${m}m`;
   };
 
-  const handleDragEnd = (event: any, info: PanInfo) => {
+  // Using any for info parameter to bypass PanInfo export issue
+  const handleDragEnd = (event: any, info: any) => {
     const swipeThreshold = 50;
     if (info.offset.x < -swipeThreshold) {
       // Swipe Left -> Next
@@ -56,7 +64,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
   return (
     <div className="relative h-full flex flex-col items-center justify-start overflow-hidden w-full pt-4 md:pt-0 px-4">
       {/* 3D Carousel Stage with Drag Support */}
-      <motion.div 
+      <MotionDiv 
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         onDragEnd={handleDragEnd}
@@ -71,7 +79,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
             if (Math.abs(diff) > 2) return null;
 
             return (
-              <motion.div
+              <MotionDiv
                 key={book.id}
                 initial={{ opacity: 0, scale: 0.6 }}
                 animate={{ 
@@ -96,7 +104,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
                   </div>
                   
                   {isCenter && (
-                    <motion.div 
+                    <MotionDiv 
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[2px] opacity-0 hover:opacity-100 transition-opacity"
@@ -104,38 +112,53 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
                       <div className="bg-white text-black px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest">
                         {lang === 'ar' ? 'دخول' : 'Enter'}
                       </div>
-                    </motion.div>
+                    </MotionDiv>
                   )}
                 </div>
-              </motion.div>
+              </MotionDiv>
             );
           })}
         </AnimatePresence>
-      </motion.div>
+      </MotionDiv>
 
-      {/* Book Metadata - Positioned elegantly below the carousel */}
-      <motion.div 
+      {/* Book & Shelf Metadata */}
+      <MotionDiv 
         key={activeBook.id} 
         initial={{ opacity: 0, y: 20 }} 
         animate={{ opacity: 1, y: 0 }} 
         className="mt-12 md:mt-8 text-center w-full px-6 pb-20"
       >
-        <div className="flex items-center justify-center gap-6 md:gap-16 bg-white/5 border border-white/10 py-5 px-10 md:px-20 rounded-[3rem] inline-flex backdrop-blur-3xl shadow-2xl">
+        <div className="flex items-center justify-center gap-6 md:gap-12 bg-white/5 border border-white/10 py-5 px-8 md:px-16 rounded-[3rem] inline-flex backdrop-blur-3xl shadow-2xl">
+          {/* Active Book Stars */}
           <div className="flex flex-col items-center">
-             <div className="flex gap-1.5 mb-2">
+             <div className="flex gap-1 mb-2">
               {[...Array(5)].map((_, i) => (
-                <Star key={i} size={16} className={i < activeBook.stars ? 'text-[#ff0000] fill-[#ff0000] drop-shadow-[0_0_8px_rgba(255,0,0,0.7)]' : 'text-white/5'} />
+                <Star key={i} size={14} className={i < activeBook.stars ? 'text-[#ff0000] fill-[#ff0000] drop-shadow-[0_0_8px_rgba(255,0,0,0.7)]' : 'text-white/5'} />
               ))}
             </div>
-            <span className="text-[8px] md:text-[11px] uppercase font-black opacity-30 tracking-widest">{t.stars}</span>
+            <span className="text-[7px] md:text-[9px] uppercase font-black opacity-30 tracking-widest">{t.stars}</span>
           </div>
-          <div className="h-10 md:h-12 w-[1px] bg-white/10" />
+          
+          <div className="h-8 md:h-10 w-[1px] bg-white/10" />
+          
+          {/* Active Book Cumulative Time */}
           <div className="flex flex-col items-center">
-            <div className="flex items-center gap-2 md:gap-4 text-sm md:text-2xl font-black text-[#ff0000]">
-              <Clock size={18} className="text-[#ff0000]" />
+            <div className="flex items-center gap-2 text-xs md:text-lg font-black text-white">
+              <Clock size={14} className="text-[#ff0000]" />
               {formatTime(activeBook.timeSpentSeconds)}
             </div>
-            <span className="text-[8px] md:text-[11px] uppercase font-black opacity-30 tracking-widest">{t.cumulativeTime}</span>
+            <span className="text-[7px] md:text-[9px] uppercase font-black opacity-30 tracking-widest">{t.cumulativeTime}</span>
+          </div>
+
+          <div className="h-8 md:h-10 w-[1px] bg-white/10" />
+
+          {/* TOTAL SHELF CUMULATIVE TIME */}
+          <div className="flex flex-col items-center">
+            <div className="flex items-center gap-2 text-xs md:text-lg font-black text-[#ff0000] glow-red">
+              <Layers size={14} className="text-[#ff0000]" />
+              {formatTime(totalShelfSeconds)}
+            </div>
+            <span className="text-[7px] md:text-[9px] uppercase font-black opacity-30 tracking-widest">{lang === 'ar' ? 'إجمالي الرف' : 'Shelf Total'}</span>
           </div>
         </div>
 
@@ -144,7 +167,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
              {lang === 'ar' ? 'اسحب للتنقل • انقر للدخول' : 'Swipe to Browse • Click to Enter'}
            </p>
         </div>
-      </motion.div>
+      </MotionDiv>
     </div>
   );
 };
