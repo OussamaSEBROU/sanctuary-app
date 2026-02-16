@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Book, Language } from '../types';
 import { translations } from '../i18n/translations';
@@ -10,12 +10,13 @@ const MotionDiv = motion.div as any;
 interface ShelfProps {
   books: Book[];
   lang: Language;
+  activeIndex: number; // مدخل من الخارج
+  onActiveIndexChange: (index: number) => void; // مخرج للخارج
   onSelectBook: (book: Book) => void;
   onAddBook: () => void;
 }
 
-export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBook }) => {
-  const [activeIndex, setActiveIndex] = useState(0);
+export const Shelf: React.FC<ShelfProps> = ({ books, lang, activeIndex, onActiveIndexChange, onSelectBook, onAddBook }) => {
   const t = translations[lang];
 
   if (books.length === 0) {
@@ -40,9 +41,9 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
   const handleDragEnd = (event: any, info: any) => {
     const swipeThreshold = 50;
     if (info.offset.x < -swipeThreshold) {
-      setActiveIndex(prev => (prev + 1) % books.length);
+      onActiveIndexChange((activeIndex + 1) % books.length);
     } else if (info.offset.x > swipeThreshold) {
-      setActiveIndex(prev => (prev - 1 + books.length) % books.length);
+      onActiveIndexChange((activeIndex - 1 + books.length) % books.length);
     }
   };
 
@@ -74,7 +75,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBo
                 }}
                 exit={{ opacity: 0, scale: 0.5 }}
                 transition={{ type: 'spring', stiffness: 350, damping: 35 }}
-                onClick={() => isCenter ? onSelectBook(book) : setActiveIndex(index)}
+                onClick={() => isCenter ? onSelectBook(book) : onActiveIndexChange(index)}
                 className="absolute w-[220px] h-[310px] md:w-[380px] md:h-[540px]"
               >
                 <div className={`relative w-full h-full rounded-[2.5rem] overflow-hidden border transition-all duration-700
