@@ -1,173 +1,647 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Book, Language } from '../types';
+import { Book, Language, Annotation } from '../types';
 import { translations } from '../i18n/translations';
-import { Star, Clock, Upload, Layers } from 'lucide-react';
+import { storageService } from '../services/storageService';
+import { pdfStorage } from '../services/pdfStorage';
+import { 
+  ChevronLeft, ChevronRight, Maximize2, Highlighter, 
+  PenTool, Square, MessageSquare, Trash2, X, MousePointer2, 
+  ListOrdered, Star, Volume2, CloudLightning, Waves, 
+  Moon, Bird, Flame, VolumeX, Sparkles, Search, Droplets, PartyPopper,
+  Minimize2, Edit3, Award, Layers, LogOut, Sun, Clock, Loader2, Zap, Rocket, Trophy
+} from 'lucide-react';
 
-// Using any to bypass motion property type errors
+declare const pdfjsLib: any;
+
 const MotionDiv = motion.div as any;
+const MotionHeader = motion.header as any;
 
-interface ShelfProps {
-  books: Book[];
+interface ReaderProps {
+  book: Book;
   lang: Language;
-  onSelectBook: (book: Book) => void;
-  onAddBook: () => void;
+  onBack: () => void;
+  onStatsUpdate: () => void;
 }
 
-export const Shelf: React.FC<ShelfProps> = ({ books, lang, onSelectBook, onAddBook }) => {
-  const [activeIndex, setActiveIndex] = useState(0);
+type Tool = 'view' | 'highlight' | 'underline' | 'box' | 'note';
+
+const COLORS = [
+  { name: 'Yellow', hex: '#fbbf24' },
+  { name: 'Red', hex: '#ef4444' },
+  { name: 'Green', hex: '#22c55e' },
+  { name: 'Blue', hex: '#3b82f6' },
+  { name: 'Purple', hex: '#a855f7' },
+  { name: 'Orange', hex: '#f97316' },
+  { name: 'Teal', hex: '#14b8a6' },
+  { name: 'Pink', hex: '#ec4899' }
+];
+
+const SOUNDS = [
+  { id: 'none', icon: VolumeX, url: '' },
+  { id: 'rain', icon: CloudLightning, url: '/assets/sounds/rain.mp3' },
+  { id: 'sea', icon: Waves, url: '/assets/sounds/sea.mp3' },
+  { id: 'river', icon: Droplets, url: '/assets/sounds/river.mp3' },
+  { id: 'night', icon: Moon, url: '/assets/sounds/night.mp3' },
+  { id: 'birds', icon: Bird, url: '/assets/sounds/birds.mp3' },
+  { id: 'fire', icon: Flame, url: '/assets/sounds/fire.mp3' }
+];
+
+const TOOL_ICONS = {
+  view: MousePointer2,
+  highlight: Highlighter,
+  underline: PenTool,
+  box: Square,
+  note: MessageSquare
+};
+
+const STAR_THRESHOLDS = [900, 1800, 3000, 8100, 10800];
+
+export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdate }) => {
+  const [isZenMode, setIsZenMode] = useState(false);
+  const [isNightMode, setIsNightMode] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [pages, setPages] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(book.lastPage || 0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+  
+  const [activeTool, setActiveTool] = useState<Tool>('view');
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
+  const [activeColor, setActiveColor] = useState(COLORS[0].hex);
+  const [annotations, setAnnotations] = useState<Annotation[]>(book.annotations || []);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+  const [currentRect, setCurrentRect] = useState<{ x: number, y: number, w: number, h: number } | null>(null);
+  
+  const [editingAnnoId, setEditingAnnoId] = useState<string | null>(null);
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
+  const [isGoToPageOpen, setIsGoToPageOpen] = useState(false);
+  const [isSoundPickerOpen, setIsSoundPickerOpen] = useState(false);
+  const [showStarAchievement, setShowStarAchievement] = useState(false);
+  const [encouragementType, setEncouragementType] = useState<'mid' | 'final' | null>(null);
+  const [activeSoundId, setActiveSoundId] = useState('none');
+  const [targetPageInput, setTargetPageInput] = useState('');
+  const [sessionSeconds, setSessionSeconds] = useState(0);
+  const [lastProcessedStars, setLastProcessedStars] = useState(book.stars);
+
+  const [zoomScale, setZoomScale] = useState(1);
+  const [isPinching, setIsPinching] = useState(false);
+  const initialPinchDistance = useRef<number | null>(null);
+  const initialScaleOnPinch = useRef<number>(1);
+  
+  const timerRef = useRef<number | null>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const celebrationAudioRef = useRef<HTMLAudioElement | null>(null);
+  const controlsTimeoutRef = useRef<number | null>(null);
+  const loadingIntervalRef = useRef<number | null>(null);
+  const triggeredMilestones = useRef<Set<string>>(new Set());
+
   const t = translations[lang];
+  const isRTL = lang === 'ar';
+  const fontClass = isRTL ? 'font-ar' : 'font-en';
 
-  const totalShelfSeconds = useMemo(() => {
-    return books.reduce((acc, b) => acc + b.timeSpentSeconds, 0);
-  }, [books]);
+  const currentLevelIndex = STAR_THRESHOLDS.findIndex(th => book.timeSpentSeconds < th);
+  const nextThreshold = STAR_THRESHOLDS[currentLevelIndex] || null;
+  const prevThreshold = currentLevelIndex > 0 ? STAR_THRESHOLDS[currentLevelIndex - 1] : 0;
+  
+  const remainingSeconds = nextThreshold ? nextThreshold - book.timeSpentSeconds : 0;
+  const minsToNextStar = Math.ceil(remainingSeconds / 60);
 
-  if (books.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-8">
-        <MotionDiv initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center w-full max-w-lg">
-          <button onClick={onAddBook} className="group relative w-full aspect-[4/3] border-2 border-dashed border-white/5 rounded-[2.5rem] bg-white/5 hover:border-[#ff0000]/30 transition-all flex flex-col items-center justify-center gap-6 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#ff0000]/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="p-6 rounded-full bg-white/5 border border-white/10 group-hover:scale-110 group-hover:bg-[#ff0000]/10 group-hover:border-[#ff0000]/30 transition-all">
-               <Upload size={32} className="text-white/20 group-hover:text-[#ff0000]" />
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <span className="text-[11px] font-black tracking-[0.3em] uppercase text-white/20 group-hover:text-[#ff0000]">{t.addToSanctuary}</span>
-              <p className="text-[10px] text-white/10 group-hover:text-white/30 uppercase font-bold">{lang === 'ar' ? 'قم برفع ملف PDF للبدء' : 'Upload a PDF to begin'}</p>
-            </div>
-          </button>
-        </MotionDiv>
-      </div>
-    );
-  }
-
-  const activeBook = books[activeIndex];
-  const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    return `${h}h ${m}m`;
-  };
-
-  // Using any for info parameter to bypass PanInfo export issue
-  const handleDragEnd = (event: any, info: any) => {
-    const swipeThreshold = 50;
-    if (info.offset.x < -swipeThreshold) {
-      // Swipe Left -> Next
-      setActiveIndex(prev => (prev + 1) % books.length);
-    } else if (info.offset.x > swipeThreshold) {
-      // Swipe Right -> Prev
-      setActiveIndex(prev => (prev - 1 + books.length) % books.length);
+  // Toggle Fullscreen and Zen Mode
+  const toggleZenMode = async () => {
+    if (!isZenMode) {
+      try {
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) {
+          await docEl.requestFullscreen();
+        } else if ((docEl as any).webkitRequestFullscreen) {
+          await (docEl as any).webkitRequestFullscreen();
+        }
+      } catch (e) {
+        console.warn("Fullscreen not supported or blocked", e);
+      }
+      setIsZenMode(true);
+      setZoomScale(1);
+    } else {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+      setIsZenMode(false);
     }
   };
 
+  useEffect(() => {
+    const handleFsChange = () => {
+      if (!document.fullscreenElement && isZenMode) {
+        setIsZenMode(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, [isZenMode]);
+
+  useEffect(() => {
+    if (isZenMode) {
+      setShowControls(false);
+    } else {
+      setShowControls(true);
+      if (controlsTimeoutRef.current) window.clearTimeout(controlsTimeoutRef.current);
+    }
+  }, [isZenMode]);
+
+  const handleUserActivity = () => {
+    if (!isZenMode) return;
+    setShowControls(true);
+    if (controlsTimeoutRef.current) window.clearTimeout(controlsTimeoutRef.current);
+    controlsTimeoutRef.current = window.setTimeout(() => {
+      setShowControls(false);
+      setIsToolsMenuOpen(false);
+    }, 4500);
+  };
+
+  useEffect(() => {
+    loadingIntervalRef.current = window.setInterval(() => {
+      setLoadingMsgIdx(prev => (prev + 1) % t.loadingMessages.length);
+    }, 2500);
+
+    const loadPdf = async () => {
+      const fileData = await pdfStorage.getFile(book.id);
+      if (!fileData) { onBack(); return; }
+      try {
+        const pdf = await pdfjsLib.getDocument({ data: fileData }).promise;
+        setTotalPages(pdf.numPages);
+        
+        const targetIdx = book.lastPage || 0;
+        const tempPages = new Array(pdf.numPages).fill(null);
+
+        const renderSinglePage = async (idx: number) => {
+          if (idx < 0 || idx >= pdf.numPages || tempPages[idx]) return;
+          const p = await pdf.getPage(idx + 1);
+          const vp = p.getViewport({ scale: 2 });
+          const cv = document.createElement('canvas');
+          cv.height = vp.height; cv.width = vp.width;
+          await p.render({ canvasContext: cv.getContext('2d')!, viewport: vp }).promise;
+          tempPages[idx] = cv.toDataURL('image/jpeg', 0.85);
+          setPages([...tempPages]);
+        };
+
+        await renderSinglePage(targetIdx);
+        setIsLoading(false);
+        if (loadingIntervalRef.current) {
+          clearInterval(loadingIntervalRef.current);
+          loadingIntervalRef.current = null;
+        }
+
+        const loadRest = async () => {
+          for (let i = 1; i <= 3; i++) {
+            await renderSinglePage(targetIdx + i);
+            await renderSinglePage(targetIdx - i);
+          }
+          for (let i = 0; i < pdf.numPages; i++) {
+            if (!tempPages[i]) await renderSinglePage(i);
+          }
+        };
+        loadRest();
+
+      } catch (err) { console.error(err); }
+    };
+    loadPdf();
+
+    timerRef.current = window.setInterval(() => {
+      setSessionSeconds(s => s + 1);
+      storageService.updateBookStats(book.id, 1);
+      onStatsUpdate();
+    }, 1000);
+
+    return () => { 
+      if (timerRef.current) clearInterval(timerRef.current); 
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
+    };
+  }, [book.id]);
+
+  useEffect(() => {
+    if (nextThreshold) {
+      const midPoint = prevThreshold + (nextThreshold - prevThreshold) / 2;
+      const finalPush = nextThreshold - 300; 
+
+      const midId = `mid_${nextThreshold}`;
+      if (book.timeSpentSeconds >= midPoint && book.timeSpentSeconds < midPoint + 5 && !triggeredMilestones.current.has(midId)) {
+        triggeredMilestones.current.add(midId);
+        setEncouragementType('mid');
+      }
+
+      const finalId = `final_${nextThreshold}`;
+      if (book.timeSpentSeconds >= finalPush && book.timeSpentSeconds < finalPush + 5 && !triggeredMilestones.current.has(finalId)) {
+        triggeredMilestones.current.add(finalId);
+        setEncouragementType('final');
+      }
+    }
+    
+    if (book.stars > lastProcessedStars) {
+      setLastProcessedStars(book.stars);
+      triggerCelebration();
+    }
+  }, [book.timeSpentSeconds, book.stars]);
+
+  const triggerCelebration = () => {
+    if (celebrationAudioRef.current) {
+      celebrationAudioRef.current.src = '/assets/sounds/celebration.mp3';
+      celebrationAudioRef.current.play().catch(() => {});
+    }
+    setShowStarAchievement(true);
+  };
+
+  useEffect(() => {
+    storageService.updateBookAnnotations(book.id, annotations);
+  }, [annotations]);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 0 && newPage < totalPages) {
+      setZoomScale(1); 
+      setCurrentPage(newPage);
+      storageService.updateBookPage(book.id, newPage);
+    }
+  };
+
+  const jumpToPage = (e: React.FormEvent) => {
+    e.preventDefault();
+    const p = parseInt(targetPageInput);
+    if (!isNaN(p) && p > 0 && p <= totalPages) {
+      handlePageChange(p - 1);
+      setIsGoToPageOpen(false);
+      setTargetPageInput('');
+    }
+  };
+
+  const playSound = (sound: typeof SOUNDS[0]) => {
+    setActiveSoundId(sound.id);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      if (sound.id !== 'none') {
+        audioRef.current.src = sound.url;
+        audioRef.current.load();
+        audioRef.current.play().catch(err => console.error("Audio playback error:", err));
+      }
+    }
+    setIsSoundPickerOpen(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    handleUserActivity();
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+      initialPinchDistance.current = dist;
+      initialScaleOnPinch.current = zoomScale;
+      setIsPinching(true);
+      setIsDrawing(false); 
+      setCurrentRect(null);
+      return;
+    }
+    if (activeTool !== 'view' && e.touches.length === 1) handleStart(e.touches[0].clientX, e.touches[0].clientY);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && initialPinchDistance.current !== null) {
+      const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+      const newScale = (dist / initialPinchDistance.current) * initialScaleOnPinch.current;
+      setZoomScale(Math.max(1, Math.min(newScale, 4))); 
+      return;
+    }
+    if (isDrawing && e.touches.length === 1) handleMove(e.touches[0].clientX, e.touches[0].clientY);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length < 2) {
+      initialPinchDistance.current = null;
+      setIsPinching(false);
+    }
+    if (isDrawing) handleEnd();
+  };
+
+  const getRelativeCoords = (clientX: number, clientY: number) => {
+    if (!pageRef.current) return { x: 0, y: 0 };
+    const rect = pageRef.current.getBoundingClientRect();
+    const rawX = ((clientX - rect.left) / rect.width) * 100;
+    const rawY = ((clientY - rect.top) / rect.height) * 100;
+    return { x: Math.max(0.1, Math.min(99.9, rawX)), y: Math.max(0.1, Math.min(99.9, rawY)) };
+  };
+
+  const handleStart = (clientX: number, clientY: number) => {
+    if (activeTool === 'view' || isPinching) return;
+    const { x, y } = getRelativeCoords(clientX, clientY);
+    if (activeTool === 'note') {
+      const newNote: Annotation = { id: Math.random().toString(36).substr(2, 9), type: 'note', pageIndex: currentPage, x, y, text: '', title: '', color: activeColor };
+      setAnnotations([...annotations, newNote]);
+      setEditingAnnoId(newNote.id);
+      setActiveTool('view');
+      return;
+    }
+    setIsDrawing(true); setStartPos({ x, y }); setCurrentRect({ x, y, w: 0, h: 0 });
+  };
+
+  const handleMove = (clientX: number, clientY: number) => {
+    if (!isDrawing || isPinching) return;
+    const { x: currentX, y: currentY } = getRelativeCoords(clientX, clientY);
+    setCurrentRect({ x: Math.min(startPos.x, currentX), y: Math.min(startPos.y, currentY), w: Math.max(0.1, Math.abs(currentX - startPos.x)), h: Math.max(0.1, Math.abs(currentY - startPos.y)) });
+  };
+
+  const handleEnd = () => {
+    if (!isDrawing) return;
+    if (currentRect && currentRect.w > 0.4 && currentRect.h > 0.4) {
+      const newAnno: Annotation = { id: Math.random().toString(36).substr(2, 9), type: activeTool as any, pageIndex: currentPage, x: currentRect.x, y: currentRect.y, width: currentRect.w, height: activeTool === 'underline' ? 0.8 : currentRect.h, color: activeColor, text: '', title: '' };
+      setAnnotations([...annotations, newAnno]);
+      setEditingAnnoId(newAnno.id);
+    }
+    setIsDrawing(false); setCurrentRect(null);
+  };
+
+  const handleDragEnd = (_event: any, info: any) => {
+    if (activeTool !== 'view' || isPinching) return;
+    if (zoomScale > 1.05) return;
+    const threshold = 60; 
+    if (info.offset.x < -threshold) handlePageChange(currentPage + 1);
+    else if (info.offset.x > threshold) handlePageChange(currentPage - 1);
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    if (activeTool !== 'view') return;
+    setZoomScale(zoomScale > 1 ? 1 : 2.5);
+  };
+
+  const sessionMinutes = Math.floor(sessionSeconds / 60);
+  const ActiveToolIcon = TOOL_ICONS[activeTool];
+  const dragConstraints = zoomScale > 1.05 ? undefined : { left: 0, right: 0, top: 0, bottom: 0 };
+
   return (
-    <div className="relative h-full flex flex-col items-center justify-start overflow-hidden w-full pt-4 md:pt-0 px-4">
-      {/* 3D Carousel Stage with Drag Support */}
-      <MotionDiv 
-        drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        onDragEnd={handleDragEnd}
-        className="relative w-full h-[350px] md:h-[550px] flex items-center justify-center perspective-1000 mt-2 md:mt-4 touch-none cursor-grab active:cursor-grabbing"
-      >
-        <AnimatePresence mode="popLayout">
-          {books.map((book, index) => {
-            const isCenter = index === activeIndex;
-            const diff = index - activeIndex;
-            
-            // Limit rendered items for performance
-            if (Math.abs(diff) > 2) return null;
+    <div 
+      onMouseMove={handleUserActivity}
+      onMouseDown={handleUserActivity}
+      className={`h-screen flex flex-col bg-black overflow-hidden relative transition-all duration-1000 ${isZenMode && !showControls ? 'cursor-none' : ''} ${fontClass}`} 
+      dir={isRTL ? 'rtl' : 'ltr'}
+    >
+      <audio ref={audioRef} loop hidden />
+      <audio ref={celebrationAudioRef} hidden />
 
-            return (
-              <MotionDiv
-                key={book.id}
-                initial={{ opacity: 0, scale: 0.6 }}
-                animate={{ 
-                  opacity: isCenter ? 1 : 0.3, 
-                  x: diff * (window.innerWidth < 768 ? 140 : 300), 
-                  scale: isCenter ? 1 : 0.75, 
-                  rotateY: diff * (window.innerWidth < 768 ? -25 : -35),
-                  zIndex: 20 - Math.abs(diff),
-                  filter: isCenter ? 'blur(0px)' : 'blur(4px)'
-                }}
-                exit={{ opacity: 0, scale: 0.5 }}
-                transition={{ type: 'spring', stiffness: 350, damping: 35 }}
-                onClick={() => isCenter ? onSelectBook(book) : setActiveIndex(index)}
-                className="absolute w-[200px] h-[280px] md:w-[340px] md:h-[500px]"
-              >
-                <div className={`relative w-full h-full rounded-[2.5rem] overflow-hidden border-2 transition-all duration-500
-                   ${isCenter ? 'border-[#ff0000] shadow-[0_0_60px_rgba(255,0,0,0.5)]' : 'border-white/5 opacity-60'}`}>
-                  <img src={book.cover} alt={book.title} className="w-full h-full object-cover select-none pointer-events-none" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent flex flex-col justify-end p-6 md:p-10 pointer-events-none">
-                    <p className="text-base md:text-3xl font-black truncate leading-tight uppercase tracking-tighter text-white">{book.title}</p>
-                    <p className="text-[9px] md:text-sm text-[#ff0000] font-black uppercase tracking-widest mt-1.5">{book.author}</p>
+      <AnimatePresence>
+        {isLoading && (
+          <MotionDiv 
+            key="loading-overlay"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[5000] bg-black flex flex-col items-center justify-center p-8 text-center"
+          >
+            <div className="relative mb-12">
+               <MotionDiv animate={{ scale: [1, 1.1, 1], opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 2 }}
+                 className="w-32 h-32 md:w-48 md:h-48 border border-[#ff0000]/30 rounded-full flex items-center justify-center shadow-[0_0_60px_rgba(255,0,0,0.1)]"
+               >
+                  <Sparkles size={40} className="text-[#ff0000]" />
+               </MotionDiv>
+            </div>
+            <h3 className="text-xl md:text-2xl font-black uppercase italic text-white/80 tracking-[0.3em] leading-tight">
+              {t.loadingMessages[loadingMsgIdx]}
+            </h3>
+          </MotionDiv>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showControls && !isZenMode && (
+          <MotionHeader initial={{ y: -100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -100, opacity: 0 }} 
+            className="fixed top-0 left-0 right-0 p-4 md:p-8 flex items-center justify-between z-[1100] bg-gradient-to-b from-black via-black/80 to-transparent pointer-events-none"
+          >
+            <div className="flex items-center gap-2 md:gap-3 pointer-events-auto">
+              <button onClick={onBack} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white/5 rounded-full text-white/60 hover:bg-white/10 active:scale-90"><ChevronLeft size={20} className={isRTL ? "rotate-180" : ""} /></button>
+              <button onClick={() => setIsArchiveOpen(true)} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 active:scale-90"><ListOrdered size={20} /></button>
+              <button onClick={() => setIsSoundPickerOpen(true)} className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeSoundId !== 'none' ? 'bg-[#ff0000] text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}><Volume2 size={20} /></button>
+              <button onClick={() => setIsNightMode(!isNightMode)} className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full transition-all active:scale-90 ${isNightMode ? 'bg-[#ff0000] text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                {isNightMode ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+            </div>
+            <button onClick={toggleZenMode} className={`pointer-events-auto w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-[#ff0000]/10 text-[#ff0000] border border-[#ff0000]/20`}>
+              <Maximize2 size={20} />
+            </button>
+          </MotionHeader>
+        )}
+      </AnimatePresence>
+
+      <main className="flex-1 flex items-center justify-center bg-black relative overflow-hidden" ref={containerRef}>
+        {!isLoading && (
+          <div className={`relative w-full h-full flex items-center justify-center overflow-auto no-scrollbar scroll-smooth ${isZenMode ? 'p-0' : 'p-10'}`}>
+            <MotionDiv 
+              ref={pageRef} 
+              drag={activeTool === 'view' && !isPinching}
+              dragConstraints={dragConstraints}
+              onDragEnd={handleDragEnd}
+              onDoubleClick={handleDoubleClick}
+              onMouseDown={(e: any) => handleStart(e.clientX, e.clientY)}
+              onMouseMove={(e: any) => handleMove(e.clientX, e.clientY)}
+              onMouseUp={handleEnd}
+              onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
+              animate={{ scale: zoomScale }}
+              transition={{ type: 'spring', damping: 40, stiffness: 300 }}
+              className={`relative shadow-2xl overflow-hidden touch-none ${isZenMode ? 'h-full w-full rounded-none' : 'max-h-[75vh] md:max-h-[85vh] w-auto aspect-[1/1.41] rounded-xl md:rounded-3xl'}`}
+              style={{ backgroundColor: isNightMode ? '#001122' : '#ffffff', transformOrigin: 'center center' }}
+            >
+              <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none select-none transition-all duration-500" style={{ filter: isNightMode ? 'invert(1) hue-rotate(180deg)' : 'none' }} alt="Page" />
+              <div className="absolute inset-0 pointer-events-none">
+                {annotations.filter(a => a.pageIndex === currentPage).map(anno => (
+                  <div key={anno.id} className="absolute pointer-events-auto cursor-help" onClick={() => setEditingAnnoId(anno.id)}
+                    style={{ left: `${anno.x}%`, top: `${anno.y}%`, width: anno.width ? `${anno.width}%` : '0%', height: anno.height ? `${anno.height}%` : '0%', 
+                      backgroundColor: anno.type === 'highlight' ? `${anno.color}66` : 'transparent', borderBottom: anno.type === 'underline' ? `2px solid ${anno.color}` : 'none', border: anno.type === 'box' ? `2px solid ${anno.color}` : 'none' }}
+                  >
+                    {anno.type === 'note' && <div className="w-6 h-6 md:w-8 md:h-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff0000] text-white flex items-center justify-center shadow-2xl border-2 border-white"><MessageSquare size={10} className="md:size-4" /></div>}
                   </div>
-                  
-                  {isCenter && (
-                    <MotionDiv 
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[2px] opacity-0 hover:opacity-100 transition-opacity"
-                    >
-                      <div className="bg-white text-black px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest">
-                        {lang === 'ar' ? 'دخول' : 'Enter'}
-                      </div>
-                    </MotionDiv>
-                  )}
+                ))}
+              </div>
+            </MotionDiv>
+          </div>
+        )}
+      </main>
+
+      {/* ZEN MODE TOP BAR - Requested Horizontal Layout */}
+      <AnimatePresence>
+        {isZenMode && (
+          <MotionDiv initial={{ y: -50, opacity: 0 }} animate={{ y: showControls ? 0 : -100, opacity: 1 }}
+            className="fixed top-0 left-0 right-0 z-[6000] pointer-events-auto flex justify-center p-4 md:p-6"
+          >
+            <div className="flex items-center gap-2 md:gap-4 bg-black/40 backdrop-blur-2xl px-4 md:px-8 py-2 md:py-3.5 rounded-full border border-white/10 shadow-4xl">
+              {/* Reading Timer */}
+              <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/5 mr-2">
+                <Clock size={14} className="text-[#ff0000] animate-pulse" />
+                <span className="text-[10px] md:text-xs font-black text-white/80">{sessionMinutes}m</span>
+              </div>
+
+              <div className="w-[1px] h-6 bg-white/10 mx-1 hidden md:block" />
+
+              {/* Wisdom Index (Edit/Adjustment icon) */}
+              <button onClick={() => setIsArchiveOpen(true)}
+                className="w-10 h-10 flex items-center justify-center rounded-full text-white/40 hover:bg-white/10 hover:text-white transition-all active:scale-90"
+              >
+                <Layers size={18} />
+              </button>
+
+              {/* Modification Toggle (Edit Tool) */}
+              <button onClick={() => setActiveTool(activeTool === 'view' ? 'highlight' : 'view')}
+                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeTool !== 'view' ? 'bg-[#ff0000] text-white' : 'text-white/40 hover:bg-white/10'}`}
+              >
+                <Highlighter size={18} />
+              </button>
+              
+              {/* Night Mode Toggle */}
+              <button onClick={() => setIsNightMode(!isNightMode)}
+                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${isNightMode ? 'bg-[#ff0000] text-white' : 'text-white/40 hover:bg-white/10'}`}
+              >
+                {isNightMode ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+
+              {/* Soundscape Picker */}
+              <button onClick={() => setIsSoundPickerOpen(true)}
+                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeSoundId !== 'none' ? 'bg-[#ff0000] text-white' : 'text-white/40 hover:bg-white/10'}`}
+              >
+                <Volume2 size={18} />
+              </button>
+
+              <div className="w-[1px] h-6 bg-white/10 mx-1" />
+
+              {/* Exit Button */}
+              <button onClick={toggleZenMode} 
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-[#ff0000] text-white shadow-lg active:scale-90 hover:brightness-110"
+              >
+                <Minimize2 size={18} />
+              </button>
+            </div>
+          </MotionDiv>
+        )}
+      </AnimatePresence>
+
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1100] flex flex-col items-center gap-2 w-[90vw] max-w-[420px] pointer-events-none">
+        <AnimatePresence>
+          {showControls && (
+            <MotionDiv initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }} 
+              className={`w-full flex items-center justify-between bg-black/85 backdrop-blur-3xl border border-white/10 px-4 py-1.5 rounded-full shadow-3xl pointer-events-auto ${isZenMode ? 'hidden' : ''}`}
+            >
+              <div className="flex items-center gap-2">
+                <button onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)} className={`w-8 h-8 flex items-center justify-center rounded-full ${isToolsMenuOpen ? 'bg-white text-black' : 'bg-white/5 text-[#ff0000]'}`}><ActiveToolIcon size={16} /></button>
+                <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-full border border-white/5">
+                   {[...Array(5)].map((_, i) => (
+                     <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < book.stars ? 'bg-[#ff0000]' : 'bg-white/10'}`} />
+                   ))}
                 </div>
-              </MotionDiv>
-            );
-          })}
+              </div>
+              <div className="flex items-center gap-0.5 flex-1 justify-center">
+                <button onClick={() => handlePageChange(currentPage - 1)} className="p-1.5 text-white/20 hover:text-[#ff0000]"><ChevronLeft size={16}/></button>
+                <button onClick={() => setIsGoToPageOpen(true)} className="px-3 py-0.5 bg-white/5 rounded-full border border-white/5">
+                  <span className="text-[9px] font-black text-white/50">{currentPage + 1} / {totalPages}</span>
+                </button>
+                <button onClick={() => handlePageChange(currentPage + 1)} className="p-1.5 text-white/20 hover:text-[#ff0000]"><ChevronRight size={16}/></button>
+              </div>
+              <button onClick={() => setIsGoToPageOpen(true)} className="w-8 h-8 flex items-center justify-center text-white/20"><Search size={14} /></button>
+            </MotionDiv>
+          )}
         </AnimatePresence>
-      </MotionDiv>
+      </div>
 
-      {/* Book & Shelf Metadata */}
-      <MotionDiv 
-        key={activeBook.id} 
-        initial={{ opacity: 0, y: 20 }} 
-        animate={{ opacity: 1, y: 0 }} 
-        className="mt-12 md:mt-8 text-center w-full px-6 pb-20"
-      >
-        <div className="flex items-center justify-center gap-6 md:gap-12 bg-white/5 border border-white/10 py-5 px-8 md:px-16 rounded-[3rem] inline-flex backdrop-blur-3xl shadow-2xl">
-          {/* Active Book Stars */}
-          <div className="flex flex-col items-center">
-             <div className="flex gap-1 mb-2">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={14} className={i < activeBook.stars ? 'text-[#ff0000] fill-[#ff0000] drop-shadow-[0_0_8px_rgba(255,0,0,0.7)]' : 'text-white/5'} />
-              ))}
+      <AnimatePresence>
+        {showStarAchievement && (
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center p-10 text-center pointer-events-auto"
+          >
+            <MotionDiv initial={{ scale: 0.5, rotate: -20, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ type: 'spring', damping: 12 }}
+              className="relative mb-12"
+            >
+               <div className="absolute inset-0 bg-[#ff0000]/20 blur-[100px] animate-pulse rounded-full" />
+               <Trophy size={window.innerWidth < 768 ? 120 : 200} className="text-[#ff0000] drop-shadow-[0_0_50px_rgba(255,0,0,0.8)] relative z-10" />
+            </MotionDiv>
+            <h2 className="text-4xl md:text-7xl font-black italic uppercase tracking-tighter text-white mb-6 drop-shadow-2xl">{t.starAchieved}</h2>
+            <p className="text-sm md:text-xl font-bold uppercase tracking-[0.3em] text-[#ff0000]/80 mb-12 max-w-2xl leading-relaxed">{t.starMotivation}</p>
+            <button onClick={() => setShowStarAchievement(false)} className="px-12 py-5 bg-[#ff0000] text-white rounded-full font-black text-xs md:text-sm uppercase tracking-[0.5em] shadow-[0_20px_50px_rgba(255,0,0,0.4)] hover:scale-110 active:scale-95 transition-all">{t.continueJourney}</button>
+          </MotionDiv>
+        )}
+
+        {encouragementType && (
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9998] bg-black/90 backdrop-blur-3xl flex flex-col items-center justify-center p-10 text-center pointer-events-auto"
+          >
+            <MotionDiv initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="max-w-3xl">
+              {encouragementType === 'mid' ? (
+                <>
+                  <div className="inline-flex p-6 bg-blue-500/10 rounded-full border border-blue-500/20 mb-10 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
+                    <Rocket size={60} className="text-blue-500 animate-bounce" />
+                  </div>
+                  <h3 className="text-3xl md:text-6xl font-black italic uppercase text-white mb-6 tracking-tighter">{isRTL ? 'منتصف الطريق بنجاح!' : 'HALFWAY THERE!'}</h3>
+                  <p className="text-xs md:text-lg font-bold uppercase tracking-widest text-white/40 mb-12 leading-relaxed">{isRTL ? 'لقد قطعت نصف المسافة نحو النجمة التالية. تركيزك مذهل، استمر في التقدم ولا تتوقف الآن.' : 'You have conquered half the distance to the next star. Your focus is sharp. Keep the momentum!'}</p>
+                </>
+              ) : (
+                <>
+                  <div className="inline-flex p-6 bg-[#ff0000]/10 rounded-full border border-[#ff0000]/20 mb-10 shadow-[0_0_30px_rgba(255,0,0,0.2)]">
+                    <Zap size={60} className="text-[#ff0000] animate-pulse" />
+                  </div>
+                  <h3 className="text-3xl md:text-6xl font-black italic uppercase text-[#ff0000] mb-6 tracking-tighter">{isRTL ? 'أنت على وشك النهاية!' : 'ALMOST AT THE SUMMIT!'}</h3>
+                  <p className="text-xs md:text-lg font-bold uppercase tracking-widest text-white/60 mb-12 leading-relaxed">{isRTL ? 'بقي 5 دقائق فقط! شعلة المعرفة توشك على الانفجار بنجمة جديدة. ارفع مستوى تركيزك للأقصى!' : 'Only 5 minutes remain! The light of knowledge is about to ignite a new star. Maximize your focus!'}</p>
+                </>
+              )}
+              <button onClick={() => setEncouragementType(null)} className="px-10 py-4 border border-white/10 bg-white/5 text-white rounded-full font-black text-[10px] md:text-xs uppercase tracking-[0.4em] hover:bg-[#ff0000] hover:border-[#ff0000] transition-all">{isRTL ? 'متابعة الاستغراق' : 'STAY IN FLOW'}</button>
+            </MotionDiv>
+          </MotionDiv>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isArchiveOpen && (
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/40 backdrop-blur-[60px] p-6 flex items-center justify-center">
+             <MotionDiv initial={{ y: 50 }} animate={{ y: 0 }} className="w-full max-w-2xl bg-[#0b140b] border border-white/10 rounded-[3rem] p-8 max-h-[80vh] overflow-hidden flex flex-col shadow-4xl">
+                <div className="flex justify-between items-center mb-8 bg-white/[0.02] p-4 rounded-2xl shrink-0">
+                  <h2 className="text-2xl font-black italic uppercase tracking-tighter">{t.wisdomIndex}</h2>
+                  <button onClick={() => setIsArchiveOpen(false)} className="hover:text-[#ff0000] transition-colors p-2 bg-white/5 rounded-full"><X size={20}/></button>
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scroll space-y-4">
+                  {annotations.length === 0 ? <p className="text-center opacity-20 py-20 uppercase font-black tracking-widest">{t.noAnnotations}</p> : annotations.map(anno => (
+                    <div key={anno.id} className="p-6 bg-white/[0.03] rounded-2xl border border-white/5 hover:border-[#ff0000]/30 hover:bg-white/[0.06] transition-all group flex items-start justify-between gap-4">
+                      <div className="cursor-pointer flex-1" onClick={() => { handlePageChange(anno.pageIndex); setIsArchiveOpen(false); }}>
+                        <span className="text-[10px] font-black text-[#ff0000] uppercase tracking-widest">{t.page} {anno.pageIndex + 1}</span>
+                        <p className="text-white/60 italic mt-2 line-clamp-3 group-hover:text-white transition-colors">"{anno.text || '...'}"</p>
+                      </div>
+                      <button onClick={() => setAnnotations(annotations.filter(a => a.id !== anno.id))} className="p-2 text-white/10 hover:text-red-600 transition-all rounded-lg hover:bg-white/5">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+             </MotionDiv>
+          </MotionDiv>
+        )}
+        {isSoundPickerOpen && (
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4">
+            <div className="bg-[#0b140b] border border-white/10 p-8 rounded-[3rem] w-full max-w-md shadow-3xl">
+              <div className="flex justify-between items-center mb-8"><h3 className="text-xl font-black italic tracking-widest">{t.soundscape}</h3><button onClick={() => setIsSoundPickerOpen(false)} className="hover:text-[#ff0000] transition-colors"><X size={24}/></button></div>
+              <div className="grid gap-3">
+                {SOUNDS.map(sound => (
+                  <button key={sound.id} onClick={() => playSound(sound)} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${activeSoundId === sound.id ? 'bg-[#ff0000]/20 border-[#ff0000]/50' : 'bg-white/5 border-transparent hover:bg-white/10'}`}>
+                    <div className="flex items-center gap-3"><sound.icon size={18} className={activeSoundId === sound.id ? "text-[#ff0000]" : ""} /><span className="text-xs font-bold uppercase tracking-widest">{t[sound.id as keyof typeof t] || sound.id}</span></div>
+                    {activeSoundId === sound.id && <div className="w-2 h-2 rounded-full bg-[#ff0000] shadow-[0_0_8px_#ff0000]" />}
+                  </button>
+                ))}
+              </div>
             </div>
-            <span className="text-[7px] md:text-[9px] uppercase font-black opacity-30 tracking-widest">{t.stars}</span>
-          </div>
-          
-          <div className="h-8 md:h-10 w-[1px] bg-white/10" />
-          
-          {/* Active Book Cumulative Time */}
-          <div className="flex flex-col items-center">
-            <div className="flex items-center gap-2 text-xs md:text-lg font-black text-white">
-              <Clock size={14} className="text-[#ff0000]" />
-              {formatTime(activeBook.timeSpentSeconds)}
-            </div>
-            <span className="text-[7px] md:text-[9px] uppercase font-black opacity-30 tracking-widest">{t.cumulativeTime}</span>
-          </div>
-
-          <div className="h-8 md:h-10 w-[1px] bg-white/10" />
-
-          {/* TOTAL SHELF CUMULATIVE TIME */}
-          <div className="flex flex-col items-center">
-            <div className="flex items-center gap-2 text-xs md:text-lg font-black text-[#ff0000] glow-red">
-              <Layers size={14} className="text-[#ff0000]" />
-              {formatTime(totalShelfSeconds)}
-            </div>
-            <span className="text-[7px] md:text-[9px] uppercase font-black opacity-30 tracking-widest">{lang === 'ar' ? 'إجمالي الرف' : 'Shelf Total'}</span>
-          </div>
-        </div>
-
-        <div className="mt-8">
-           <p className="text-[9px] font-black uppercase tracking-[0.4em] opacity-20 animate-pulse">
-             {lang === 'ar' ? 'اسحب للتنقل • انقر للدخول' : 'Swipe to Browse • Click to Enter'}
-           </p>
-        </div>
-      </MotionDiv>
+          </MotionDiv>
+        )}
+        {isGoToPageOpen && (
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-6 text-center">
+            <MotionDiv initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-10 rounded-[3rem] w-full max-w-md shadow-5xl">
+              <h3 className="text-xl font-black uppercase mb-8 tracking-widest">{t.goToPage}</h3>
+              <form onSubmit={jumpToPage}>
+                <input autoFocus type="number" value={targetPageInput} onChange={(e) => setTargetPageInput(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-3xl font-black text-center text-white outline-none mb-8 focus:border-[#ff0000]/50 shadow-inner" placeholder={`1 - ${totalPages}`} />
+                <div className="flex gap-4"><button type="button" onClick={() => setIsGoToPageOpen(false)} className="flex-1 py-4 text-white/30 uppercase font-black text-[10px] tracking-widest">{t.discard}</button><button type="submit" className="flex-1 bg-[#ff0000] py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg">{t.jump}</button></div>
+              </form>
+            </MotionDiv>
+          </MotionDiv>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
