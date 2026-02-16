@@ -94,6 +94,17 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const isRTL = lang === 'ar';
   const fontClass = isRTL ? 'font-ar' : 'font-en';
 
+  // Keyboard Navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isGoToPageOpen || editingAnnoId || activeTool !== 'view') return;
+      if (e.key === 'ArrowRight') handlePageChange(currentPage + 1);
+      else if (e.key === 'ArrowLeft') handlePageChange(currentPage - 1);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentPage, totalPages, isGoToPageOpen, editingAnnoId, activeTool]);
+
   const toggleZenMode = async () => {
     if (!isZenMode) {
       try {
@@ -172,7 +183,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         setCurrentPage(newPage);
         storageService.updateBookPage(book.id, newPage);
         setIsJumping(false);
-      }, 150);
+      }, 50); // Reduced delay for faster feel
     }
   };
 
@@ -266,10 +277,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       <audio ref={audioRef} loop hidden />
 
       <AnimatePresence>
-        {(isLoading || isJumping) && (
-          <MotionDiv key="transition-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[5000] bg-black/60 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center pointer-events-none">
+        {isLoading && (
+          <MotionDiv key="loading-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[5000] bg-black flex flex-col items-center justify-center p-8 text-center pointer-events-none">
             <Sparkles size={40} className="text-[#ff0000] animate-pulse mb-4" />
-            {isLoading && <h3 className="text-sm font-black uppercase tracking-[0.3em] text-white/80">{t.loadingMessages[0]}</h3>}
+            <h3 className="text-sm font-black uppercase tracking-[0.3em] text-white/80">{t.loadingMessages[0]}</h3>
           </MotionDiv>
         )}
       </AnimatePresence>
@@ -313,8 +324,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
           <div className={`relative w-full h-full flex items-center justify-center overflow-auto no-scrollbar ${isZenMode ? 'p-0' : 'p-6'}`}>
             <MotionDiv 
               ref={pageRef} 
-              drag={activeTool === 'view' && zoomScale > 1} 
-              dragConstraints={containerRef} 
+              drag={activeTool === 'view'}
+              dragConstraints={zoomScale > 1 ? containerRef : { left: 0, right: 0, top: 0, bottom: 0 }}
+              onDragEnd={(e: any, info: any) => {
+                if (zoomScale === 1 && activeTool === 'view') {
+                  const threshold = 80;
+                  if (info.offset.x < -threshold) handlePageChange(currentPage + 1);
+                  else if (info.offset.x > threshold) handlePageChange(currentPage - 1);
+                }
+              }}
               onMouseDown={(e:any) => handleStart(e.clientX, e.clientY)} 
               onMouseMove={(e:any) => handleMove(e.clientX, e.clientY)} 
               onMouseUp={handleEnd} 
@@ -326,7 +344,19 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               className={`relative shadow-[0_0_100px_rgba(0,0,0,1)] overflow-hidden touch-none ${isZenMode ? 'h-full w-full rounded-none' : 'max-h-[85vh] w-auto aspect-[1/1.41] rounded-2xl md:rounded-3xl'}`} 
               style={{ backgroundColor: isNightMode ? '#001122' : '#ffffff', transformOrigin: 'center center', userSelect: 'none' }}
             >
-              <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none select-none transition-all duration-700" style={{ filter: isNightMode ? 'invert(1) hue-rotate(180deg)' : 'none' }} alt="Page" />
+              <AnimatePresence mode="wait">
+                <MotionDiv
+                  key={currentPage}
+                  initial={{ x: isRTL ? -30 : 30, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: isRTL ? 30 : -30, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  className="w-full h-full"
+                >
+                  <img src={pages[currentPage]} className="w-full h-full object-contain pointer-events-none select-none" style={{ filter: isNightMode ? 'invert(1) hue-rotate(180deg)' : 'none' }} alt="Page" />
+                </MotionDiv>
+              </AnimatePresence>
+              
               <div className="absolute inset-0 pointer-events-none">
                 {annotations.filter(a => a.pageIndex === currentPage).map(anno => (
                   <div key={anno.id} className="absolute pointer-events-auto cursor-pointer" onClick={() => setEditingAnnoId(anno.id)}
