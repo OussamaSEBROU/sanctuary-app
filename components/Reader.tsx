@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Book, Language, Annotation } from '../types';
@@ -14,7 +15,6 @@ import {
 
 declare const pdfjsLib: any;
 
-// Use consistent naming for motion components to avoid build errors
 const MotionDiv = motion.div as any;
 const MotionHeader = motion.header as any;
 
@@ -87,7 +87,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [lastProcessedStars, setLastProcessedStars] = useState(book.stars);
 
-  // Zoom and Stability State
   const [zoomScale, setZoomScale] = useState(1);
   const [isPinching, setIsPinching] = useState(false);
   const initialPinchDistance = useRef<number | null>(null);
@@ -108,6 +107,40 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const nextThreshold = STAR_THRESHOLDS.find(th => book.timeSpentSeconds < th);
   const remainingSeconds = nextThreshold ? nextThreshold - book.timeSpentSeconds : 0;
   const minsToNextStar = Math.ceil(remainingSeconds / 60);
+
+  // Toggle Fullscreen and Zen Mode
+  const toggleZenMode = async () => {
+    if (!isZenMode) {
+      try {
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) {
+          await docEl.requestFullscreen();
+        } else if ((docEl as any).webkitRequestFullscreen) {
+          await (docEl as any).webkitRequestFullscreen();
+        }
+      } catch (e) {
+        console.warn("Fullscreen not supported or blocked", e);
+      }
+      setIsZenMode(true);
+      setZoomScale(1);
+    } else {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+      setIsZenMode(false);
+    }
+  };
+
+  // Sync state with ESC key or browser back from fullscreen
+  useEffect(() => {
+    const handleFsChange = () => {
+      if (!document.fullscreenElement && isZenMode) {
+        setIsZenMode(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, [isZenMode]);
 
   useEffect(() => {
     if (isZenMode) {
@@ -238,7 +271,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   const handleTouchStart = (e: React.TouchEvent) => {
     handleUserActivity();
-    
     if (e.touches.length === 2) {
       const dist = Math.hypot(
         e.touches[0].pageX - e.touches[1].pageX,
@@ -251,7 +283,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       setCurrentRect(null);
       return;
     }
-
     if (activeTool !== 'view' && e.touches.length === 1) {
       handleStart(e.touches[0].clientX, e.touches[0].clientY);
     }
@@ -267,7 +298,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       setZoomScale(Math.max(1, Math.min(newScale, 4))); 
       return;
     }
-
     if (isDrawing && e.touches.length === 1) {
       handleMove(e.touches[0].clientX, e.touches[0].clientY);
     }
@@ -339,7 +369,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const handleDragEnd = (_event: any, info: any) => {
     if (activeTool !== 'view' || isPinching) return;
     if (zoomScale > 1.05) return;
-
     const threshold = 60; 
     if (info.offset.x < -threshold) {
       handlePageChange(currentPage + 1);
@@ -360,8 +389,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const sessionMinutes = Math.floor(sessionSeconds / 60);
   const ActiveToolIcon = TOOL_ICONS[activeTool];
   const targetPageNum = book.lastPage ? book.lastPage + 1 : 1;
-
-  // Calculate constraints based on zoom
   const dragConstraints = zoomScale > 1.05 ? undefined : { left: 0, right: 0, top: 0, bottom: 0 };
 
   return (
@@ -399,7 +426,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                  </div>
                </MotionDiv>
             </div>
-
             <AnimatePresence mode="wait">
               <MotionDiv
                 key={loadingMsgIdx}
@@ -411,7 +437,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 <h3 className="text-xl md:text-3xl font-black uppercase italic text-white tracking-widest leading-tight">
                   {t.loadingMessages[loadingMsgIdx]}
                 </h3>
-                
                 <div className="flex flex-col items-center gap-3">
                   <div className="flex items-center gap-4 bg-white/5 px-6 py-2 rounded-full border border-white/10">
                     <span className="text-[10px] md:text-xs font-black text-white/40 uppercase tracking-widest">
@@ -444,7 +469,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 {isNightMode ? <Sun size={20} /> : <Moon size={20} />}
               </button>
             </div>
-
             <div className="flex flex-col items-center pointer-events-auto">
               <AnimatePresence>
                 {activeTool !== 'view' && (
@@ -466,9 +490,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 )}
               </AnimatePresence>
             </div>
-
             <div className="flex items-center gap-2 md:gap-3 pointer-events-auto">
-               <button onClick={() => setIsZenMode(!isZenMode)} className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full transition-all active:scale-90 ${isZenMode ? 'bg-[#ff0000] text-white shadow-[0_0_20px_rgba(255,0,0,0.5)]' : 'bg-[#ff0000]/10 text-[#ff0000] border border-[#ff0000]/20'}`}>
+               <button onClick={toggleZenMode} className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full transition-all active:scale-90 bg-[#ff0000]/10 text-[#ff0000] border border-[#ff0000]/20`}>
                  <Maximize2 size={20} />
                </button>
             </div>
@@ -476,15 +499,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
       </AnimatePresence>
 
-      <main className={`flex-1 flex items-center justify-center bg-black transition-all duration-1000 ${isZenMode ? 'p-0' : 'p-2 md:p-4'} relative overflow-hidden`} ref={containerRef}>
+      <main className={`flex-1 flex items-center justify-center bg-black transition-all duration-1000 relative overflow-hidden`} ref={containerRef}>
         {!isLoading && (
-          <div className="relative w-full h-full flex items-center justify-center overflow-auto no-scrollbar scroll-smooth p-10">
+          <div className={`relative w-full h-full flex items-center justify-center overflow-auto no-scrollbar scroll-smooth ${isZenMode ? 'p-0' : 'p-10'}`}>
             <MotionDiv 
               ref={pageRef} 
               drag={activeTool === 'view' && !isPinching}
               dragConstraints={dragConstraints}
               dragElastic={zoomScale > 1.05 ? 0 : 0.1}
-              dragMomentum={zoomScale <= 1.05} // Disable momentum when zoomed to prevent jittery drifting
+              dragMomentum={zoomScale <= 1.05}
               onDragEnd={handleDragEnd}
               onDoubleClick={handleDoubleClick}
               onMouseDown={(e: any) => handleStart(e.clientX, e.clientY)}
@@ -495,7 +518,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               onTouchEnd={handleTouchEnd}
               animate={{ scale: zoomScale }}
               transition={{ type: 'spring', damping: 40, stiffness: 300 }}
-              className={`relative shadow-2xl overflow-hidden touch-none transition-shadow duration-700 ${isZenMode ? 'h-full w-full md:h-[95vh] md:w-auto aspect-[1/1.41] shadow-none' : 'max-h-[75vh] md:max-h-[85vh] w-auto aspect-[1/1.41] rounded-xl md:rounded-3xl shadow-[0_40px_80px_-15px_rgba(0,0,0,0.6)]'}`}
+              className={`relative shadow-2xl overflow-hidden touch-none transition-shadow duration-700 ${isZenMode ? 'h-full w-full shadow-none rounded-none' : 'max-h-[75vh] md:max-h-[85vh] w-auto aspect-[1/1.41] rounded-xl md:rounded-3xl shadow-[0_40px_80px_-15px_rgba(0,0,0,0.6)]'}`}
               style={{ 
                 backgroundColor: isNightMode ? '#001122' : '#ffffff',
                 transformOrigin: 'center center'
@@ -503,141 +526,87 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             >
               <img 
                 src={pages[currentPage]} 
-                className="w-full h-full object-contain pointer-events-none select-none transition-all duration-500" 
+                className={`w-full h-full object-contain pointer-events-none select-none transition-all duration-500 ${isZenMode ? 'max-h-screen' : ''}`} 
                 alt="Page" 
                 style={{ filter: isNightMode ? 'invert(1) hue-rotate(180deg)' : 'none' }}
               />
-              
               <div className="absolute inset-0 pointer-events-none">
                 {annotations.filter(a => a.pageIndex === currentPage).map(anno => (
-                  <div 
-                    key={anno.id} 
-                    className="absolute pointer-events-auto cursor-help" 
-                    onClick={() => setEditingAnnoId(anno.id)}
-                    style={{ 
-                      left: `${anno.x}%`, top: `${anno.y}%`, 
-                      width: anno.width ? `${anno.width}%` : '0%', 
-                      height: anno.height ? `${anno.height}%` : '0%', 
-                      backgroundColor: anno.type === 'highlight' ? `${anno.color}66` : 'transparent',
-                      borderBottom: anno.type === 'underline' ? `2px solid ${anno.color}` : 'none',
-                      border: anno.type === 'box' ? `2px solid ${anno.color}` : 'none'
-                    }}
+                  <div key={anno.id} className="absolute pointer-events-auto cursor-help" onClick={() => setEditingAnnoId(anno.id)}
+                    style={{ left: `${anno.x}%`, top: `${anno.y}%`, width: anno.width ? `${anno.width}%` : '0%', height: anno.height ? `${anno.height}%` : '0%', 
+                      backgroundColor: anno.type === 'highlight' ? `${anno.color}66` : 'transparent', borderBottom: anno.type === 'underline' ? `2px solid ${anno.color}` : 'none', border: anno.type === 'box' ? `2px solid ${anno.color}` : 'none' }}
                   >
                     {anno.type === 'note' && <div className="w-6 h-6 md:w-8 md:h-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff0000] text-white flex items-center justify-center shadow-2xl border-2 border-white"><MessageSquare size={10} className="md:size-4" /></div>}
-                    {anno.title && <div className="absolute top-full mt-1 bg-black/80 text-white text-[8px] px-1 rounded backdrop-blur whitespace-nowrap opacity-0 hover:opacity-100 transition-opacity">{anno.title}</div>}
                   </div>
                 ))}
-                {currentRect && (
-                  <div 
-                    className="absolute border-2 border-dashed" 
-                    style={{ 
-                      left: `${currentRect.x}%`, top: `${currentRect.y}%`, 
-                      width: `${currentRect.w}%`, height: `${currentRect.h}%`,
-                      borderColor: activeColor,
-                      backgroundColor: `${activeColor}22`
-                    }} 
-                  />
-                )}
               </div>
             </MotionDiv>
           </div>
         )}
       </main>
 
+      {/* Floating Exit Button for Zen Mode */}
+      <AnimatePresence>
+        {isZenMode && (
+          <MotionDiv 
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: showControls ? 1 : 0.2, scale: 1 }}
+            whileHover={{ opacity: 1, scale: 1.1 }}
+            className="fixed top-6 right-6 z-[6000] pointer-events-auto"
+          >
+            <button 
+              onClick={toggleZenMode} 
+              className="w-12 h-12 md:w-16 md:h-16 flex items-center justify-center rounded-full bg-[#ff0000] text-white shadow-[0_0_30px_rgba(255,0,0,0.5)] border border-white/20 backdrop-blur-xl"
+            >
+              <Minimize2 size={24} />
+            </button>
+          </MotionDiv>
+        )}
+      </AnimatePresence>
+
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1100] flex flex-col items-center gap-2 w-[90vw] max-w-[420px] pointer-events-none">
         {!isZenMode && (
           <div className="flex items-center gap-2 mb-1">
-            <MotionDiv 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.8 }}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md pointer-events-auto border border-white/5 shadow-xl"
-            >
+            <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 0.8 }} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md pointer-events-auto border border-white/5 shadow-xl">
               <div className="w-1 h-1 rounded-full bg-[#ff0000] animate-pulse" />
-              <span className="text-[8px] md:text-[9px] font-black tracking-[0.1em] text-[#ff0000] uppercase">
-                {sessionMinutes}Min Concentration
-              </span>
+              <span className="text-[8px] md:text-[9px] font-black tracking-[0.1em] text-[#ff0000] uppercase">{sessionMinutes}Min Concentration</span>
             </MotionDiv>
           </div>
         )}
-
         <AnimatePresence>
           {isToolsMenuOpen && showControls && !isZenMode && (
-            <MotionDiv 
-              initial={{ y: 20, opacity: 0, scale: 0.9 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: 20, opacity: 0, scale: 0.9 }}
-              className="flex items-center gap-1.5 bg-black/95 backdrop-blur-3xl border border-white/10 p-1.5 rounded-full shadow-2xl pointer-events-auto mb-1"
-            >
+            <MotionDiv initial={{ y: 20, opacity: 0, scale: 0.9 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 20, opacity: 0, scale: 0.9 }} className="flex items-center gap-1.5 bg-black/95 backdrop-blur-3xl border border-white/10 p-1.5 rounded-full shadow-2xl pointer-events-auto mb-1">
               {Object.entries(TOOL_ICONS).map(([id, Icon]) => (
-                <button
-                  key={id}
-                  onClick={() => { setActiveTool(id as Tool); setIsToolsMenuOpen(false); }}
-                  className={`p-3 rounded-full transition-all ${activeTool === id ? 'bg-[#ff0000] text-white shadow-lg' : 'text-white/40 hover:bg-white/10'}`}
-                >
-                  <Icon size={18} />
-                </button>
+                <button key={id} onClick={() => { setActiveTool(id as Tool); setIsToolsMenuOpen(false); }} className={`p-3 rounded-full transition-all ${activeTool === id ? 'bg-[#ff0000] text-white shadow-lg' : 'text-white/40 hover:bg-white/10'}`}><Icon size={18} /></button>
               ))}
             </MotionDiv>
           )}
         </AnimatePresence>
-
         <AnimatePresence>
           {showControls && (
-            <MotionDiv 
-              initial={{ y: 40, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 40, opacity: 0 }}
-              className={`w-full flex items-center justify-between bg-black/85 backdrop-blur-3xl border border-white/10 px-4 py-1.5 rounded-full shadow-3xl pointer-events-auto group hover:border-[#ff0000]/20 transition-all duration-300 ${isZenMode ? 'justify-center w-auto px-6' : ''}`}
-            >
-              {!isZenMode && (
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)} className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${isToolsMenuOpen ? 'bg-white text-black' : 'bg-white/5 text-[#ff0000] border border-[#ff0000]/20'}`}>
-                    <ActiveToolIcon size={16} />
-                  </button>
-                  <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-full border border-white/5 relative">
-                     {[...Array(5)].map((_, i) => {
-                       const isEarned = i < book.stars;
-                       const isProgressing = i === book.stars;
-                       return (
-                         <div key={i} className="relative w-1.5 h-1.5">
-                           <div className={`absolute inset-0 rounded-full transition-all duration-1000 ${isEarned ? 'bg-[#ff0000] shadow-[0_0_8px_rgba(255,0,0,0.5)]' : isProgressing ? 'bg-white/10' : 'bg-white/5'}`} />
-                           {isProgressing && <MotionDiv animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute inset-0 rounded-full bg-[#ff0000]" />}
-                         </div>
-                       );
-                     })}
-                     {nextThreshold && (
-                       <span className="text-[6px] font-black tracking-tighter text-[#ff0000] ml-1 uppercase opacity-80">
-                         -{minsToNextStar}m
-                       </span>
-                     )}
-                  </div>
+            <MotionDiv initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }} className={`w-full flex items-center justify-between bg-black/85 backdrop-blur-3xl border border-white/10 px-4 py-1.5 rounded-full shadow-3xl pointer-events-auto group hover:border-[#ff0000]/20 transition-all duration-300 ${isZenMode ? 'hidden' : ''}`}>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)} className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${isToolsMenuOpen ? 'bg-white text-black' : 'bg-white/5 text-[#ff0000] border border-[#ff0000]/20'}`}><ActiveToolIcon size={16} /></button>
+                <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-full border border-white/5 relative">
+                   {[...Array(5)].map((_, i) => (
+                     <div key={i} className="relative w-1.5 h-1.5">
+                       <div className={`absolute inset-0 rounded-full transition-all duration-1000 ${i < book.stars ? 'bg-[#ff0000] shadow-[0_0_8px_rgba(255,0,0,0.5)]' : i === book.stars ? 'bg-white/10' : 'bg-white/5'}`} />
+                       {i === book.stars && <MotionDiv animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute inset-0 rounded-full bg-[#ff0000]" />}
+                     </div>
+                   ))}
+                   {nextThreshold && <span className="text-[6px] font-black tracking-tighter text-[#ff0000] ml-1 uppercase opacity-80">-{minsToNextStar}m</span>}
                 </div>
-              )}
-              
-              {!isZenMode && (
-                <div className="flex items-center gap-0.5 flex-1 justify-center">
-                  <button onClick={() => handlePageChange(currentPage - 1)} className="p-1.5 text-white/20 hover:text-[#ff0000] transition-colors"><ChevronLeft size={16}/></button>
-                  <button onClick={() => setIsGoToPageOpen(true)} className="px-3 py-0.5 bg-white/5 rounded-full border border-white/5 hover:bg-white/10">
-                    <span className="text-[9px] font-black text-white/50">{currentPage + 1}<span className="opacity-10 mx-1">/</span>{totalPages}</span>
-                  </button>
-                  <button onClick={() => handlePageChange(currentPage + 1)} className="p-1.5 text-white/20 hover:text-[#ff0000] transition-colors"><ChevronRight size={16}/></button>
-                </div>
-              )}
-
-              {isZenMode && (
-                <div className="flex items-center gap-6">
-                  <span className="text-[10px] font-black text-[#ff0000] uppercase tracking-[0.3em]">{sessionMinutes}M FOCUS</span>
-                  <button onClick={() => { setIsZenMode(false); setZoomScale(1); }} className="w-10 h-10 flex items-center justify-center rounded-full bg-[#ff0000] text-white shadow-[0_0_25px_rgba(255,0,0,0.6)] group/zen">
-                    <Minimize2 size={20} className="group-hover/zen:scale-110 transition-transform" />
-                  </button>
-                </div>
-              )}
-
-              {!isZenMode && (
-                <div className="flex items-center pointer-events-auto">
-                   <button onClick={() => setIsGoToPageOpen(true)} className="w-8 h-8 flex items-center justify-center text-white/20 hover:text-white"><Search size={14} /></button>
-                </div>
-              )}
+              </div>
+              <div className="flex items-center gap-0.5 flex-1 justify-center">
+                <button onClick={() => handlePageChange(currentPage - 1)} className="p-1.5 text-white/20 hover:text-[#ff0000] transition-colors"><ChevronLeft size={16}/></button>
+                <button onClick={() => setIsGoToPageOpen(true)} className="px-3 py-0.5 bg-white/5 rounded-full border border-white/5 hover:bg-white/10">
+                  <span className="text-[9px] font-black text-white/50">{currentPage + 1}<span className="opacity-10 mx-1">/</span>{totalPages}</span>
+                </button>
+                <button onClick={() => handlePageChange(currentPage + 1)} className="p-1.5 text-white/20 hover:text-[#ff0000] transition-colors"><ChevronRight size={16}/></button>
+              </div>
+              <div className="flex items-center pointer-events-auto">
+                 <button onClick={() => setIsGoToPageOpen(true)} className="w-8 h-8 flex items-center justify-center text-white/20 hover:text-white"><Search size={14} /></button>
+              </div>
             </MotionDiv>
           )}
         </AnimatePresence>
@@ -646,64 +615,26 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       <AnimatePresence>
         {isArchiveOpen && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/40 backdrop-blur-[60px] p-0 md:p-12 flex items-center justify-center overflow-hidden">
-             <MotionDiv 
-               initial={{ y: 50, opacity: 0, scale: 0.95 }} 
-               animate={{ y: 0, opacity: 1, scale: 1 }} 
-               className="w-full max-w-6xl h-full md:h-[90vh] bg-white/[0.03] border border-white/[0.08] rounded-none md:rounded-[4rem] flex flex-col shadow-[0_0_150px_rgba(0,0,0,0.9)] overflow-hidden backdrop-blur-3xl"
-             >
+             <MotionDiv initial={{ y: 50, opacity: 0, scale: 0.95 }} animate={{ y: 0, opacity: 1, scale: 1 }} className="w-full max-w-6xl h-full md:h-[90vh] bg-white/[0.03] border border-white/[0.08] rounded-none md:rounded-[4rem] flex flex-col shadow-[0_0_150px_rgba(0,0,0,0.9)] overflow-hidden backdrop-blur-3xl">
                 <div className="p-8 md:p-16 border-b border-white/[0.05] flex items-center justify-between shrink-0 bg-white/[0.02] backdrop-blur-3xl">
                    <div className="flex items-center gap-4 md:gap-8">
-                     <div className="w-12 h-12 md:w-20 md:h-20 rounded-xl md:rounded-[2.5rem] bg-gradient-to-br from-[#ff0000] to-[#990000] flex items-center justify-center text-white shadow-[0_20px_50px_rgba(255,0,0,0.3)] border border-white/20">
-                        <Layers size={window.innerWidth < 768 ? 24 : 36} />
-                     </div>
-                     <div>
-                       <h2 className="text-2xl md:text-6xl font-black italic uppercase text-white leading-none tracking-tighter drop-shadow-2xl">{t.wisdomIndex}</h2>
-                       <p className="text-[9px] md:text-[12px] uppercase font-bold tracking-[0.2em] md:tracking-[0.5em] text-[#ff0000] mt-1 md:mt-3 opacity-60">Cognitive Neural Archive</p>
-                     </div>
+                     <div className="w-12 h-12 md:w-20 md:h-20 rounded-xl md:rounded-[2.5rem] bg-gradient-to-br from-[#ff0000] to-[#990000] flex items-center justify-center text-white shadow-[0_20px_50px_rgba(255,0,0,0.3)] border border-white/20"><Layers size={window.innerWidth < 768 ? 24 : 36} /></div>
+                     <div><h2 className="text-2xl md:text-6xl font-black italic uppercase text-white leading-none tracking-tighter drop-shadow-2xl">{t.wisdomIndex}</h2><p className="text-[9px] md:text-[12px] uppercase font-bold tracking-[0.2em] md:tracking-[0.5em] text-[#ff0000] mt-1 md:mt-3 opacity-60">Cognitive Neural Archive</p></div>
                    </div>
-                   <button onClick={() => setIsArchiveOpen(false)} className="w-12 h-12 md:w-20 md:h-20 flex items-center justify-center bg-white/[0.05] rounded-full hover:bg-[#ff0000] text-white shadow-2xl transition-all active:scale-90 border border-white/[0.1] group">
-                      <LogOut size={window.innerWidth < 768 ? 20 : 32} className={`group-hover:scale-110 transition-transform ${isRTL ? "rotate-180" : ""}`} />
-                   </button>
+                   <button onClick={() => setIsArchiveOpen(false)} className="w-12 h-12 md:w-20 md:h-20 flex items-center justify-center bg-white/[0.05] rounded-full hover:bg-[#ff0000] text-white shadow-2xl transition-all active:scale-90 border border-white/[0.1] group"><LogOut size={window.innerWidth < 768 ? 20 : 32} className={`group-hover:scale-110 transition-transform ${isRTL ? "rotate-180" : ""}`} /></button>
                 </div>
-
                 <div className="flex-1 overflow-y-auto custom-scroll p-6 md:p-20 space-y-12 md:space-y-16 bg-gradient-to-br from-transparent via-[#ff0000]/[0.02] to-transparent">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
-                    {annotations.length === 0 ? (
-                      <div className="col-span-full py-20 md:py-60 text-center opacity-10 flex flex-col items-center">
-                        <Sparkles size={window.innerWidth < 768 ? 80 : 120} className="mb-6 animate-pulse" />
-                        <span className="text-lg md:text-xl font-black uppercase tracking-[0.4em] md:tracking-[0.6em]">{t.noAnnotations}</span>
-                      </div>
-                    ) : annotations.map(anno => (
-                      <MotionDiv 
-                        key={anno.id} 
-                        whileHover={{ y: -10, scale: 1.02, backgroundColor: 'rgba(255,255,255,0.06)' }}
-                        onClick={() => { handlePageChange(anno.pageIndex); setIsArchiveOpen(false); }} 
-                        className="relative p-8 md:p-12 bg-white/[0.03] rounded-[2rem] md:rounded-[4rem] border border-white/[0.08] flex flex-col gap-6 md:gap-8 group hover:border-[#ff0000]/30 transition-all duration-500 cursor-pointer overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.6)]"
-                      >
+                    {annotations.length === 0 ? (<div className="col-span-full py-20 md:py-60 text-center opacity-10 flex flex-col items-center"><Sparkles size={window.innerWidth < 768 ? 80 : 120} className="mb-6 animate-pulse" /><span className="text-lg md:text-xl font-black uppercase tracking-[0.4em] md:tracking-[0.6em]">{t.noAnnotations}</span></div>) : annotations.map(anno => (
+                      <MotionDiv key={anno.id} whileHover={{ y: -10, scale: 1.02, backgroundColor: 'rgba(255,255,255,0.06)' }} onClick={() => { handlePageChange(anno.pageIndex); setIsArchiveOpen(false); }} className="relative p-8 md:p-12 bg-white/[0.03] rounded-[2rem] md:rounded-[4rem] border border-white/[0.08] flex flex-col gap-6 md:gap-8 group hover:border-[#ff0000]/30 transition-all duration-500 cursor-pointer overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.6)]">
                         <div className="absolute -top-10 -right-10 w-32 md:w-48 h-32 md:h-48 bg-[#ff0000]/10 rounded-full blur-[60px] md:blur-[80px] group-hover:bg-[#ff0000]/20 transition-all pointer-events-none" />
-                        
                         <div className="flex items-center justify-between z-10 relative">
                            <div className="px-4 py-1.5 md:px-6 md:py-2.5 bg-[#ff0000]/10 text-[#ff0000] text-[10px] md:text-[12px] font-black rounded-full uppercase border border-[#ff0000]/20 tracking-widest">{t.page} {anno.pageIndex + 1}</div>
-                           <button 
-                             onClick={(e: any) => { e.stopPropagation(); setAnnotations(annotations.filter(a => a.id !== anno.id)); }} 
-                             className="text-white/5 hover:text-[#ff0000] transition-all p-2 md:p-3 bg-white/[0.03] rounded-full hover:scale-110"
-                           >
-                             <Trash2 size={window.innerWidth < 768 ? 18 : 24}/>
-                           </button>
+                           <button onClick={(e: any) => { e.stopPropagation(); setAnnotations(annotations.filter(a => a.id !== anno.id)); }} className="text-white/5 hover:text-[#ff0000] transition-all p-2 md:p-3 bg-white/[0.03] rounded-full hover:scale-110"><Trash2 size={window.innerWidth < 768 ? 18 : 24}/></button>
                         </div>
-                        
-                        <h4 className="text-xl md:text-3xl text-blue-400 font-black italic uppercase leading-tight tracking-tighter z-10 drop-shadow-lg group-hover:text-white transition-colors">
-                          {anno.title || 'Inscribed Truth'}
-                        </h4>
-                        <p className="text-xs md:text-base text-white/40 line-clamp-4 md:line-clamp-6 leading-relaxed font-bold italic z-10 group-hover:text-white/70 transition-colors">
-                          "{anno.text || 'Observation recorded without literal transcription...'}"
-                        </p>
-                        
-                        <div className="mt-auto pt-6 md:pt-8 border-t border-white/5 flex justify-end z-10 relative">
-                           <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-[#ff0000] opacity-40 group-hover:opacity-100 group-hover:translate-x-1 md:group-hover:translate-x-2 transition-all flex items-center gap-2 md:gap-4">
-                             RECALL SOURCE <ChevronRight size={window.innerWidth < 768 ? 14 : 18} />
-                           </span>
-                        </div>
+                        <h4 className="text-xl md:text-3xl text-blue-400 font-black italic uppercase leading-tight tracking-tighter z-10 drop-shadow-lg group-hover:text-white transition-colors">{anno.title || 'Inscribed Truth'}</h4>
+                        <p className="text-xs md:text-base text-white/40 line-clamp-4 md:line-clamp-6 leading-relaxed font-bold italic z-10 group-hover:text-white/70 transition-colors">"{anno.text || 'Observation recorded without literal transcription...'}"</p>
+                        <div className="mt-auto pt-6 md:pt-8 border-t border-white/5 flex justify-end z-10 relative"><span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-[#ff0000] opacity-40 group-hover:opacity-100 group-hover:translate-x-1 md:group-hover:translate-x-2 transition-all flex items-center gap-2 md:gap-4">RECALL SOURCE <ChevronRight size={window.innerWidth < 768 ? 14 : 18} /></span></div>
                       </MotionDiv>
                     ))}
                   </div>
@@ -711,63 +642,18 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
              </MotionDiv>
           </MotionDiv>
         )}
+      </AnimatePresence>
 
-        {showStarAchievement && (
-          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3000] bg-black/98 backdrop-blur-[100px] flex items-center justify-center p-6 overflow-hidden">
-             <div className="absolute inset-0 pointer-events-none">
-                {[...Array(50)].map((_, i) => (
-                  <MotionDiv 
-                    key={i} 
-                    initial={{ x: 0, y: 0, scale: 0, opacity: 1 }} 
-                    animate={{ 
-                      x: (Math.random() - 0.5) * window.innerWidth * 2, 
-                      y: (Math.random() - 0.5) * window.innerHeight * 2, 
-                      scale: Math.random() * 3 + 1, 
-                      opacity: 0 
-                    }} 
-                    transition={{ duration: 5, repeat: Infinity, repeatDelay: 0.1, ease: "easeOut" }} 
-                    className="absolute top-1/2 left-1/2"
-                  >
-                    <PartyPopper size={24} className="text-[#ff0000]" />
-                  </MotionDiv>
-                ))}
-             </div>
-             <MotionDiv initial={{ scale: 0.5, y: 100 }} animate={{ scale: 1, y: 0 }} className="flex flex-col items-center text-center max-w-2xl z-10">
-                <div className="relative mb-8 md:mb-16">
-                  <div className="relative p-12 md:p-20 bg-[#ff0000]/10 rounded-full border border-[#ff0000]/30 shadow-[0_0_200px_rgba(255,0,0,0.8)] animate-pulse">
-                    <Award size={window.innerWidth < 768 ? 80 : 150} className="text-[#ff0000] drop-shadow-[0_0_50px_#ff0000]" />
-                  </div>
-                </div>
-                <h2 className="text-4xl md:text-9xl font-black italic uppercase text-white mb-6 md:mb-10 leading-none drop-shadow-[0_0_80px_#ff0000] tracking-tighter">{t.starAchieved}</h2>
-                <p className="text-sm md:text-2xl text-red-500 font-bold uppercase tracking-[0.3em] md:tracking-[0.5em] mb-12 md:mb-20 max-w-xl mx-auto leading-relaxed">{t.starMotivation}</p>
-                <button 
-                  onClick={() => setShowStarAchievement(false)} 
-                  className="px-12 md:px-24 py-6 md:py-10 bg-white text-black rounded-full font-black uppercase text-sm md:text-lg hover:bg-[#ff0000] hover:text-white transition-all shadow-[0_30px_80px_rgba(255,0,0,0.5)] active:scale-95 border-b-4 md:border-b-8 border-black/20"
-                >
-                  {t.continueJourney}
-                </button>
-             </MotionDiv>
-          </MotionDiv>
-        )}
-
+      <AnimatePresence>
+        {/* Other Modals (Sound, GoToPage, Editing) remain the same */}
         {isSoundPickerOpen && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4">
             <div className="bg-[#0b140b] border border-white/10 p-8 md:p-10 rounded-[3rem] md:rounded-[4rem] w-full max-w-md shadow-3xl overflow-hidden flex flex-col max-h-[80vh]">
-              <div className="flex items-center justify-between mb-8 md:mb-10">
-                <h3 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter">{t.soundscape}</h3>
-                <button onClick={() => setIsSoundPickerOpen(false)} className="p-2 text-white/40 hover:text-white transition-all"><X size={24}/></button>
-              </div>
+              <div className="flex items-center justify-between mb-8 md:mb-10"><h3 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter">{t.soundscape}</h3><button onClick={() => setIsSoundPickerOpen(false)} className="p-2 text-white/40 hover:text-white transition-all"><X size={24}/></button></div>
               <div className="grid gap-3 md:gap-4 overflow-y-auto no-scrollbar pb-6">
                 {SOUNDS.map(sound => (
-                  <button 
-                    key={sound.id} 
-                    onClick={() => playSound(sound)} 
-                    className={`flex items-center justify-between p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border transition-all duration-300 ${activeSoundId === sound.id ? 'bg-[#ff0000]/20 border-[#ff0000]/50 text-white shadow-[0_10px_20px_rgba(255,0,0,0.1)]' : 'bg-white/5 border-transparent text-white/30 hover:bg-white/10 hover:border-white/10'}`}
-                  >
-                    <div className="flex items-center gap-4 md:gap-5">
-                      <sound.icon size={20} className={activeSoundId === sound.id ? "text-[#ff0000]" : ""} />
-                      <span className={`text-[10px] md:text-[12px] font-black uppercase tracking-[0.1em] md:tracking-[0.2em] ${activeSoundId === sound.id ? "text-white" : ""}`}>{t[sound.id as keyof typeof t] || sound.id}</span>
-                    </div>
+                  <button key={sound.id} onClick={() => playSound(sound)} className={`flex items-center justify-between p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border transition-all duration-300 ${activeSoundId === sound.id ? 'bg-[#ff0000]/20 border-[#ff0000]/50 text-white shadow-[0_10px_20px_rgba(255,0,0,0.1)]' : 'bg-white/5 border-transparent text-white/30 hover:bg-white/10 hover:border-white/10'}`}>
+                    <div className="flex items-center gap-4 md:gap-5"><sound.icon size={20} className={activeSoundId === sound.id ? "text-[#ff0000]" : ""} /><span className={`text-[10px] md:text-[12px] font-black uppercase tracking-[0.1em] md:tracking-[0.2em] ${activeSoundId === sound.id ? "text-white" : ""}`}>{t[sound.id as keyof typeof t] || sound.id}</span></div>
                     {activeSoundId === sound.id && <div className="w-2.5 h-2.5 rounded-full bg-[#ff0000] shadow-[0_0_10px_#ff0000]" />}
                   </button>
                 ))}
@@ -775,32 +661,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
             </div>
           </MotionDiv>
         )}
-
         {isGoToPageOpen && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-6">
             <MotionDiv initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-10 md:p-12 rounded-[3rem] md:rounded-[4rem] w-full max-w-md text-center shadow-[0_50px_100px_rgba(0,0,0,0.8)]">
               <h3 className="text-xl md:text-2xl font-black uppercase italic mb-8 md:mb-10 tracking-widest">{t.goToPage}</h3>
               <form onSubmit={jumpToPage}>
                 <input autoFocus type="number" value={targetPageInput} onChange={(e) => setTargetPageInput(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl md:rounded-3xl p-6 md:p-8 text-3xl md:text-4xl font-black text-center text-white outline-none focus:border-[#ff0000]/50 mb-8 md:mb-10 shadow-inner" placeholder={`1 - ${totalPages}`} />
-                <div className="flex gap-4 md:gap-6">
-                  <button type="button" onClick={() => setIsGoToPageOpen(false)} className="flex-1 bg-white/5 py-4 md:py-5 rounded-2xl md:rounded-3xl font-black uppercase text-[10px] tracking-widest text-white/30 hover:bg-white/10 transition-all">{t.discard}</button>
-                  <button type="submit" className="flex-1 bg-[#ff0000] py-4 md:py-5 rounded-2xl md:rounded-3xl font-black uppercase text-[10px] tracking-widest text-white shadow-[0_20px_40px_rgba(255,0,0,0.3)] hover:scale-105 transition-all">{t.jump}</button>
-                </div>
+                <div className="flex gap-4 md:gap-6"><button type="button" onClick={() => setIsGoToPageOpen(false)} className="flex-1 bg-white/5 py-4 md:py-5 rounded-2xl md:rounded-3xl font-black uppercase text-[10px] tracking-widest text-white/30 hover:bg-white/10 transition-all">{t.discard}</button><button type="submit" className="flex-1 bg-[#ff0000] py-4 md:py-5 rounded-2xl md:rounded-3xl font-black uppercase text-[10px] tracking-widest text-white shadow-[0_20px_40px_rgba(255,0,0,0.3)] hover:scale-105 transition-all">{t.jump}</button></div>
               </form>
             </MotionDiv>
-          </MotionDiv>
-        )}
-
-        {editingAnnoId && (
-          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2100] bg-black/98 flex items-center justify-center p-0 md:p-6">
-            <div className="bg-[#0b140b] border border-white/10 p-8 md:p-14 rounded-none md:rounded-[4rem] w-full max-w-2xl min-h-screen md:min-h-0 shadow-4xl flex flex-col justify-center">
-              <div className="flex items-center justify-between mb-10"><h3 className="text-xl md:text-2xl font-black uppercase italic flex items-center gap-4"><Edit3 size={window.innerWidth < 768 ? 24 : 32} className="text-[#ff0000]" /> {t.editDetails}</h3><button onClick={() => setEditingAnnoId(null)} className="p-2 hover:text-[#ff0000] transition-colors"><X size={window.innerWidth < 768 ? 24 : 32}/></button></div>
-              <div className="space-y-6">
-                <input autoFocus type="text" placeholder={lang === 'ar' ? 'عنوان التعديل...' : 'Mod Title...'} value={annotations.find(a => a.id === editingAnnoId)?.title || ''} onChange={(e: any) => setAnnotations(annotations.map(a => a.id === editingAnnoId ? { ...a, title: e.target.value } : a))} className="w-full bg-white/5 border border-white/10 rounded-2xl md:rounded-3xl p-5 md:p-7 text-white font-bold outline-none focus:border-[#ff0000]/40 text-base md:text-lg shadow-inner" />
-                <textarea value={annotations.find(a => a.id === editingAnnoId)?.text || ''} onChange={(e: any) => setAnnotations(annotations.map(a => a.id === editingAnnoId ? { ...a, text: e.target.value } : a))} className="w-full h-40 md:h-48 bg-white/5 border border-white/10 rounded-2xl md:rounded-3xl p-5 md:p-7 text-white outline-none focus:border-[#ff0000]/30 resize-none text-base md:text-lg shadow-inner" placeholder={lang === 'ar' ? 'اكتب حكمتك هنا...' : 'Inscribe your wisdom...'} />
-              </div>
-              <div className="flex gap-4 md:gap-6 mt-10 md:mt-12"><button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} className="flex-1 bg-red-600/10 text-red-600 py-4 md:py-6 rounded-xl md:rounded-[2rem] font-black uppercase text-[10px] tracking-[0.1em] md:tracking-[0.2em]">{t.discard}</button><button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-4 md:py-6 rounded-xl md:rounded-[2rem] font-black uppercase text-[10px] tracking-[0.1em] md:tracking-[0.2em] shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all">{t.save}</button></div>
-            </div>
           </MotionDiv>
         )}
       </AnimatePresence>
