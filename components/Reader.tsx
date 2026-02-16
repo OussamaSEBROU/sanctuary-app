@@ -10,7 +10,8 @@ import {
   PenTool, MessageSquare, Trash2, X, MousePointer2, 
   ListOrdered, Volume2, CloudLightning, Waves, 
   Moon, Bird, Flame, VolumeX, Sparkles, Search, Droplets,
-  Edit3, Sun, Clock, BoxSelect, Palette, Check, LayoutGrid
+  Edit3, Sun, Clock, BoxSelect, Palette, Check, LayoutGrid,
+  FileAudio
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -76,6 +77,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isThumbnailsOpen, setIsThumbnailsOpen] = useState(false);
   const [activeSoundId, setActiveSoundId] = useState('none');
+  const [customSoundName, setCustomSoundName] = useState('');
   const [targetPageInput, setTargetPageInput] = useState('');
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [zoomScale, setZoomScale] = useState(1);
@@ -88,6 +90,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const pageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
   const controlsTimeoutRef = useRef<number | null>(null);
 
   const t = translations[lang];
@@ -206,6 +209,19 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     setIsSoundPickerOpen(false);
   };
 
+  const handleCustomAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && audioRef.current) {
+      const url = URL.createObjectURL(file);
+      setCustomSoundName(file.name);
+      setActiveSoundId('custom');
+      audioRef.current.src = url;
+      audioRef.current.load();
+      audioRef.current.play().catch(e => console.warn("Audio feedback:", e));
+      setIsSoundPickerOpen(false);
+    }
+  };
+
   const getRelativeCoords = (clientX: number, clientY: number) => {
     if (!pageRef.current) return { x: 0, y: 0 };
     const rect = pageRef.current.getBoundingClientRect();
@@ -282,6 +298,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <audio ref={audioRef} loop hidden />
+      <input type="file" ref={audioInputRef} accept="audio/mp3,audio/wav,audio/mpeg" hidden onChange={handleCustomAudioUpload} />
 
       <AnimatePresence>
         {isLoading && (
@@ -395,7 +412,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                       const isActive = activeTool === tool;
                       return (
                         <div key={tool} className="relative flex items-center">
-                          <button onClick={() => setActiveTool(tool)} className={`w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300 ${isActive ? 'bg-red-600 text-white shadow-xl scale-110' : 'text-white/30 hover:bg-white/5'}`}><Icon size={14}/></button>
+                          <button onClick={() => setActiveTool(activeTool === tool ? 'view' : tool)} className={`w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300 ${isActive ? 'bg-red-600 text-white shadow-xl scale-110' : 'text-white/30 hover:bg-white/5'}`}><Icon size={14}/></button>
                           {isActive && tool !== 'view' && (
                             <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/95 p-1.5 rounded-full border border-white/10 shadow-2xl">
                               {COLORS.map(c => (
@@ -446,13 +463,18 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 pointer-events-auto">
             <div className="bg-[#0b140b] border border-white/10 p-6 md:p-8 rounded-[2.5rem] w-full max-w-xs shadow-3xl">
               <div className="flex justify-between items-center mb-6"><h3 className="text-sm font-black italic uppercase text-white/50 tracking-widest">{t.soundscape}</h3><button onClick={() => setIsSoundPickerOpen(false)} className="hover:text-red-600 transition-colors"><X size={18}/></button></div>
-              <div className="grid gap-2">
+              <div className="grid gap-2 max-h-[50vh] overflow-y-auto no-scrollbar">
                 {SOUNDS.map(sound => (
                   <button key={sound.id} onClick={() => playSound(sound)} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${activeSoundId === sound.id ? 'bg-red-600/20 border-red-600/50' : 'bg-white/5 border-transparent hover:bg-white/10'}`}>
                     <div className="flex items-center gap-3"><sound.icon size={16} className={activeSoundId === sound.id ? "text-red-600" : "text-white/40"} /><span className="text-[10px] font-bold uppercase tracking-widest">{t[sound.id as keyof typeof t] || sound.id}</span></div>
                     {activeSoundId === sound.id && <div className="w-1.5 h-1.5 rounded-full bg-red-600 shadow-[0_0_8px_#ff0000]" />}
                   </button>
                 ))}
+                {/* Custom Sound Option */}
+                <button onClick={() => audioInputRef.current?.click()} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${activeSoundId === 'custom' ? 'bg-red-600/20 border-red-600/50' : 'bg-white/5 border-transparent hover:bg-white/10'}`}>
+                  <div className="flex items-center gap-3"><FileAudio size={16} className={activeSoundId === 'custom' ? "text-red-600" : "text-white/40"} /><span className="text-[10px] font-bold uppercase tracking-widest truncate max-w-[140px]">{customSoundName || t.uploadCustomSound}</span></div>
+                  {activeSoundId === 'custom' && <div className="w-1.5 h-1.5 rounded-full bg-red-600 shadow-[0_0_8px_#ff0000]" />}
+                </button>
               </div>
             </div>
           </MotionDiv>
