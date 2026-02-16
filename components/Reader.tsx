@@ -162,7 +162,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     return () => { if (timerRef.current) clearInterval(timerRef.current); if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
   }, [book.id]);
 
-  useEffect(() => { storageService.updateBookAnnotations(book.id, annotations); }, [annotations]);
+  useEffect(() => { storageService.updateBookAnnotations(book.id, annotations); onStatsUpdate(); }, [annotations]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 0 && newPage < totalPages && newPage !== currentPage) {
@@ -202,8 +202,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const getRelativeCoords = (clientX: number, clientY: number) => {
     if (!pageRef.current) return { x: 0, y: 0 };
     const rect = pageRef.current.getBoundingClientRect();
-    const rawX = ((clientX - rect.left) / (rect.width * zoomScale)) * 100;
-    const rawY = ((clientY - rect.top) / (rect.height * zoomScale)) * 100;
+    const rawX = ((clientX - rect.left) / (rect.width)) * 100;
+    const rawY = ((clientY - rect.top) / (rect.height)) * 100;
     return { x: Math.max(0, Math.min(100, rawX)), y: Math.max(0, Math.min(100, rawY)) };
   };
 
@@ -244,8 +244,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   const handleEnd = () => {
     if (!isDrawing) return;
-    if (currentRect && currentRect.w > 0.5 && currentRect.h > 0.5) {
-      const newAnno: Annotation = { id: Math.random().toString(36).substr(2, 9), type: activeTool as any, pageIndex: currentPage, x: currentRect.x, y: currentRect.y, width: currentRect.w, height: activeTool === 'underline' ? 1 : currentRect.h, color: activeColor, text: '', title: '' };
+    if (currentRect && currentRect.w > 0.3 && (activeTool === 'underline' || currentRect.h > 0.3)) {
+      const newAnno: Annotation = { id: Math.random().toString(36).substr(2, 9), type: activeTool as any, pageIndex: currentPage, x: currentRect.x, y: currentRect.y, width: currentRect.w, height: activeTool === 'underline' ? 0.5 : currentRect.h, color: activeColor, text: '', title: '' };
       setAnnotations([...annotations, newAnno]); setEditingAnnoId(newAnno.id);
     }
     setIsDrawing(false); setCurrentRect(null);
@@ -313,7 +313,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
           <div className={`relative w-full h-full flex items-center justify-center overflow-auto no-scrollbar ${isZenMode ? 'p-0' : 'p-6'}`}>
             <MotionDiv 
               ref={pageRef} 
-              drag={zoomScale > 1} 
+              drag={activeTool === 'view' && zoomScale > 1} 
               dragConstraints={containerRef} 
               onMouseDown={(e:any) => handleStart(e.clientX, e.clientY)} 
               onMouseMove={(e:any) => handleMove(e.clientX, e.clientY)} 
@@ -336,7 +336,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                     {anno.type === 'note' && <div className="w-7 h-7 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-2xl border-2 border-white flex items-center justify-center" style={{ backgroundColor: anno.color }}><MessageSquare size={12} className="text-white" /></div>}
                   </div>
                 ))}
-                {currentRect && <div className="absolute border-2 border-dashed pointer-events-none" style={{ left: `${currentRect.x}%`, top: `${currentRect.y}%`, width: `${currentRect.w}%`, height: `${activeTool === 'underline' ? 1 : currentRect.h}%`, borderColor: activeColor, backgroundColor: activeTool === 'highlight' ? `${activeColor}22` : 'transparent' }} />}
+                {currentRect && <div className="absolute border-2 border-dashed pointer-events-none" style={{ left: `${currentRect.x}%`, top: `${currentRect.y}%`, width: `${currentRect.w}%`, height: `${activeTool === 'underline' ? 0.5 : currentRect.h}%`, borderColor: activeColor, backgroundColor: activeTool === 'highlight' ? `${activeColor}22` : 'transparent' }} />}
               </div>
             </MotionDiv>
           </div>
@@ -456,18 +456,18 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               <div className="flex items-center justify-between mb-4">
                  <div className="flex items-center gap-2">
                     <div className="p-2 rounded-xl bg-white/5 border border-white/10" style={{ color: currentEditingAnno.color }}><Highlighter size={16} /></div>
-                    <h3 className="text-xs font-black uppercase text-white/90">{isRTL ? 'تعديل' : 'Modification'}</h3>
+                    <h3 className="text-xs font-black uppercase text-white/90">{isRTL ? 'بيانات التعديل' : 'Modification Details'}</h3>
                  </div>
                  <button onClick={() => setEditingAnnoId(null)} className="p-1.5 rounded-full bg-white/5 text-white/30 hover:text-white"><X size={14}/></button>
               </div>
               <div className="space-y-3 flex-1 overflow-y-auto no-scrollbar pr-1">
-                <input type="text" value={currentEditingAnno.title || ''} onChange={(e) => updateEditingAnnotation({ title: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-[10px] font-bold text-white outline-none focus:border-red-600/50" placeholder={isRTL ? 'عنوان...' : 'Title...'} />
-                <textarea value={currentEditingAnno.text || ''} onChange={(e) => updateEditingAnnotation({ text: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-[10px] font-bold text-white outline-none focus:border-red-600/50 min-h-[70px] resize-none" placeholder={isRTL ? 'ملاحظة...' : 'Note...'} />
-                <div className="flex flex-wrap gap-1.5">{COLORS.map(c => (<button key={c.hex} onClick={() => updateEditingAnnotation({ color: c.hex })} className={`w-5 h-5 rounded-full border transition-all ${currentEditingAnno.color === c.hex ? 'border-white scale-110' : 'border-transparent opacity-60'}`} style={{ backgroundColor: c.hex }} />))}</div>
+                <input type="text" value={currentEditingAnno.title || ''} onChange={(e) => updateEditingAnnotation({ title: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-[10px] font-bold text-white outline-none focus:border-red-600/50" placeholder={isRTL ? 'عنوان التعديل...' : 'Entry Title...'} />
+                <textarea value={currentEditingAnno.text || ''} onChange={(e) => updateEditingAnnotation({ text: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-[10px] font-bold text-white outline-none focus:border-red-600/50 min-h-[70px] resize-none" placeholder={isRTL ? 'ملاحظات استخلاص الحكمة...' : 'Wisdom Notes...'} />
+                <div className="flex flex-wrap gap-1.5">{COLORS.map(c => (<button key={c.hex} onClick={() => updateEditingAnnotation({ color: c.hex })} className={`w-5 h-5 rounded-full border transition-all ${currentEditingAnno.color === c.hex ? 'border-white scale-110 shadow-[0_0_8px_white]' : 'border-transparent opacity-60'}`} style={{ backgroundColor: c.hex }} />))}</div>
               </div>
               <div className="flex gap-2 mt-4 pt-3 border-t border-white/5">
                 <button onClick={() => { setAnnotations(annotations.filter(a => a.id !== editingAnnoId)); setEditingAnnoId(null); }} className="w-9 h-9 bg-red-600/10 border border-red-600/20 text-red-600 rounded-lg flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><Trash2 size={14}/></button>
-                <button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-2 rounded-lg font-black uppercase text-[8px] tracking-widest hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2"><Check size={12}/>{isRTL ? 'حفظ' : 'Save'}</button>
+                <button onClick={() => setEditingAnnoId(null)} className="flex-1 bg-white text-black py-2 rounded-lg font-black uppercase text-[8px] tracking-widest hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2"><Check size={12}/>{isRTL ? 'حفظ بالفهرس' : 'Save to Index'}</button>
               </div>
             </MotionDiv>
           </MotionDiv>
