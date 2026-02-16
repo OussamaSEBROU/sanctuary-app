@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { Book, Language, Annotation } from '../types';
@@ -14,7 +15,6 @@ import {
 
 declare const pdfjsLib: any;
 
-// Using any to bypass motion property type errors
 const MotionDiv = motion.div as any;
 const MotionHeader = motion.header as any;
 
@@ -67,6 +67,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [isLoading, setIsLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(0);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+  const [pagesProcessed, setPagesProcessed] = useState(0);
   
   const [activeTool, setActiveTool] = useState<Tool>('view');
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
@@ -86,8 +87,9 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [lastProcessedStars, setLastProcessedStars] = useState(book.stars);
 
-  // Zoom and Drag Stability State
+  // Stability States
   const [zoomScale, setZoomScale] = useState(1);
+  const [isPinching, setIsPinching] = useState(false);
   const initialPinchDistance = useRef<number | null>(null);
   const initialScaleOnPinch = useRef<number>(1);
   
@@ -127,7 +129,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   };
 
   useEffect(() => {
-    // Cycle through loading messages
     loadingIntervalRef.current = window.setInterval(() => {
       setLoadingMsgIdx(prev => (prev + 1) % t.loadingMessages.length);
     }, 2500);
@@ -139,11 +140,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         const pdf = await pdfjsLib.getDocument({ data: fileData }).promise;
         setTotalPages(pdf.numPages);
         
-        // Target index for loading
         const targetIdx = book.lastPage || 0;
+        const pageAccumulator: string[] = [];
         
-        // Load pages incrementally to improve startup performance
-        for (let i = 1; i <= Math.min(pdf.numPages, 400); i++) {
+        for (let i = 1; i <= Math.min(pdf.numPages, 500); i++) {
           const p = await pdf.getPage(i);
           const vp = p.getViewport({ scale: 2 });
           const cv = document.createElement('canvas');
@@ -151,10 +151,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
           await p.render({ canvasContext: cv.getContext('2d')!, viewport: vp }).promise;
           const dataUrl = cv.toDataURL('image/jpeg', 0.85);
           
-          setPages(prev => [...prev, dataUrl]);
+          pageAccumulator.push(dataUrl);
+          setPages([...pageAccumulator]);
+          setPagesProcessed(i);
           
-          // Hide loading overlay only when the target page is ready
-          if (i >= targetIdx + 1) {
+          if (i >= targetIdx + 1 && isLoading) {
             setIsLoading(false);
             if (loadingIntervalRef.current) {
               clearInterval(loadingIntervalRef.current);
@@ -245,7 +246,9 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       );
       initialPinchDistance.current = dist;
       initialScaleOnPinch.current = zoomScale;
+      setIsPinching(true);
       setIsDrawing(false); 
+      setCurrentRect(null);
       return;
     }
 
@@ -273,6 +276,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (e.touches.length < 2) {
       initialPinchDistance.current = null;
+      setIsPinching(false);
     }
     if (isDrawing) handleEnd();
   };
@@ -289,7 +293,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   };
 
   const handleStart = (clientX: number, clientY: number) => {
-    if (activeTool === 'view') return;
+    if (activeTool === 'view' || isPinching) return;
     const { x, y } = getRelativeCoords(clientX, clientY);
     if (activeTool === 'note') {
       const newNote: Annotation = {
@@ -307,7 +311,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   };
 
   const handleMove = (clientX: number, clientY: number) => {
-    if (!isDrawing) return;
+    if (!isDrawing || isPinching) return;
     const { x: currentX, y: currentY } = getRelativeCoords(clientX, clientY);
     setCurrentRect({
       x: Math.min(startPos.x, currentX), y: Math.min(startPos.y, currentY),
@@ -332,13 +336,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     setCurrentRect(null);
   };
 
-  // Using any for info parameter to bypass PanInfo export issue
   const handleDragEnd = (_event: any, info: any) => {
-    if (activeTool !== 'view') return;
-    // STABILITY FIX: Lock page flipping when zoomed more than 5%
+    if (activeTool !== 'view' || isPinching) return;
     if (zoomScale > 1.05) return;
 
-    const threshold = 60; // Increased threshold for stability
+    const threshold = 60; 
     if (info.offset.x < -threshold) {
       handlePageChange(currentPage + 1);
     } else if (info.offset.x > threshold) {
@@ -357,6 +359,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   const sessionMinutes = Math.floor(sessionSeconds / 60);
   const ActiveToolIcon = TOOL_ICONS[activeTool];
+  const targetPage = book.lastPage ? book.lastPage + 1 : 1;
+
+  // Calculate constraints based on zoom
+  const dragConstraints = zoomScale > 1.05 ? undefined : { left: 0, right: 0, top: 0, bottom: 0 };
 
   return (
     <div 
@@ -379,16 +385,18 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
           >
             <div className="relative mb-12">
                <motion.div 
-                 animate={{ rotate: 360, scale: [1, 1.1, 1] }} 
-                 transition={{ rotate: { repeat: Infinity, duration: 4, ease: "linear" }, scale: { repeat: Infinity, duration: 2 } }}
-                 className="w-32 h-32 md:w-48 md:h-48 border-b-2 border-r-2 border-[#ff0000] rounded-full absolute inset-0 opacity-20 blur-sm"
+                 animate={{ rotate: 360 }} 
+                 transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+                 className="w-32 h-32 md:w-48 md:h-48 border-2 border-[#ff0000]/10 border-t-[#ff0000] rounded-full absolute inset-0 shadow-[0_0_40px_rgba(255,0,0,0.2)]"
                />
                <motion.div 
                  animate={{ rotate: -360 }} 
-                 transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
-                 className="w-32 h-32 md:w-48 md:h-48 border-t-2 border-l-2 border-[#ff0000] rounded-full relative flex items-center justify-center"
+                 transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
+                 className="w-24 h-24 md:w-36 md:h-36 border border-white/5 border-b-white/20 rounded-full relative flex items-center justify-center"
                >
-                 <Sparkles className="text-[#ff0000] size-10 md:size-16 animate-pulse" />
+                 <div className="text-[#ff0000] animate-pulse">
+                    <Sparkles size={24} className="md:size-32" />
+                 </div>
                </motion.div>
             </div>
 
@@ -400,27 +408,22 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-4 max-w-md"
               >
-                <h3 className="text-xl md:text-2xl font-black uppercase italic text-white tracking-widest leading-tight">
+                <h3 className="text-xl md:text-3xl font-black uppercase italic text-white tracking-widest leading-tight">
                   {t.loadingMessages[loadingMsgIdx]}
                 </h3>
-                {book.lastPage && book.lastPage > 0 && (
-                  <p className="text-[10px] md:text-xs text-[#ff0000] font-black uppercase tracking-[0.4em] opacity-80 animate-pulse">
-                    {isRTL ? `جاري العودة إلى الصفحة ${book.lastPage + 1}...` : `Resuming Journey to Page ${book.lastPage + 1}...`}
-                  </p>
-                )}
+                
+                <div className="flex flex-col items-center gap-3">
+                  <div className="flex items-center gap-4 bg-white/5 px-6 py-2 rounded-full border border-white/10">
+                    <span className="text-[10px] md:text-xs font-black text-white/40 uppercase tracking-widest">
+                      {isRTL ? 'إعادة بناء الصفحة' : 'Reconstructing Page'}
+                    </span>
+                    <span className="text-xs md:text-sm font-black text-[#ff0000]">
+                      {pagesProcessed} <span className="opacity-20 mx-1">/</span> {targetPage}
+                    </span>
+                  </div>
+                </div>
               </motion.div>
             </AnimatePresence>
-
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 2 }}
-              className="mt-12 p-6 rounded-2xl bg-white/5 border border-white/10 max-w-sm"
-            >
-              <p className="text-[10px] md:text-xs text-white/40 font-bold leading-relaxed italic">
-                {t.loadingNote}
-              </p>
-            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -478,10 +481,9 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
           <div className="relative w-full h-full flex items-center justify-center overflow-auto no-scrollbar scroll-smooth p-10">
             <MotionDiv 
               ref={pageRef} 
-              layout
-              drag={activeTool === 'view' ? true : false}
-              dragConstraints={zoomScale <= 1 ? { left: 0, right: 0, top: 0, bottom: 0 } : false}
-              dragElastic={0.1}
+              drag={activeTool === 'view' && !isPinching}
+              dragConstraints={dragConstraints}
+              dragElastic={zoomScale > 1.05 ? 0 : 0.1}
               onDragEnd={handleDragEnd}
               onDoubleClick={handleDoubleClick}
               onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
@@ -491,7 +493,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
               animate={{ scale: zoomScale }}
-              transition={{ type: 'spring', damping: 30, stiffness: 200 }}
+              transition={{ type: 'spring', damping: 40, stiffness: 300 }}
               className={`relative shadow-2xl overflow-hidden touch-none transition-shadow duration-700 ${isZenMode ? 'h-full w-full md:h-[95vh] md:w-auto aspect-[1/1.41] shadow-none' : 'max-h-[75vh] md:max-h-[85vh] w-auto aspect-[1/1.41] rounded-xl md:rounded-3xl shadow-[0_40px_80px_-15px_rgba(0,0,0,0.6)]'}`}
               style={{ 
                 backgroundColor: isNightMode ? '#001122' : '#ffffff',
@@ -701,7 +703,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                              RECALL SOURCE <ChevronRight size={window.innerWidth < 768 ? 14 : 18} />
                            </span>
                         </div>
-                      </MotionDiv>
+                      </motion.div>
                     ))}
                   </div>
                 </div>
@@ -729,7 +731,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   </MotionDiv>
                 ))}
              </div>
-             <MotionDiv initial={{ scale: 0.5, y: 100 }} animate={{ scale: 1, y: 0 }} className="flex flex-col items-center text-center max-w-2xl z-10">
+             <motion.div initial={{ scale: 0.5, y: 100 }} animate={{ scale: 1, y: 0 }} className="flex flex-col items-center text-center max-w-2xl z-10">
                 <div className="relative mb-8 md:mb-16">
                   <div className="relative p-12 md:p-20 bg-[#ff0000]/10 rounded-full border border-[#ff0000]/30 shadow-[0_0_200px_rgba(255,0,0,0.8)] animate-pulse">
                     <Award size={window.innerWidth < 768 ? 80 : 150} className="text-[#ff0000] drop-shadow-[0_0_50px_#ff0000]" />
@@ -743,7 +745,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 >
                   {t.continueJourney}
                 </button>
-             </MotionDiv>
+             </motion.div>
           </MotionDiv>
         )}
 
