@@ -53,7 +53,6 @@ const TOOL_ICONS = {
   note: MessageSquare
 };
 
-// Thresholds: 15, 30, 50, 135, 180 minutes in seconds
 const STAR_THRESHOLDS = [900, 1800, 3000, 8100, 10800];
 
 export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdate }) => {
@@ -83,14 +82,14 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [lastProcessedStars, setLastProcessedStars] = useState(book.stars);
 
-  // Zoom State
+  // Zoom and Drag Stability State
   const [zoomScale, setZoomScale] = useState(1);
   const initialPinchDistance = useRef<number | null>(null);
   const initialScaleOnPinch = useRef<number>(1);
-  const controls = useAnimation();
   
   const timerRef = useRef<number | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const celebrationAudioRef = useRef<HTMLAudioElement | null>(null);
   const controlsTimeoutRef = useRef<number | null>(null);
@@ -99,7 +98,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const isRTL = lang === 'ar';
   const fontClass = isRTL ? 'font-ar' : 'font-en';
 
-  // Calculate next star milestone
   const nextThreshold = STAR_THRESHOLDS.find(t => book.timeSpentSeconds < t);
   const remainingSeconds = nextThreshold ? nextThreshold - book.timeSpentSeconds : 0;
   const minsToNextStar = Math.ceil(remainingSeconds / 60);
@@ -130,7 +128,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       try {
         const pdf = await pdfjsLib.getDocument({ data: fileData }).promise;
         setTotalPages(pdf.numPages);
-        for (let i = 1; i <= Math.min(pdf.numPages, 300); i++) {
+        // Load pages incrementally to improve startup performance
+        for (let i = 1; i <= Math.min(pdf.numPages, 400); i++) {
           const p = await pdf.getPage(i);
           const vp = p.getViewport({ scale: 2 });
           const cv = document.createElement('canvas');
@@ -215,14 +214,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     handleUserActivity();
     
     if (e.touches.length === 2) {
-      // Initialize pinch to zoom
       const dist = Math.hypot(
         e.touches[0].pageX - e.touches[1].pageX,
         e.touches[0].pageY - e.touches[1].pageY
       );
       initialPinchDistance.current = dist;
       initialScaleOnPinch.current = zoomScale;
-      setIsDrawing(false); // Cancel any drawing if zooming starts
+      setIsDrawing(false); 
       return;
     }
 
@@ -233,13 +231,12 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (e.touches.length === 2 && initialPinchDistance.current !== null) {
-      // Handle pinch to zoom
       const dist = Math.hypot(
         e.touches[0].pageX - e.touches[1].pageX,
         e.touches[0].pageY - e.touches[1].pageY
       );
       const newScale = (dist / initialPinchDistance.current) * initialScaleOnPinch.current;
-      setZoomScale(Math.max(1, Math.min(newScale, 4))); // Limit zoom to 4x
+      setZoomScale(Math.max(1, Math.min(newScale, 4))); 
       return;
     }
 
@@ -312,9 +309,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   const handleDragEnd = (_event: any, info: PanInfo) => {
     if (activeTool !== 'view') return;
-    if (zoomScale > 1.2) return;
+    // STABILITY FIX: Lock page flipping when zoomed more than 5%
+    if (zoomScale > 1.05) return;
 
-    const threshold = 40;
+    const threshold = 60; // Increased threshold for stability
     if (info.offset.x < -threshold) {
       handlePageChange(currentPage + 1);
     } else if (info.offset.x > threshold) {
@@ -345,7 +343,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       <audio ref={celebrationAudioRef} hidden />
 
       <AnimatePresence>
-        {showControls && (
+        {showControls && !isZenMode && (
           <motion.header 
             initial={{ y: -100, opacity: 0 }} 
             animate={{ y: 0, opacity: 1 }} 
@@ -385,21 +383,22 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
             <div className="flex items-center gap-2 md:gap-3 pointer-events-auto">
                <button onClick={() => setIsZenMode(!isZenMode)} className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full transition-all active:scale-90 ${isZenMode ? 'bg-[#ff0000] text-white shadow-[0_0_20px_rgba(255,0,0,0.5)]' : 'bg-[#ff0000]/10 text-[#ff0000] border border-[#ff0000]/20'}`}>
-                 {isZenMode ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                 <Maximize2 size={20} />
                </button>
             </div>
           </motion.header>
         )}
       </AnimatePresence>
 
-      <main className={`flex-1 flex items-center justify-center bg-black transition-all duration-1000 ${isZenMode ? 'p-0' : 'p-2 md:p-4'} relative overflow-hidden`}>
+      <main className={`flex-1 flex items-center justify-center bg-black transition-all duration-1000 ${isZenMode ? 'p-0' : 'p-2 md:p-4'} relative overflow-hidden`} ref={containerRef}>
         {!isLoading && (
           <div className="relative w-full h-full flex items-center justify-center overflow-auto no-scrollbar scroll-smooth p-10">
             <motion.div 
               ref={pageRef} 
               layout
-              drag={activeTool === 'view' ? (zoomScale > 1 ? true : 'x') : false}
+              drag={activeTool === 'view' ? true : false}
               dragConstraints={zoomScale <= 1 ? { left: 0, right: 0, top: 0, bottom: 0 } : false}
+              dragElastic={0.1}
               onDragEnd={handleDragEnd}
               onDoubleClick={handleDoubleClick}
               onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
@@ -409,8 +408,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
               animate={{ scale: zoomScale }}
-              transition={{ type: 'spring', damping: 25, stiffness: 150 }}
-              className={`relative shadow-2xl overflow-hidden touch-none transition-shadow duration-700 ${isZenMode ? 'h-[95vh] w-auto aspect-[1/1.41] shadow-[0_0_120px_rgba(255,255,255,0.05)]' : 'max-h-[75vh] md:max-h-[85vh] w-auto aspect-[1/1.41] rounded-xl md:rounded-3xl shadow-[0_40px_80px_-15px_rgba(0,0,0,0.6)]'}`}
+              transition={{ type: 'spring', damping: 30, stiffness: 200 }}
+              className={`relative shadow-2xl overflow-hidden touch-none transition-shadow duration-700 ${isZenMode ? 'h-full w-full md:h-[95vh] md:w-auto aspect-[1/1.41] shadow-none' : 'max-h-[75vh] md:max-h-[85vh] w-auto aspect-[1/1.41] rounded-xl md:rounded-3xl shadow-[0_40px_80px_-15px_rgba(0,0,0,0.6)]'}`}
               style={{ 
                 backgroundColor: isNightMode ? '#001122' : '#ffffff',
                 transformOrigin: 'center center'
@@ -475,21 +474,23 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       </main>
 
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1100] flex flex-col items-center gap-2 w-[90vw] max-w-[420px] pointer-events-none">
-        <div className="flex items-center gap-2 mb-1">
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.8 }}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md pointer-events-auto border border-white/5 shadow-xl"
-          >
-            <div className="w-1 h-1 rounded-full bg-[#ff0000] animate-pulse" />
-            <span className="text-[8px] md:text-[9px] font-black tracking-[0.1em] text-[#ff0000] uppercase">
-              {sessionMinutes}Min Concentration
-            </span>
-          </motion.div>
-        </div>
+        {!isZenMode && (
+          <div className="flex items-center gap-2 mb-1">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.8 }}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md pointer-events-auto border border-white/5 shadow-xl"
+            >
+              <div className="w-1 h-1 rounded-full bg-[#ff0000] animate-pulse" />
+              <span className="text-[8px] md:text-[9px] font-black tracking-[0.1em] text-[#ff0000] uppercase">
+                {sessionMinutes}Min Concentration
+              </span>
+            </motion.div>
+          </div>
+        )}
 
         <AnimatePresence>
-          {isToolsMenuOpen && showControls && (
+          {isToolsMenuOpen && showControls && !isZenMode && (
             <motion.div 
               initial={{ y: 20, opacity: 0, scale: 0.9 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
@@ -515,47 +516,63 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               initial={{ y: 40, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 40, opacity: 0 }}
-              className="w-full flex items-center justify-between bg-black/85 backdrop-blur-3xl border border-white/10 px-4 py-1.5 rounded-full shadow-3xl pointer-events-auto group hover:border-[#ff0000]/20 transition-all duration-300"
+              className={`w-full flex items-center justify-between bg-black/85 backdrop-blur-3xl border border-white/10 px-4 py-1.5 rounded-full shadow-3xl pointer-events-auto group hover:border-[#ff0000]/20 transition-all duration-300 ${isZenMode ? 'justify-center w-auto px-6' : ''}`}
             >
-              <div className="flex items-center gap-2">
-                <button onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)} className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${isToolsMenuOpen ? 'bg-white text-black' : 'bg-white/5 text-[#ff0000] border border-[#ff0000]/20'}`}>
-                  <ActiveToolIcon size={16} />
-                </button>
-                <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-full border border-white/5 relative">
-                   {[...Array(5)].map((_, i) => {
-                     const isEarned = i < book.stars;
-                     const isProgressing = i === book.stars;
-                     return (
-                       <div key={i} className="relative w-1.5 h-1.5">
-                         <div className={`absolute inset-0 rounded-full transition-all duration-1000 ${isEarned ? 'bg-[#ff0000] shadow-[0_0_8px_rgba(255,0,0,0.5)]' : isProgressing ? 'bg-white/10' : 'bg-white/5'}`} />
-                         {isProgressing && <motion.div animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute inset-0 rounded-full bg-[#ff0000]" />}
-                       </div>
-                     );
-                   })}
-                   {nextThreshold && (
-                     <span className="text-[6px] font-black tracking-tighter text-[#ff0000] ml-1 uppercase opacity-80">
-                       -{minsToNextStar}m
-                     </span>
-                   )}
+              {!isZenMode && (
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)} className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${isToolsMenuOpen ? 'bg-white text-black' : 'bg-white/5 text-[#ff0000] border border-[#ff0000]/20'}`}>
+                    <ActiveToolIcon size={16} />
+                  </button>
+                  <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-full border border-white/5 relative">
+                     {[...Array(5)].map((_, i) => {
+                       const isEarned = i < book.stars;
+                       const isProgressing = i === book.stars;
+                       return (
+                         <div key={i} className="relative w-1.5 h-1.5">
+                           <div className={`absolute inset-0 rounded-full transition-all duration-1000 ${isEarned ? 'bg-[#ff0000] shadow-[0_0_8px_rgba(255,0,0,0.5)]' : isProgressing ? 'bg-white/10' : 'bg-white/5'}`} />
+                           {isProgressing && <motion.div animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute inset-0 rounded-full bg-[#ff0000]" />}
+                         </div>
+                       );
+                     })}
+                     {nextThreshold && (
+                       <span className="text-[6px] font-black tracking-tighter text-[#ff0000] ml-1 uppercase opacity-80">
+                         -{minsToNextStar}m
+                       </span>
+                     )}
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-0.5 flex-1 justify-center">
-                <button onClick={() => handlePageChange(currentPage - 1)} className="p-1.5 text-white/20 hover:text-[#ff0000] transition-colors"><ChevronLeft size={16}/></button>
-                <button onClick={() => setIsGoToPageOpen(true)} className="px-3 py-0.5 bg-white/5 rounded-full border border-white/5 hover:bg-white/10">
-                  <span className="text-[9px] font-black text-white/50">{currentPage + 1}<span className="opacity-10 mx-1">/</span>{totalPages}</span>
-                </button>
-                <button onClick={() => handlePageChange(currentPage + 1)} className="p-1.5 text-white/20 hover:text-[#ff0000] transition-colors"><ChevronRight size={16}/></button>
-              </div>
-              <div className="flex items-center pointer-events-auto">
-                 <button onClick={() => setIsGoToPageOpen(true)} className="w-8 h-8 flex items-center justify-center text-white/20 hover:text-white"><Search size={14} /></button>
-              </div>
+              )}
+              
+              {!isZenMode && (
+                <div className="flex items-center gap-0.5 flex-1 justify-center">
+                  <button onClick={() => handlePageChange(currentPage - 1)} className="p-1.5 text-white/20 hover:text-[#ff0000] transition-colors"><ChevronLeft size={16}/></button>
+                  <button onClick={() => setIsGoToPageOpen(true)} className="px-3 py-0.5 bg-white/5 rounded-full border border-white/5 hover:bg-white/10">
+                    <span className="text-[9px] font-black text-white/50">{currentPage + 1}<span className="opacity-10 mx-1">/</span>{totalPages}</span>
+                  </button>
+                  <button onClick={() => handlePageChange(currentPage + 1)} className="p-1.5 text-white/20 hover:text-[#ff0000] transition-colors"><ChevronRight size={16}/></button>
+                </div>
+              )}
+
+              {isZenMode && (
+                <div className="flex items-center gap-6">
+                  <span className="text-[10px] font-black text-[#ff0000] uppercase tracking-[0.3em]">{sessionMinutes}M FOCUS</span>
+                  <button onClick={() => { setIsZenMode(false); setZoomScale(1); }} className="w-10 h-10 flex items-center justify-center rounded-full bg-[#ff0000] text-white shadow-[0_0_25px_rgba(255,0,0,0.6)] group/zen">
+                    <Minimize2 size={20} className="group-hover/zen:scale-110 transition-transform" />
+                  </button>
+                </div>
+              )}
+
+              {!isZenMode && (
+                <div className="flex items-center pointer-events-auto">
+                   <button onClick={() => setIsGoToPageOpen(true)} className="w-8 h-8 flex items-center justify-center text-white/20 hover:text-white"><Search size={14} /></button>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
       <AnimatePresence>
-        {/* Wisdom Index - Responsive Redesign */}
         {isArchiveOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/40 backdrop-blur-[60px] p-0 md:p-12 flex items-center justify-center overflow-hidden">
              <motion.div 
@@ -624,7 +641,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
           </motion.div>
         )}
 
-        {/* Celebration Overlay */}
         {showStarAchievement && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3000] bg-black/98 backdrop-blur-[100px] flex items-center justify-center p-6 overflow-hidden">
              <div className="absolute inset-0 pointer-events-none">
