@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Book, Language, Annotation } from '../types';
@@ -83,6 +82,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [zoomScale, setZoomScale] = useState(1);
   const [isPinching, setIsPinching] = useState(false);
   const [direction, setDirection] = useState(0); 
+  const [showCelebration, setShowCelebration] = useState(false);
   
   const initialPinchDistance = useRef<number | null>(null);
   const initialScaleOnPinch = useRef<number>(1);
@@ -169,7 +169,13 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     loadPdf();
     timerRef.current = window.setInterval(() => {
       setSessionSeconds(s => s + 1);
-      storageService.updateBookStats(book.id, 1);
+      const achievedStar = storageService.updateBookStats(book.id, 1);
+      if (achievedStar) {
+        setShowCelebration(true);
+        const celebAudio = new Audio('/assets/sounds/celebration.mp3');
+        celebAudio.play().catch(e => console.warn("Celebration audio error:", e));
+        setTimeout(() => setShowCelebration(false), 10000);
+      }
       onStatsUpdate();
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
@@ -503,6 +509,58 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   ))}
                 </div>
              </MotionDiv>
+          </MotionDiv>
+        )}
+
+        {showCelebration && (
+          <MotionDiv
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md pointer-events-none"
+          >
+            <MotionDiv
+              initial={{ scale: 0.5, opacity: 0, rotateY: 180 }}
+              animate={{ scale: 1, opacity: 1, rotateY: 0 }}
+              transition={{ type: "spring", duration: 1.5 }}
+              className="text-center p-10 rounded-[3rem] bg-gradient-to-b from-white/10 to-transparent border border-white/20 shadow-[0_0_100px_rgba(255,255,255,0.1)]"
+            >
+              <motion.div
+                animate={{ 
+                  rotateY: [0, 360],
+                  scale: [1, 1.2, 1],
+                  y: [0, -20, 0]
+                }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                className="mb-8 flex justify-center"
+              >
+                <div className="relative">
+                  <Star size={120} className="text-yellow-400 fill-yellow-400 filter drop-shadow-[0_0_30px_rgba(250,204,21,0.8)]" />
+                  <motion.div 
+                    animate={{ opacity: [0, 1, 0], scale: [1, 2, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
+                    <Sparkles size={160} className="text-white/50" />
+                  </motion.div>
+                </div>
+              </motion.div>
+              <h2 className="text-5xl md:text-7xl font-black text-white mb-6 tracking-tighter uppercase italic drop-shadow-2xl">
+                {t.starAchieved}
+              </h2>
+              <p className="text-xl md:text-2xl font-bold text-white/80 max-w-md mx-auto leading-relaxed italic">
+                {t.starMotivation}
+              </p>
+              <motion.div 
+                animate={{ y: [0, 10, 0] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="mt-12 flex justify-center gap-4"
+              >
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} size={24} className="text-yellow-400/40 fill-yellow-400/40" />
+                ))}
+              </motion.div>
+            </MotionDiv>
           </MotionDiv>
         )}
 
