@@ -1,4 +1,3 @@
-
 import { Book, FlashCard, ShelfData, Annotation } from '../types';
 
 const STORAGE_KEYS = {
@@ -14,8 +13,8 @@ const DEFAULT_SHELF: ShelfData = {
   color: '#ff0000'
 };
 
-// New non-linear thresholds in seconds: 15m, 30m, 50m, 135m, 180m
-const STAR_THRESHOLDS = [900, 1800, 3000, 8100, 10800];
+// Updated thresholds in seconds: 15m, 30m, 50m, 140m, 200m, 260m, 320m
+const STAR_THRESHOLDS = [900, 1800, 3000, 8400, 12000, 15600, 19200];
 
 export const storageService = {
   getShelves: (): ShelfData[] => {
@@ -86,10 +85,15 @@ export const storageService = {
         }
       }
       
+      const oldStars = book.stars || 0;
       book.stars = stars;
       book.lastReadAt = Date.now();
       storageService.saveBooks(books);
+      
+      // Return true if a new star was achieved
+      return stars > oldStars;
     }
+    return false;
   },
 
   getCards: (): FlashCard[] => {
