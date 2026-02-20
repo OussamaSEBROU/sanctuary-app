@@ -11,7 +11,7 @@ import {
   ListOrdered, Volume2, CloudLightning, Waves, 
   Moon, Bird, Flame, VolumeX, Sparkles, Search, Droplets,
   Edit3, Sun, Clock, BoxSelect, Palette, Check, LayoutGrid,
-  FileAudio, Star
+  FileAudio
 } from 'lucide-react';
 
 declare const pdfjsLib: any;
@@ -23,7 +23,7 @@ interface ReaderProps {
   book: Book;
   lang: Language;
   onBack: () => void;
-  onStatsUpdate: () => void;
+  onStatsUpdate: (starReached?: number | null) => void;
 }
 
 type Tool = 'view' | 'highlight' | 'underline' | 'box' | 'note';
@@ -83,8 +83,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [zoomScale, setZoomScale] = useState(1);
   const [isPinching, setIsPinching] = useState(false);
   const [direction, setDirection] = useState(0); 
-  const [showCelebration, setShowCelebration] = useState(false);
-  const [quoteIndex, setQuoteIndex] = useState(0);
   
   const initialPinchDistance = useRef<number | null>(null);
   const initialScaleOnPinch = useRef<number>(1);
@@ -171,15 +169,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     loadPdf();
     timerRef.current = window.setInterval(() => {
       setSessionSeconds(s => s + 1);
-      const achievedStar = storageService.updateBookStats(book.id, 1);
-      if (achievedStar) {
-        setQuoteIndex(Math.floor(Math.random() * 5));
-        setShowCelebration(true);
-        const celebAudio = new Audio('/assets/sounds/celebration.mp3');
-        celebAudio.play().catch(e => console.warn(e));
-        setTimeout(() => setShowCelebration(false), 10000);
-      }
-      onStatsUpdate();
+      const { starReached } = storageService.updateBookStats(book.id, 1);
+      onStatsUpdate(starReached);
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
   }, [book.id]);
@@ -512,62 +503,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   ))}
                 </div>
              </MotionDiv>
-          </MotionDiv>
-        )}
-
-        {showCelebration && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[10000] flex items-center justify-center pointer-events-none"
-            style={{ background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(4px)' }}
-          >
-            <MotionDiv
-              initial={{ scale: 0.8, opacity: 0, y: 50 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              className="relative p-10 md:p-16 rounded-[4rem] bg-gradient-to-br from-white/15 to-white/5 border border-white/20 shadow-[0_0_100px_rgba(255,255,255,0.15)] text-center max-w-2xl mx-4 overflow-hidden"
-            >
-              <motion.div
-                animate={{ 
-                  rotateY: [0, 360],
-                  scale: [1, 1.1, 1],
-                  filter: ["drop-shadow(0 0 20px rgba(255,215,0,0.4))", "drop-shadow(0 0 40px rgba(255,215,0,0.8))", "drop-shadow(0 0 20px rgba(255,215,0,0.4))"]
-                }}
-                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                className="mb-10 flex justify-center"
-              >
-                <Star size={120} className="text-yellow-400 fill-yellow-400" />
-              </motion.div>
-              <h2 className="text-4xl md:text-7xl font-black text-white mb-8 tracking-tighter italic uppercase drop-shadow-2xl">
-                {isRTL ? 'ارتقاء معرفي' : 'INTELLECTUAL ASCENT'}
-              </h2>
-              <p className="text-xl md:text-3xl font-bold text-white/95 leading-relaxed italic font-serif px-4">
-                "{isRTL ? [
-                  "إن المعرفة ليست ترفاً، بل هي ضرورة وجودية للارتقاء فوق منطق القطيع.",
-                  "القراءة هي الحوار المستمر مع العقول العظيمة عبر العصور.",
-                  "كل نجمة هي شعلة وعي تضيء ظلمات الجهل في محرابك الخاص.",
-                  "لا نصل إلى الحقيقة إلا بالصبر على مشقة الفهم.",
-                  "الفكر هو السلاح الوحيد الذي لا يصدأ في معركة الوعي."
-                ][quoteIndex] : [
-                  "Knowledge is not a luxury, but an existential necessity to rise above the herd logic.",
-                  "Reading is a continuous dialogue with great minds across the ages.",
-                  "Every star is a flame of consciousness illuminating the darkness of ignorance in your sanctuary.",
-                  "We only reach truth through patience with the hardship of understanding.",
-                  "Thought is the only weapon that does not rust in the battle of consciousness."
-                ][quoteIndex]}"
-              </p>
-              <div className="mt-12 flex justify-center gap-4">
-                {[...Array(5)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    animate={{ opacity: [0.2, 1, 0.2], scale: [1, 1.5, 1] }}
-                    transition={{ duration: 2, delay: i * 0.3, repeat: Infinity }}
-                    className="w-2.5 h-2.5 rounded-full bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)]"
-                  />
-                ))}
-              </div>
-            </MotionDiv>
           </MotionDiv>
         )}
 
