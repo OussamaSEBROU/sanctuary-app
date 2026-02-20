@@ -5,6 +5,7 @@ import { Layout } from './components/Layout';
 import { Shelf } from './components/Shelf';
 import { Reader } from './components/Reader';
 import { Dashboard } from './components/Dashboard';
+import { CelebrationOverlay } from './components/CelebrationOverlay';
 import { translations } from './i18n/translations';
 import { storageService } from './services/storageService';
 import { pdfStorage } from './services/pdfStorage';
@@ -48,6 +49,7 @@ const App: React.FC = () => {
   const [newBookAuthor, setNewBookAuthor] = useState('');
   const [newShelfName, setNewShelfName] = useState('');
   const [pendingFileData, setPendingFileData] = useState<ArrayBuffer | null>(null);
+  const [celebrationStar, setCelebrationStar] = useState<number | null>(null);
 
   useEffect(() => {
     const loadedBooks = storageService.getBooks();
@@ -281,7 +283,17 @@ const App: React.FC = () => {
             )}
             {view === ViewState.READER && selectedBook && (
               <MotionDiv key="reader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[5000]">
-                <Reader book={selectedBook} lang={lang} onBack={() => { setBooks(storageService.getBooks()); setView(ViewState.SHELF); }} onStatsUpdate={() => setBooks(storageService.getBooks())} />
+                <Reader 
+                  book={selectedBook} 
+                  lang={lang} 
+                  onBack={() => { setBooks(storageService.getBooks()); setView(ViewState.SHELF); }} 
+                  onStatsUpdate={(starReached) => {
+                    setBooks(storageService.getBooks());
+                    if (starReached) {
+                      setCelebrationStar(starReached);
+                    }
+                  }} 
+                />
               </MotionDiv>
             )}
           </AnimatePresence>
@@ -317,6 +329,14 @@ const App: React.FC = () => {
                 <button onClick={handleAddShelf} className="w-full bg-[#ff0000] py-4 md:py-6 rounded-[1.5rem] md:rounded-[2rem] font-black text-[10px] md:text-xs uppercase shadow-2xl hover:scale-105 transition-transform text-white tracking-[0.3em] md:tracking-[0.4em]">{t.establish}</button>
               </MotionDiv>
             </MotionDiv>
+          )}
+
+          {celebrationStar && (
+            <CelebrationOverlay 
+              starCount={celebrationStar} 
+              lang={lang} 
+              onComplete={() => setCelebrationStar(null)} 
+            />
           )}
         </AnimatePresence>
       </div>
