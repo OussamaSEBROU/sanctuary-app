@@ -66,12 +66,12 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, activeIndex, onActive
                 key={book.id}
                 initial={{ opacity: 0, scale: 0.6 }}
                 animate={{ 
-                  opacity: isCenter ? 1 : 0.6, 
-                  x: diff * (window.innerWidth < 768 ? 150 : 330), 
+                  opacity: isCenter ? 1 : 0.7, 
+                  x: diff * (window.innerWidth < 768 ? 140 : 320), 
                   scale: isCenter ? 1.05 : 0.8, 
-                  rotateY: diff * (window.innerWidth < 768 ? -15 : -25),
+                  rotateY: diff * (window.innerWidth < 768 ? -10 : -20),
                   zIndex: 20 - Math.abs(diff),
-                  filter: isCenter ? 'none' : 'blur(3px) brightness(0.7)' 
+                  filter: isCenter ? 'none' : 'brightness(0.8)' 
                 }}
                 exit={{ opacity: 0, scale: 0.5 }}
                 transition={{ type: 'spring', stiffness: 350, damping: 35 }}
@@ -79,7 +79,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, activeIndex, onActive
                 className="absolute w-[220px] h-[310px] md:w-[380px] md:h-[540px]"
               >
                 <div className={`relative w-full h-full rounded-[2.5rem] overflow-hidden border transition-all duration-700
-                   ${isCenter ? 'border-white/40 shadow-[0_30px_80px_rgba(0,0,0,0.9)]' : 'border-white/5 shadow-none'}`}>
+                   ${isCenter ? 'border-[#ff0000]/50 shadow-[0_0_60px_rgba(255,0,0,0.4)]' : 'border-white/5 shadow-none'}`}>
                   <img src={book.cover} alt={book.title} className="w-full h-full object-cover select-none pointer-events-none" />
                   
                   <div className={`absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent flex flex-col justify-end p-6 md:p-12 pointer-events-none transition-opacity duration-500 ${isCenter ? 'opacity-100' : 'opacity-0'}`}>
