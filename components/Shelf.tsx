@@ -22,7 +22,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, activeIndex, onActive
   if (books.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] px-8">
-        <MotionDiv initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center w-full max-w-sm">
+        <MotionDiv animate={{ opacity: 1, scale: 1 }} className="text-center w-full max-w-sm">
           <button onClick={onAddBook} className="group relative w-full aspect-[1/1.2] border-2 border-dashed border-white/10 rounded-[3rem] bg-white/[0.02] hover:border-[#ff0000]/40 transition-all flex flex-col items-center justify-center gap-8 overflow-hidden shadow-2xl">
             <div className="absolute inset-0 bg-gradient-to-br from-[#ff0000]/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="w-24 h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-110 group-hover:bg-[#ff0000]/10 group-hover:border-[#ff0000]/30 transition-all shrink-0">
@@ -64,7 +64,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, activeIndex, onActive
             return (
               <MotionDiv
                 key={book.id}
-                initial={{ opacity: 0, scale: 0.6 }}
+                initial={false}
                 animate={{ 
                   opacity: isCenter ? 1 : 0.7, 
                   x: diff * (window.innerWidth < 768 ? 140 : 320), 
