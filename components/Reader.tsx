@@ -298,7 +298,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <audio ref={audioRef} loop hidden />
-      <input type="file" ref={audioInputRef} accept="audio/mp3,audio/wav,audio/mpeg" hidden onChange={handleCustomAudioUpload} />
+      <input type="file" ref={audioInputRef} accept=".mp3,audio/mpeg" hidden onChange={handleCustomAudioUpload} />
 
       <AnimatePresence>
         {isLoading && (
