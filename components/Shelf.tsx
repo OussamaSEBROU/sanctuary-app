@@ -66,12 +66,12 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, activeIndex, onActive
                 key={book.id}
                 initial={{ opacity: 0, scale: 0.6 }}
                 animate={{ 
-                  opacity: isCenter ? 1 : 0.5, 
-                  x: diff * (window.innerWidth < 768 ? 160 : 340), 
-                  scale: isCenter ? 1.05 : 0.85, 
-                  rotateY: diff * (window.innerWidth < 768 ? -20 : -30),
+                  opacity: isCenter ? 1 : 0.6, 
+                  x: diff * (window.innerWidth < 768 ? 150 : 330), 
+                  scale: isCenter ? 1.05 : 0.8, 
+                  rotateY: diff * (window.innerWidth < 768 ? -15 : -25),
                   zIndex: 20 - Math.abs(diff),
-                  filter: isCenter ? 'blur(0px) contrast(1) brightness(1)' : 'blur(4px) contrast(0.8) brightness(0.6)' 
+                  filter: isCenter ? 'none' : 'blur(3px) brightness(0.7)' 
                 }}
                 exit={{ opacity: 0, scale: 0.5 }}
                 transition={{ type: 'spring', stiffness: 350, damping: 35 }}
