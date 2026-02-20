@@ -112,3 +112,4 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, activeIndex, onActive
     </div>
   );
 };
+
