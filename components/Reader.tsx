@@ -211,7 +211,17 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
 
   const handleCustomAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && audioRef.current) {
+    if (!file) return;
+
+    // Strict MP3 validation for mobile and desktop
+    const isMp3 = file.type === 'audio/mpeg' || file.name.toLowerCase().endsWith('.mp3');
+    if (!isMp3) {
+      alert(lang === 'ar' ? 'يرجى اختيار ملف MP3 فقط' : 'Please select an MP3 file only');
+      if (e.target) e.target.value = '';
+      return;
+    }
+
+    if (audioRef.current) {
       const url = URL.createObjectURL(file);
       setCustomSoundName(file.name);
       setActiveSoundId('custom');
