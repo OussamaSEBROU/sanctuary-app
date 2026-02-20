@@ -14,7 +14,7 @@ const DEFAULT_SHELF: ShelfData = {
   color: '#ff0000'
 };
 
-// Updated thresholds in seconds: 15m, 30m, 50m, 140m, 200m, 260m, 320m
+// New non-linear thresholds in seconds: 15m, 30m, 50m, 140m, 200m, 260m, 320m
 const STAR_THRESHOLDS = [900, 1800, 3000, 8400, 12000, 15600, 19200];
 
 export const storageService = {
@@ -60,12 +60,15 @@ export const storageService = {
     }
   },
 
-  updateBookStats: (bookId: string, seconds: number) => {
+  updateBookStats: (bookId: string, seconds: number): { starReached: number | null } => {
     const books = storageService.getBooks();
     const index = books.findIndex(b => b.id === bookId);
+    let starReached: number | null = null;
+
     if (index !== -1) {
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
       const book = books[index];
+      const oldStars = book.stars || 0;
 
       // Reset daily counter if date changed
       if (book.lastReadDate !== today) {
@@ -86,15 +89,15 @@ export const storageService = {
         }
       }
       
-      const oldStars = book.stars || 0;
+      if (stars > oldStars) {
+        starReached = stars;
+      }
+
       book.stars = stars;
       book.lastReadAt = Date.now();
       storageService.saveBooks(books);
-      
-      // Return true if a new star was achieved
-      return stars > oldStars;
     }
-    return false;
+    return { starReached };
   },
 
   getCards: (): FlashCard[] => {
