@@ -1,10 +1,13 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FlashCard, Language } from '../types';
+import { Language } from '../types';
+import type { FlashCard } from '../types';
 import { translations } from '../i18n/translations';
 import { storageService } from '../services/storageService';
 import { ChevronLeft, Layers, Calendar } from 'lucide-react';
+
+// Using any to bypass motion property type errors
+const MotionDiv = motion.div as any;
 
 interface VaultProps {
   lang: Language;
@@ -36,7 +39,7 @@ export const Vault: React.FC<VaultProps> = ({ lang, onBack }) => {
           </div>
         ) : (
           cards.map((card, idx) => (
-            <motion.div
+            <MotionDiv
               key={card.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -61,7 +64,7 @@ export const Vault: React.FC<VaultProps> = ({ lang, onBack }) => {
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </MotionDiv>
           ))
         )}
       </div>
