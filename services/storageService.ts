@@ -109,7 +109,14 @@ export const storageService = {
 
   getHabitData: (): HabitData => {
     const data = localStorage.getItem(STORAGE_KEYS.HABIT);
-    return data ? JSON.parse(data) : { history: [], missedDays: [], shields: 2, streak: 0, lastUpdated: '' };
+    return data ? JSON.parse(data) : { 
+      history: [], 
+      missedDays: [], 
+      shields: 2, 
+      streak: 0, 
+      lastUpdated: '',
+      consecutiveFullDays: 0
+    };
   },
 
   saveHabitData: (habit: HabitData) => {
@@ -118,54 +125,91 @@ export const storageService = {
 
   recordReadingDay: () => {
     const today = new Date().toISOString().split('T')[0];
+    const books = storageService.getBooks();
+    const totalTodaySeconds = books.reduce((acc, b) => {
+      const bDate = b.lastReadDate || (b.lastReadAt ? new Date(b.lastReadAt).toISOString().split('T')[0] : '');
+      if (bDate === today) return acc + (b.dailyTimeSeconds || 0);
+      return acc;
+    }, 0);
+
     const habit = storageService.getHabitData();
-    
-    if (habit.lastUpdated === today) return;
+    const FULL_DAY_THRESHOLD = 600; // 10 minutes
+    const RESCUE_THRESHOLD = 120; // 2 minutes
 
-    if (habit.lastUpdated === '') {
-      habit.streak = 1;
-      habit.shields = 2;
-      habit.history.push(today);
-      habit.lastUpdated = today;
-      storageService.saveHabitData(habit);
-      return;
-    }
+    // If already recorded as full day today, nothing to do
+    if (habit.lastUpdated === today && habit.history.includes(today)) return;
 
-    const lastDate = new Date(habit.lastUpdated);
-    const todayDate = new Date(today);
-    const diffTime = Math.abs(todayDate.getTime() - lastDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    // If not even a rescue session yet, return
+    if (totalTodaySeconds < RESCUE_THRESHOLD) return;
 
-    if (diffDays === 1) {
-      habit.streak += 1;
-    } else {
-      let streakBroken = false;
-      for (let i = 1; i < diffDays; i++) {
-        const gapDay = new Date(lastDate);
-        gapDay.setDate(gapDay.getDate() + i);
-        const gapDayStr = gapDay.toISOString().split('T')[0];
-        
-        if (habit.shields > 0) {
-          habit.shields -= 1;
-          habit.history.push(gapDayStr); // Shielded day
+    const isFullDay = totalTodaySeconds >= FULL_DAY_THRESHOLD;
+
+    // Handle New Day
+    if (habit.lastUpdated !== today) {
+      if (habit.lastUpdated === '') {
+        habit.streak = 1;
+        habit.shields = 2;
+        habit.consecutiveFullDays = isFullDay ? 1 : 0;
+      } else {
+        const lastDate = new Date(habit.lastUpdated);
+        const todayDate = new Date(today);
+        const diffTime = Math.abs(todayDate.getTime() - lastDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          habit.streak += 1;
+          if (isFullDay) habit.consecutiveFullDays += 1;
+          else habit.consecutiveFullDays = 0;
         } else {
-          habit.missedDays.push(gapDayStr);
-          streakBroken = true;
+          let streakBroken = false;
+          for (let i = 1; i < diffDays; i++) {
+            const gapDay = new Date(lastDate);
+            gapDay.setDate(gapDay.getDate() + i);
+            const gapDayStr = gapDay.toISOString().split('T')[0];
+            
+            if (habit.shields > 0) {
+              habit.shields -= 1;
+              habit.history.push(gapDayStr); // Shielded day counts as full for path
+            } else {
+              habit.missedDays.push(gapDayStr);
+              streakBroken = true;
+            }
+          }
+          
+          if (streakBroken) {
+            habit.streak = 1;
+            habit.consecutiveFullDays = isFullDay ? 1 : 0;
+          } else {
+            habit.streak += 1;
+            if (isFullDay) habit.consecutiveFullDays += 1;
+            else habit.consecutiveFullDays = 0;
+          }
         }
       }
-      
-      if (streakBroken) {
-        habit.streak = 1;
-      } else {
-        habit.streak += 1;
+
+      // Award Shield every 7 consecutive full days
+      if (habit.consecutiveFullDays >= 7) {
+        habit.shields = Math.min(habit.shields + 1, 3);
+        habit.consecutiveFullDays = 0;
+      }
+
+      if (isFullDay) {
+        habit.history.push(today);
+      }
+      habit.lastUpdated = today;
+    } else {
+      // It's already recorded as a Rescue today, checking if it's now a Full Day
+      if (isFullDay && !habit.history.includes(today)) {
+        habit.history.push(today);
+        habit.consecutiveFullDays += 1;
+        
+        if (habit.consecutiveFullDays >= 7) {
+          habit.shields = Math.min(habit.shields + 1, 3);
+          habit.consecutiveFullDays = 0;
+        }
       }
     }
-
-    if (!habit.history.includes(today)) {
-      habit.history.push(today);
-    }
     
-    habit.lastUpdated = today;
     storageService.saveHabitData(habit);
   }
 };
