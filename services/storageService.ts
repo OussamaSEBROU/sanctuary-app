@@ -1,5 +1,5 @@
 
-import { Book, FlashCard, ShelfData, Annotation } from '../types';
+import { Book, FlashCard, ShelfData, Annotation, HabitData } from '../types';
 
 const STORAGE_KEYS = {
   BOOKS: 'sanctuary_books',
@@ -107,12 +107,12 @@ export const storageService = {
     return data ? JSON.parse(data) : [];
   },
 
-  getHabitData: (): { history: string[], streak: number, lastUpdated: string } => {
+  getHabitData: (): HabitData => {
     const data = localStorage.getItem(STORAGE_KEYS.HABIT);
-    return data ? JSON.parse(data) : { history: [], streak: 0, lastUpdated: '' };
+    return data ? JSON.parse(data) : { history: [], missedDays: [], shields: 2, streak: 0, lastUpdated: '' };
   },
 
-  saveHabitData: (habit: { history: string[], streak: number, lastUpdated: string }) => {
+  saveHabitData: (habit: HabitData) => {
     localStorage.setItem(STORAGE_KEYS.HABIT, JSON.stringify(habit));
   },
 
@@ -122,16 +122,43 @@ export const storageService = {
     
     if (habit.lastUpdated === today) return;
 
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    if (habit.lastUpdated === '') {
+      habit.streak = 1;
+      habit.shields = 2;
+      habit.history.push(today);
+      habit.lastUpdated = today;
+      storageService.saveHabitData(habit);
+      return;
+    }
 
-    if (habit.lastUpdated === yesterdayStr) {
+    const lastDate = new Date(habit.lastUpdated);
+    const todayDate = new Date(today);
+    const diffTime = Math.abs(todayDate.getTime() - lastDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) {
       habit.streak += 1;
-    } else if (habit.lastUpdated === '') {
-      habit.streak = 1;
     } else {
-      habit.streak = 1;
+      let streakBroken = false;
+      for (let i = 1; i < diffDays; i++) {
+        const gapDay = new Date(lastDate);
+        gapDay.setDate(gapDay.getDate() + i);
+        const gapDayStr = gapDay.toISOString().split('T')[0];
+        
+        if (habit.shields > 0) {
+          habit.shields -= 1;
+          habit.history.push(gapDayStr); // Shielded day
+        } else {
+          habit.missedDays.push(gapDayStr);
+          streakBroken = true;
+        }
+      }
+      
+      if (streakBroken) {
+        habit.streak = 1;
+      } else {
+        habit.streak += 1;
+      }
     }
 
     if (!habit.history.includes(today)) {
