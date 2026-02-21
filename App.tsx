@@ -274,6 +274,18 @@ const App: React.FC = () => {
                       </div>
                       <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest opacity-20">{t.stars}</span>
                     </MotionDiv>
+                    {activeBookStats.stars > 0 && (
+                      <>
+                        <div className="w-[1px] h-5 md:h-6 bg-white/10 relative z-10" />
+                        <MotionDiv initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="flex flex-col items-center relative z-10">
+                          <div className="flex items-center gap-2">
+                            <Sparkles size={12} className="text-yellow-500" />
+                            <span className="text-[10px] md:text-xs font-black text-white uppercase tracking-tighter">{t.badges[activeBookStats.stars - 1]}</span>
+                          </div>
+                          <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest opacity-20">{lang === 'ar' ? 'الوسام الحالي' : 'Current Badge'}</span>
+                        </MotionDiv>
+                      </>
+                    )}
                   </div>
                 </header>
                 
