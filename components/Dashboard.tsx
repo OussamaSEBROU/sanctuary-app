@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Book, ShelfData, Language } from '../types';
+import { Language } from '../types';
+import type { Book, ShelfData } from '../types';
 import { translations } from '../i18n/translations';
 import { storageService } from '../services/storageService';
 import { 
