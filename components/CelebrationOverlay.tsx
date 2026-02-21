@@ -51,7 +51,7 @@ export const CelebrationOverlay: React.FC<CelebrationOverlayProps> = ({ starCoun
     
     const timer = setTimeout(() => {
       onComplete();
-    }, 10000);
+    }, 16000);
 
     return () => {
       clearTimeout(timer);
@@ -144,7 +144,12 @@ export const CelebrationOverlay: React.FC<CelebrationOverlayProps> = ({ starCoun
             <h2 className="text-4xl md:text-7xl font-black text-white uppercase tracking-tighter italic drop-shadow-2xl">
               {t.starAchieved}
             </h2>
-            <div className="h-1 w-24 bg-red-600 mx-auto rounded-full" />
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-yellow-500 font-black text-lg md:text-2xl uppercase tracking-[0.2em] drop-shadow-[0_0_10px_rgba(234,179,8,0.4)]">
+                {t.badges[starCount - 1]}
+              </span>
+              <div className="h-1 w-24 bg-red-600 mx-auto rounded-full" />
+            </div>
             <p className="text-base md:text-xl font-bold text-white/70 italic leading-relaxed max-w-md mx-auto px-4">
               {quote}
             </p>
@@ -181,7 +186,7 @@ export const CelebrationOverlay: React.FC<CelebrationOverlayProps> = ({ starCoun
               <MotionDiv 
                 initial={{ width: "100%" }}
                 animate={{ width: "0%" }}
-                transition={{ duration: 8, ease: "linear", delay: 2 }}
+                transition={{ duration: 14, ease: "linear", delay: 2 }}
                 className="h-full bg-red-600 shadow-[0_0_10px_#ff0000]"
               />
             </div>
