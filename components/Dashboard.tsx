@@ -152,6 +152,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
                     }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-white/10" />
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                       <span className="text-[7px] md:text-[10px] font-black text-white/30 rotate-[-90deg] whitespace-nowrap">
+                         {book.minutes}m
+                       </span>
+                    </div>
                   </MotionDiv>
                   <div className="mt-6 h-24 md:h-32 flex items-center justify-center overflow-visible">
                     <span className={`text-[7px] md:text-[11px] font-black uppercase tracking-tighter rotate-[-45deg] origin-center whitespace-nowrap transition-all duration-500 group-hover:text-white ${isRTL ? "text-right" : "text-left"}`} style={{ color: book.color }}>
@@ -301,6 +306,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
               <div key={b.id} className="flex items-center gap-1.5 md:gap-2 bg-black/40 px-2.5 py-1 md:py-1.5 rounded-full border border-white/5 backdrop-blur-md">
                 <div className="w-1 md:w-1.5 h-1 md:h-1.5 rounded-full" style={{ backgroundColor: b.color, boxShadow: `0 0 8px ${b.color}` }} />
                 <span className="text-[6px] md:text-[7px] font-black uppercase tracking-widest opacity-40 truncate max-w-[50px] md:max-w-[80px]">{b.title}</span>
+                <span className="text-[6px] md:text-[7px] font-black text-white/20 ml-1">{b.minutes}m</span>
               </div>
             ))}
           </div>
