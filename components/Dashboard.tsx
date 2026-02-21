@@ -153,7 +153,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
               <ShieldCheck className="size-4 text-blue-500" />
               <div className="flex flex-col">
                 <span className="text-[7px] font-black uppercase text-blue-500/60 leading-none">{isRTL ? 'الدروع المتبقية' : 'Shields Left'}</span>
-                <span className="text-[10px] font-black text-blue-500">{habitData.shields} / 2</span>
+                <span className="text-[10px] font-black text-blue-500">{habitData.shields} / 3</span>
+                <div className="w-12 h-1 bg-blue-500/10 rounded-full mt-1 overflow-hidden">
+                  <div 
+                    className="h-full bg-blue-500 transition-all duration-1000" 
+                    style={{ width: `${(habitData.consecutiveFullDays / 7) * 100}%` }}
+                  />
+                </div>
               </div>
             </div>
 
@@ -176,6 +182,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
 
             const isCompleted = dayDateStr ? habitData.history.includes(dayDateStr) : false;
             const isMissed = dayDateStr ? habitData.missedDays.includes(dayDateStr) : false;
+            const isRescue = dayDateStr && habitData.lastUpdated === dayDateStr && !isCompleted && !isMissed;
             const isCurrent = dayNum === habitData.streak + 1;
             
             let dayColor = 'rgba(255,255,255,0.03)';
@@ -185,21 +192,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
               else dayColor = '#10b981';
             } else if (isMissed) {
               dayColor = '#333333'; // Ash Gray for scars
+            } else if (isRescue) {
+              dayColor = '#3b82f6'; // Blue for Rescue
             }
 
             return (
               <div 
                 key={i}
                 className={`aspect-square rounded-lg md:rounded-xl border flex items-center justify-center transition-all duration-500 relative group
-                  ${isCompleted ? 'border-transparent shadow-lg' : isMissed ? 'border-white/10' : 'border-white/5 bg-white/[0.02]'}
+                  ${isCompleted ? 'border-transparent shadow-lg' : isMissed ? 'border-white/10' : isRescue ? 'border-blue-500/30' : 'border-white/5 bg-white/[0.02]'}
                   ${isCurrent ? 'border-white/20 animate-pulse' : ''}
                 `}
                 style={{ 
-                  backgroundColor: (isCompleted || isMissed) ? dayColor : undefined,
-                  boxShadow: isCompleted ? `0 0 15px ${dayColor}44` : 'none'
+                  backgroundColor: (isCompleted || isMissed || isRescue) ? dayColor : undefined,
+                  boxShadow: isCompleted ? `0 0 15px ${dayColor}44` : isRescue ? `0 0 10px ${dayColor}33` : 'none'
                 }}
               >
-                <span className={`text-[8px] md:text-[10px] font-black ${isCompleted ? 'text-black' : isMissed ? 'text-white/20' : 'text-white/10'}`}>
+                <span className={`text-[8px] md:text-[10px] font-black ${isCompleted ? 'text-black' : isMissed ? 'text-white/20' : isRescue ? 'text-white' : 'text-white/10'}`}>
                   {dayNum}
                 </span>
                 {isCompleted && (
@@ -209,6 +218,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
                 {/* Tooltip for phases */}
                 <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all pointer-events-none bg-black border border-white/10 px-2 py-1 rounded text-[7px] uppercase font-black whitespace-nowrap z-50">
                   {isMissed ? (isRTL ? 'فجوة عصبية' : 'Neural Gap') : 
+                   isRescue ? (isRTL ? 'جلسة إنقاذ' : 'Rescue Session') :
                    dayNum <= 10 ? (isRTL ? 'المقاومة' : 'Resistance') : 
                    dayNum <= 21 ? (isRTL ? 'التثبيت' : 'Installation') : 
                    (isRTL ? 'الانصهار' : 'Integration')}
@@ -231,6 +241,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
             <div className="w-2 h-2 rounded-full bg-[#10b981]" />
             <span className="text-[7px] uppercase font-black tracking-widest">{isRTL ? 'الانصهار (22-40)' : 'Integration (22-40)'}</span>
           </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-[#3b82f6]" />
+            <span className="text-[7px] uppercase font-black tracking-widest">{isRTL ? 'جلسة إنقاذ' : 'Rescue Session'}</span>
+          </div>
         </div>
       </section>
 
@@ -248,21 +262,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
           <div className="space-y-4 p-6 bg-white/[0.02] rounded-3xl border border-white/5">
-            <div className="text-red-500 font-black text-2xl italic">01. {isRTL ? 'المقاومة' : 'Resistance'}</div>
+            <div className="text-red-500 font-black text-2xl italic">01. {isRTL ? 'مقاومة الدماغ' : 'Brain Resistance'}</div>
             <p className="text-xs text-white/40 leading-relaxed uppercase font-bold tracking-tight">
-              {isRTL ? 'الأيام (1-10): هي المرحلة الأصعب حيث يحاول الدماغ الحفاظ على طاقته القديمة. هنا نحتاج لقوة الإرادة الخام لكسر الجمود.' : 'Days (1-10): The hardest phase where the brain resists change. Raw willpower is needed to break the inertia.'}
+              {isRTL ? 'الأيام (1-10): دماغك يحب توفير الطاقة ويفضل العادات القديمة. في هذه المرحلة، أنت تبني مساراً جديداً تماماً ضد رغبة دماغك في الراحة. الاستمرار هنا هو مفتاح النجاح.' : 'Days (1-10): Your brain hates wasting energy and prefers old routines. You are fighting your biology to build a new path. Staying consistent here is the hardest but most vital step.'}
             </p>
           </div>
           <div className="space-y-4 p-6 bg-white/[0.02] rounded-3xl border border-white/5">
-            <div className="text-orange-500 font-black text-2xl italic">02. {isRTL ? 'التثبيت' : 'Installation'}</div>
+            <div className="text-orange-500 font-black text-2xl italic">02. {isRTL ? 'بناء المسارات' : 'Building the Path'}</div>
             <p className="text-xs text-white/40 leading-relaxed uppercase font-bold tracking-tight">
-              {isRTL ? 'الأيام (11-21): تبدأ المسارات العصبية في التشكل. تشعر بضغط أقل، لكن الاستمرارية لا تزال تتطلب وعياً تاماً.' : 'Days (11-21): Neural pathways begin to form. Less effort is required, but conscious consistency is still vital.'}
+              {isRTL ? 'الأيام (11-21): يبدأ الدماغ في تغليف المسارات العصبية الجديدة بمادة عازلة تجعل نقل المعلومات أسرع. ستشعر أن القراءة بدأت تصبح أسهل وأقل مجهوداً من ذي قبل.' : 'Days (11-21): Your brain starts insulating the new neural paths, making them faster and more efficient. You\'ll notice that starting to read requires much less effort than it did in the first week.'}
             </p>
           </div>
           <div className="space-y-4 p-6 bg-white/[0.02] rounded-3xl border border-white/5">
-            <div className="text-emerald-500 font-black text-2xl italic">03. {isRTL ? 'الانصهار' : 'Integration'}</div>
+            <div className="text-emerald-500 font-black text-2xl italic">03. {isRTL ? 'الوضع التلقائي' : 'Auto-Pilot Mode'}</div>
             <p className="text-xs text-white/40 leading-relaxed uppercase font-bold tracking-tight">
-              {isRTL ? 'الأيام (22-40): تصبح العادة جزءاً من هويتك. الدماغ الآن يعمل بكفاءة عالية، والقراءة تصبح فعلاً تلقائياً كالتنفس.' : 'Days (22-40): The habit becomes part of your identity. Reading becomes as automatic as breathing.'}
+              {isRTL ? 'الأيام (22-40): أصبحت القراءة الآن "مبرمجة" في مراكز التحكم العميقة في دماغك. لقد تحولت من فعل يتطلب إرادة إلى عادة تلقائية تشعرك بالراحة تماماً كالتنفس.' : 'Days (22-40): Reading is now "hard-wired" into your brain\'s deep control centers. It has transitioned from a conscious effort to an automatic habit that feels as natural as breathing.'}
             </p>
           </div>
         </div>
@@ -270,11 +284,74 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
         <div className="p-8 bg-red-600/5 border border-red-600/10 rounded-[2rem] flex flex-col md:flex-row items-center gap-8">
            <AlertTriangle className="text-red-600 size-12 shrink-0" />
            <div className="space-y-2">
-             <h4 className="text-sm font-black uppercase tracking-widest text-red-600">{isRTL ? 'قاعدة: لا تفشل مرتين أبداً' : 'Rule: Never Miss Twice'}</h4>
+             <h4 className="text-sm font-black uppercase tracking-widest text-red-600">{isRTL ? 'قاعدة الـ 48 ساعة' : 'The 48-Hour Rule'}</h4>
              <p className="text-[10px] md:text-xs text-white/40 uppercase font-bold leading-relaxed">
-               {isRTL ? 'تفويت يوم واحد هو حادث، تفويت يومين هو بداية عادة جديدة. استخدم الدروع بحكمة، وإذا سقطت يوماً، فاجعل العودة في اليوم التالي مقدسة.' : 'Missing once is an accident, missing twice is the start of a new habit. Use shields wisely, and if you fail one day, make the next day sacred.'}
+               {isRTL ? 'تفويت يوم واحد هو مجرد زلة، لكن تفويت يومين متتاليين هو بداية لعادة "عدم الفعل" الجديدة. استخدم الدروع لحماية تقدمك، واحرص دائماً على العودة فوراً للحفاظ على قوة الوصلات العصبية.' : 'Missing one day is a slip, but missing two is the start of a new "lazy" habit. Use your shields to protect your progress, and always bounce back immediately to keep the neural connections strong.'}
              </p>
            </div>
+        </div>
+      </section>
+
+      {/* SECTION: RESILIENCE & RECOVERY PROTOCOL */}
+      <section className="bg-white/[0.01] border border-white/5 p-6 md:p-16 rounded-[2rem] md:rounded-[5rem] space-y-10 relative overflow-hidden">
+        <div className="flex items-center gap-6 relative z-10">
+          <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+            <ShieldCheck className="text-blue-500 size-6 md:size-8" />
+          </div>
+          <div>
+            <h3 className="text-xl md:text-5xl font-black uppercase tracking-tighter italic">{isRTL ? 'بروتوكول المرونة والتعافي' : 'Resilience & Recovery Protocol'}</h3>
+            <p className="text-[9px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-1 md:mt-2">Systemic Safeguards for Habit Preservation</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
+          {/* Rescue Session Explanation */}
+          <div className="space-y-6 p-8 bg-blue-600/5 rounded-[2.5rem] border border-blue-600/10">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-600/20 rounded-xl">
+                <Activity className="text-blue-500 size-6" />
+              </div>
+              <h4 className="text-lg font-black uppercase tracking-tight text-blue-500">{isRTL ? 'جلسة الإنقاذ (دقيقتان)' : 'Rescue Session (2 Min)'}</h4>
+            </div>
+            <p className="text-xs text-white/50 leading-relaxed uppercase font-bold">
+              {isRTL 
+                ? 'في الأيام الحرجة، دقيقتان من القراءة تكفي لحماية "سلسلة الالتزام" من الانكسار. هي بمثابة "صيانة عصبية" تمنع دماغك من نسيان العادة، لكنها لا تحتسب يوماً كاملاً في مسار الـ 40 يوماً.' 
+                : 'On critical days, 2 minutes of reading is enough to protect your streak from breaking. It acts as "neural maintenance," preventing your brain from forgetting the habit, though it doesn\'t count as a full day on the 40-day path.'}
+            </p>
+          </div>
+
+          {/* Earnable Shields Explanation */}
+          <div className="space-y-6 p-8 bg-emerald-600/5 rounded-[2.5rem] border border-emerald-600/10">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-emerald-600/20 rounded-xl">
+                <ShieldCheck className="text-emerald-500 size-6" />
+              </div>
+              <h4 className="text-lg font-black uppercase tracking-tight text-emerald-500">{isRTL ? 'دروع الاستحقاق' : 'Earnable Shields'}</h4>
+            </div>
+            <p className="text-xs text-white/50 leading-relaxed uppercase font-bold">
+              {isRTL 
+                ? 'كل 7 أيام متتالية من القراءة الكاملة (أكثر من 10 دقائق) تمنحك "درع حماية" إضافياً (بحد أقصى 3). الدروع هي رصيد طوارئ يُستهلك تلقائياً عند الغياب الاضطراري لحماية مسارك.' 
+                : 'Every 7 consecutive full days (10+ min) earns you an additional "Protection Shield" (max 3). Shields are emergency credits consumed automatically during unavoidable absences to safeguard your path.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[2rem] space-y-4">
+          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">{isRTL ? 'منهجية التعامل مع الفجوات' : 'Gap Management Methodology'}</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="flex gap-4">
+              <div className="text-blue-500 font-black text-xl">01</div>
+              <p className="text-[10px] text-white/40 uppercase font-bold leading-tight">{isRTL ? 'الأولوية لحماية السلسلة (Streak) عبر جلسات الإنقاذ.' : 'Priority is given to streak preservation via Rescue Sessions.'}</p>
+            </div>
+            <div className="flex gap-4">
+              <div className="text-emerald-500 font-black text-xl">02</div>
+              <p className="text-[10px] text-white/40 uppercase font-bold leading-tight">{isRTL ? 'استهلاك الدروع يتم آلياً عند الغياب التام دون تدخل منك.' : 'Shield consumption is automated during total absence without user intervention.'}</p>
+            </div>
+            <div className="flex gap-4">
+              <div className="text-red-600 font-black text-xl">03</div>
+              <p className="text-[10px] text-white/40 uppercase font-bold leading-tight">{isRTL ? 'عند نفاذ الدروع، تظهر "الندوب الرمادية" كتوثيق صادق لرحلتك.' : 'When shields are exhausted, "Neural Scars" appear as an honest record of your journey.'}</p>
+            </div>
+          </div>
         </div>
       </section>
 
