@@ -85,6 +85,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
     }));
   }, [books]);
 
+  const habitData = useMemo(() => storageService.getHabitData(), []);
+  
+  const habitPhases = useMemo(() => {
+    const streak = habitData.streak;
+    if (streak <= 10) return { phase: 1, name: isRTL ? 'مرحلة المقاومة' : 'Resistance Phase', color: '#ef4444' };
+    if (streak <= 21) return { phase: 2, name: isRTL ? 'مرحلة التثبيت' : 'Installation Phase', color: '#f59e0b' };
+    return { phase: 3, name: isRTL ? 'مرحلة الانصهار' : 'Integration Phase', color: '#10b981' };
+  }, [habitData.streak, isRTL]);
+
   const handleClearAll = () => {
     storageService.saveBooks([]);
     window.location.reload(); 
@@ -115,6 +124,90 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
            </button>
         </div>
       </header>
+
+      {/* SECTION 0: HABIT FORMATION PATH (NEW) */}
+      <section className="bg-white/[0.02] border border-white/10 p-5 md:p-12 rounded-[1.5rem] md:rounded-[4rem] space-y-8 shadow-4xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-8 opacity-[0.02] pointer-events-none">
+          <BrainCircuit size={200} />
+        </div>
+        
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white/5 rounded-xl border border-white/10" style={{ color: habitPhases.color }}>
+              <Zap className="size-5 md:size-8" />
+            </div>
+            <div>
+              <h3 className="text-lg md:text-4xl font-black uppercase tracking-tighter italic">{isRTL ? 'مسار تكوين العادة (40 يوماً)' : 'Habit Formation Path (40 Days)'}</h3>
+              <p className="text-[8px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-1">{habitPhases.name} - Streak: {habitData.streak} Days</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 bg-black/40 px-4 py-2 rounded-full border border-white/5 backdrop-blur-md">
+            <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: habitPhases.color }} />
+            <span className="text-[10px] font-black uppercase tracking-widest text-white/60">
+              {isRTL ? `اليوم ${habitData.streak} من 40` : `Day ${habitData.streak} of 40`}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 md:gap-3 relative z-10">
+          {[...Array(40)].map((_, i) => {
+            const dayNum = i + 1;
+            const isCompleted = dayNum <= habitData.streak;
+            const isCurrent = dayNum === habitData.streak + 1;
+            
+            let dayColor = 'rgba(255,255,255,0.03)';
+            if (isCompleted) {
+              if (dayNum <= 10) dayColor = '#ef4444';
+              else if (dayNum <= 21) dayColor = '#f59e0b';
+              else dayColor = '#10b981';
+            }
+
+            return (
+              <div 
+                key={i}
+                className={`aspect-square rounded-lg md:rounded-xl border flex items-center justify-center transition-all duration-500 relative group
+                  ${isCompleted ? 'border-transparent shadow-lg' : 'border-white/5 bg-white/[0.02]'}
+                  ${isCurrent ? 'border-white/20 animate-pulse' : ''}
+                `}
+                style={{ 
+                  backgroundColor: isCompleted ? dayColor : undefined,
+                  boxShadow: isCompleted ? `0 0 15px ${dayColor}44` : 'none'
+                }}
+              >
+                <span className={`text-[8px] md:text-[10px] font-black ${isCompleted ? 'text-black' : 'text-white/10'}`}>
+                  {dayNum}
+                </span>
+                {isCompleted && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent pointer-events-none rounded-lg md:rounded-xl" />
+                )}
+                
+                {/* Tooltip for phases */}
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all pointer-events-none bg-black border border-white/10 px-2 py-1 rounded text-[7px] uppercase font-black whitespace-nowrap z-50">
+                  {dayNum <= 10 ? (isRTL ? 'المقاومة' : 'Resistance') : 
+                   dayNum <= 21 ? (isRTL ? 'التثبيت' : 'Installation') : 
+                   (isRTL ? 'الانصهار' : 'Integration')}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        
+        <div className="flex justify-between items-center pt-4 border-t border-white/5 opacity-30">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-[#ef4444]" />
+            <span className="text-[7px] uppercase font-black tracking-widest">{isRTL ? 'المقاومة (1-10)' : 'Resistance (1-10)'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-[#f59e0b]" />
+            <span className="text-[7px] uppercase font-black tracking-widest">{isRTL ? 'التثبيت (11-21)' : 'Installation (11-21)'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-[#10b981]" />
+            <span className="text-[7px] uppercase font-black tracking-widest">{isRTL ? 'الانصهار (22-40)' : 'Integration (22-40)'}</span>
+          </div>
+        </div>
+      </section>
 
       {/* SECTION 1: INDIVIDUAL MANUSCRIPT EVOLUTION (BARS) */}
       <section className="bg-white/[0.02] border border-white/10 p-5 md:p-20 rounded-[1.5rem] md:rounded-[5rem] space-y-8 md:space-y-16 shadow-4xl relative overflow-hidden">
