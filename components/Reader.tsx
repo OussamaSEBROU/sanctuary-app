@@ -276,6 +276,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   };
 
   const handleEnd = () => {
+    if (isPinching) {
+      setIsPinching(false);
+      initialPinchDistance.current = null;
+    }
     if (!isDrawing) return;
     if (currentRect && currentRect.w > 0.5) {
       const newAnno: Annotation = { 
@@ -542,4 +546,3 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     </div>
   );
 };
- 
