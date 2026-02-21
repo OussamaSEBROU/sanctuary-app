@@ -5,7 +5,8 @@ const STORAGE_KEYS = {
   BOOKS: 'sanctuary_books',
   SHELVES: 'sanctuary_shelves',
   CARDS: 'sanctuary_cards',
-  SETTINGS: 'sanctuary_settings'
+  SETTINGS: 'sanctuary_settings',
+  HABIT: 'sanctuary_habit'
 };
 
 const DEFAULT_SHELF: ShelfData = {
@@ -96,6 +97,7 @@ export const storageService = {
       book.stars = stars;
       book.lastReadAt = Date.now();
       storageService.saveBooks(books);
+      storageService.recordReadingDay();
     }
     return { starReached };
   },
@@ -103,5 +105,40 @@ export const storageService = {
   getCards: (): FlashCard[] => {
     const data = localStorage.getItem(STORAGE_KEYS.CARDS);
     return data ? JSON.parse(data) : [];
+  },
+
+  getHabitData: (): { history: string[], streak: number, lastUpdated: string } => {
+    const data = localStorage.getItem(STORAGE_KEYS.HABIT);
+    return data ? JSON.parse(data) : { history: [], streak: 0, lastUpdated: '' };
+  },
+
+  saveHabitData: (habit: { history: string[], streak: number, lastUpdated: string }) => {
+    localStorage.setItem(STORAGE_KEYS.HABIT, JSON.stringify(habit));
+  },
+
+  recordReadingDay: () => {
+    const today = new Date().toISOString().split('T')[0];
+    const habit = storageService.getHabitData();
+    
+    if (habit.lastUpdated === today) return;
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    if (habit.lastUpdated === yesterdayStr) {
+      habit.streak += 1;
+    } else if (habit.lastUpdated === '') {
+      habit.streak = 1;
+    } else {
+      habit.streak = 1;
+    }
+
+    if (!habit.history.includes(today)) {
+      habit.history.push(today);
+    }
+    
+    habit.lastUpdated = today;
+    storageService.saveHabitData(habit);
   }
 };
