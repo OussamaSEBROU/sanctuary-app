@@ -22,7 +22,8 @@ import {
   LayoutDashboard,
   Clock,
   Star,
-  Upload
+  Upload,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -81,6 +82,8 @@ const App: React.FC = () => {
       return acc;
     }, 0) / 60);
   }, [books]);
+
+  const habitStreak = useMemo(() => storageService.getHabitData().streak, [books]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -240,6 +243,17 @@ const App: React.FC = () => {
                   <span className="text-[11px] font-black text-[#ff0000]">{totalTodayMinutes} {lang === 'ar' ? 'دقيقة' : 'min'}</span>
                 </div>
               </MotionDiv>
+              
+              {habitStreak > 0 && (
+                <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3 bg-black/60 backdrop-blur-xl px-4 py-2.5 md:px-6 md:py-3.5 rounded-full border border-orange-500/30 shadow-xl">
+                  <Zap size={16} className="text-orange-500" />
+                  <div className="flex flex-col items-start leading-none">
+                    <span className="text-[7px] font-black uppercase tracking-widest opacity-30 mb-0.5">{lang === 'ar' ? 'الاستمرارية' : 'Streak'}</span>
+                    <span className="text-[11px] font-black text-orange-500">{habitStreak} {lang === 'ar' ? 'يوم' : 'Days'}</span>
+                  </div>
+                </MotionDiv>
+              )}
+
               <button onClick={() => setIsAddingBook(true)} className="px-5 md:px-8 py-3 md:py-4 rounded-full bg-white text-black text-[9px] md:text-[11px] font-black uppercase tracking-[0.3em] shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all flex items-center gap-2.5 active:scale-95">
                 <Plus size={14} />{lang === 'ar' ? 'إضافة كتاب' : 'Add Work'}
               </button>
