@@ -87,6 +87,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
 
   const habitData = useMemo(() => storageService.getHabitData(), []);
   
+  const habitStartDate = useMemo(() => {
+    const allDates = [...habitData.history, ...habitData.missedDays].sort();
+    return allDates.length > 0 ? new Date(allDates[0]) : null;
+  }, [habitData]);
+
   const habitPhases = useMemo(() => {
     const streak = habitData.streak;
     if (streak <= 10) return { phase: 1, name: isRTL ? 'مرحلة المقاومة' : 'Resistance Phase', color: '#ef4444' };
@@ -142,18 +147,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
             </div>
           </div>
           
-          <div className="flex items-center gap-3 bg-black/40 px-4 py-2 rounded-full border border-white/5 backdrop-blur-md">
-            <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: habitPhases.color }} />
-            <span className="text-[10px] font-black uppercase tracking-widest text-white/60">
-              {isRTL ? `اليوم ${habitData.streak} من 40` : `Day ${habitData.streak} of 40`}
-            </span>
+          <div className="flex items-center gap-4">
+            {/* Shields Display */}
+            <div className="flex items-center gap-2 bg-blue-600/10 px-4 py-2 rounded-full border border-blue-600/20 backdrop-blur-md">
+              <ShieldCheck className="size-4 text-blue-500" />
+              <div className="flex flex-col">
+                <span className="text-[7px] font-black uppercase text-blue-500/60 leading-none">{isRTL ? 'الدروع المتبقية' : 'Shields Left'}</span>
+                <span className="text-[10px] font-black text-blue-500">{habitData.shields} / 2</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 bg-black/40 px-4 py-2 rounded-full border border-white/5 backdrop-blur-md">
+              <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: habitPhases.color }} />
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/60">
+                {isRTL ? `اليوم ${habitData.streak} من 40` : `Day ${habitData.streak} of 40`}
+              </span>
+            </div>
           </div>
         </div>
 
         <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 md:gap-3 relative z-10">
           {[...Array(40)].map((_, i) => {
             const dayNum = i + 1;
-            const isCompleted = dayNum <= habitData.streak;
+            
+            const dayDate = habitStartDate ? new Date(habitStartDate) : null;
+            if (dayDate) dayDate.setDate(dayDate.getDate() + i);
+            const dayDateStr = dayDate ? dayDate.toISOString().split('T')[0] : null;
+
+            const isCompleted = dayDateStr ? habitData.history.includes(dayDateStr) : false;
+            const isMissed = dayDateStr ? habitData.missedDays.includes(dayDateStr) : false;
             const isCurrent = dayNum === habitData.streak + 1;
             
             let dayColor = 'rgba(255,255,255,0.03)';
@@ -161,21 +183,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
               if (dayNum <= 10) dayColor = '#ef4444';
               else if (dayNum <= 21) dayColor = '#f59e0b';
               else dayColor = '#10b981';
+            } else if (isMissed) {
+              dayColor = '#333333'; // Ash Gray for scars
             }
 
             return (
               <div 
                 key={i}
                 className={`aspect-square rounded-lg md:rounded-xl border flex items-center justify-center transition-all duration-500 relative group
-                  ${isCompleted ? 'border-transparent shadow-lg' : 'border-white/5 bg-white/[0.02]'}
+                  ${isCompleted ? 'border-transparent shadow-lg' : isMissed ? 'border-white/10' : 'border-white/5 bg-white/[0.02]'}
                   ${isCurrent ? 'border-white/20 animate-pulse' : ''}
                 `}
                 style={{ 
-                  backgroundColor: isCompleted ? dayColor : undefined,
+                  backgroundColor: (isCompleted || isMissed) ? dayColor : undefined,
                   boxShadow: isCompleted ? `0 0 15px ${dayColor}44` : 'none'
                 }}
               >
-                <span className={`text-[8px] md:text-[10px] font-black ${isCompleted ? 'text-black' : 'text-white/10'}`}>
+                <span className={`text-[8px] md:text-[10px] font-black ${isCompleted ? 'text-black' : isMissed ? 'text-white/20' : 'text-white/10'}`}>
                   {dayNum}
                 </span>
                 {isCompleted && (
@@ -184,7 +208,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
                 
                 {/* Tooltip for phases */}
                 <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all pointer-events-none bg-black border border-white/10 px-2 py-1 rounded text-[7px] uppercase font-black whitespace-nowrap z-50">
-                  {dayNum <= 10 ? (isRTL ? 'المقاومة' : 'Resistance') : 
+                  {isMissed ? (isRTL ? 'فجوة عصبية' : 'Neural Gap') : 
+                   dayNum <= 10 ? (isRTL ? 'المقاومة' : 'Resistance') : 
                    dayNum <= 21 ? (isRTL ? 'التثبيت' : 'Installation') : 
                    (isRTL ? 'الانصهار' : 'Integration')}
                 </div>
@@ -206,6 +231,50 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
             <div className="w-2 h-2 rounded-full bg-[#10b981]" />
             <span className="text-[7px] uppercase font-black tracking-widest">{isRTL ? 'الانصهار (22-40)' : 'Integration (22-40)'}</span>
           </div>
+        </div>
+      </section>
+
+      {/* SECTION: THE SCIENCE OF HABIT FORMATION */}
+      <section className="bg-white/[0.01] border border-white/5 p-6 md:p-16 rounded-[2rem] md:rounded-[5rem] space-y-10 relative overflow-hidden">
+        <div className="flex items-center gap-6 relative z-10">
+          <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+            <BrainCircuit className="text-purple-500 size-6 md:size-8" />
+          </div>
+          <div>
+            <h3 className="text-xl md:text-5xl font-black uppercase tracking-tighter italic">{isRTL ? 'علم تكوين العادات' : 'The Science of Habit'}</h3>
+            <p className="text-[9px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-1 md:mt-2">Neuroplasticity & Behavioral Engineering</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+          <div className="space-y-4 p-6 bg-white/[0.02] rounded-3xl border border-white/5">
+            <div className="text-red-500 font-black text-2xl italic">01. {isRTL ? 'المقاومة' : 'Resistance'}</div>
+            <p className="text-xs text-white/40 leading-relaxed uppercase font-bold tracking-tight">
+              {isRTL ? 'الأيام (1-10): هي المرحلة الأصعب حيث يحاول الدماغ الحفاظ على طاقته القديمة. هنا نحتاج لقوة الإرادة الخام لكسر الجمود.' : 'Days (1-10): The hardest phase where the brain resists change. Raw willpower is needed to break the inertia.'}
+            </p>
+          </div>
+          <div className="space-y-4 p-6 bg-white/[0.02] rounded-3xl border border-white/5">
+            <div className="text-orange-500 font-black text-2xl italic">02. {isRTL ? 'التثبيت' : 'Installation'}</div>
+            <p className="text-xs text-white/40 leading-relaxed uppercase font-bold tracking-tight">
+              {isRTL ? 'الأيام (11-21): تبدأ المسارات العصبية في التشكل. تشعر بضغط أقل، لكن الاستمرارية لا تزال تتطلب وعياً تاماً.' : 'Days (11-21): Neural pathways begin to form. Less effort is required, but conscious consistency is still vital.'}
+            </p>
+          </div>
+          <div className="space-y-4 p-6 bg-white/[0.02] rounded-3xl border border-white/5">
+            <div className="text-emerald-500 font-black text-2xl italic">03. {isRTL ? 'الانصهار' : 'Integration'}</div>
+            <p className="text-xs text-white/40 leading-relaxed uppercase font-bold tracking-tight">
+              {isRTL ? 'الأيام (22-40): تصبح العادة جزءاً من هويتك. الدماغ الآن يعمل بكفاءة عالية، والقراءة تصبح فعلاً تلقائياً كالتنفس.' : 'Days (22-40): The habit becomes part of your identity. Reading becomes as automatic as breathing.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="p-8 bg-red-600/5 border border-red-600/10 rounded-[2rem] flex flex-col md:flex-row items-center gap-8">
+           <AlertTriangle className="text-red-600 size-12 shrink-0" />
+           <div className="space-y-2">
+             <h4 className="text-sm font-black uppercase tracking-widest text-red-600">{isRTL ? 'قاعدة: لا تفشل مرتين أبداً' : 'Rule: Never Miss Twice'}</h4>
+             <p className="text-[10px] md:text-xs text-white/40 uppercase font-bold leading-relaxed">
+               {isRTL ? 'تفويت يوم واحد هو حادث، تفويت يومين هو بداية عادة جديدة. استخدم الدروع بحكمة، وإذا سقطت يوماً، فاجعل العودة في اليوم التالي مقدسة.' : 'Missing once is an accident, missing twice is the start of a new habit. Use shields wisely, and if you fail one day, make the next day sacred.'}
+             </p>
+           </div>
         </div>
       </section>
 
