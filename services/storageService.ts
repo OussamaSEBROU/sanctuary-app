@@ -1,5 +1,5 @@
 
-import { Book, FlashCard, ShelfData, Annotation, HabitData } from '../types';
+import type { Book, FlashCard, ShelfData, Annotation, HabitData } from '../types';
 
 const STORAGE_KEYS = {
   BOOKS: 'sanctuary_books',
@@ -92,6 +92,12 @@ export const storageService = {
       
       if (stars > oldStars) {
         starReached = stars;
+        // Award 2 shields when reaching the 5th star
+        if (stars === 5) {
+          const habit = storageService.getHabitData();
+          habit.shields = Math.min(habit.shields + 2, 3);
+          storageService.saveHabitData(habit);
+        }
       }
 
       book.stars = stars;
