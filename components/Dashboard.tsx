@@ -212,6 +212,73 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
         </div>
       </section>
 
+      {/* SECTION 1.7: BADGE CRITERIA TABLE (NEW) */}
+      <section className="bg-white/[0.02] border border-white/10 p-6 md:p-20 rounded-[2rem] md:rounded-[5rem] space-y-12 md:space-y-16 shadow-4xl relative overflow-hidden">
+        <div className="flex items-center gap-6 relative z-10">
+          <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+            <LayoutPanelTop className="text-red-600 size-6 md:size-8" />
+          </div>
+          <div>
+            <h3 className="text-xl md:text-5xl font-black uppercase tracking-tighter italic">{isRTL ? 'معايير الاستحقاق' : 'Merit Criteria'}</h3>
+            <p className="text-[9px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-1 md:mt-2">Temporal Thresholds for Intellectual Distinctions</p>
+          </div>
+        </div>
+
+        <div className="relative z-10 overflow-hidden rounded-3xl border border-white/5 bg-black/40">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-bottom border-white/10 bg-white/5">
+                  <th className="p-4 md:p-6 text-[10px] md:text-xs font-black uppercase tracking-widest text-white/40">{isRTL ? 'الرتبة' : 'Rank'}</th>
+                  <th className="p-4 md:p-6 text-[10px] md:text-xs font-black uppercase tracking-widest text-white/40">{isRTL ? 'الوسام' : 'Badge'}</th>
+                  <th className="p-4 md:p-6 text-[10px] md:text-xs font-black uppercase tracking-widest text-white/40 text-right">{isRTL ? 'مدة التركيز' : 'Focus Duration'}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {[
+                  { star: 1, min: 15 },
+                  { star: 2, min: 30 },
+                  { star: 3, min: 50 },
+                  { star: 4, min: 140 },
+                  { star: 5, min: 200 },
+                  { star: 6, min: 260 },
+                  { star: 7, min: 320 }
+                ].map((row, i) => (
+                  <tr key={i} className="hover:bg-white/[0.02] transition-colors group">
+                    <td className="p-4 md:p-6">
+                      <div className="flex items-center gap-2">
+                        <Star size={14} className="text-red-600 fill-red-600" />
+                        <span className="text-xs md:text-sm font-black text-white">{row.star}</span>
+                      </div>
+                    </td>
+                    <td className="p-4 md:p-6">
+                      <div className="flex items-center gap-3">
+                        <Sparkles size={14} className="text-yellow-500 opacity-40 group-hover:opacity-100 transition-opacity" />
+                        <span className="text-xs md:text-sm font-bold text-white/80 group-hover:text-white transition-colors tracking-tight">
+                          {t.badges[i]}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-4 md:p-6 text-right">
+                      <div className="flex flex-col items-end">
+                        <span className="text-xs md:text-sm font-mono font-black text-red-600">
+                          {row.min} {isRTL ? 'دقيقة' : 'min'}
+                        </span>
+                        {row.min >= 60 && (
+                          <span className="text-[9px] font-bold text-white/20 uppercase tracking-tighter">
+                            ({Math.floor(row.min / 60)}h {row.min % 60}m)
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       {/* SECTION 2: NEURAL SYNERGY FLOW (LINE CHART) */}
       <section className="bg-white/[0.01] border border-white/5 p-6 md:p-20 rounded-[2rem] md:rounded-[5rem] space-y-12 md:space-y-16 relative overflow-hidden shadow-3xl">
         <div className="absolute top-0 right-0 p-8 md:p-16 opacity-[0.03] pointer-events-none rotate-12">
