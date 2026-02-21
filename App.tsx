@@ -137,6 +137,10 @@ const App: React.FC = () => {
     if (activeShelfId === shelfId) setActiveShelfId('default');
   };
 
+  const handleCelebrationComplete = React.useCallback(() => {
+    setCelebrationStar(null);
+  }, []);
+
   return (
     <Layout lang={lang}>
       <div className={`flex flex-col h-screen-safe overflow-hidden ${fontClass}`}>
@@ -335,7 +339,7 @@ const App: React.FC = () => {
             <CelebrationOverlay 
               starCount={celebrationStar} 
               lang={lang} 
-              onComplete={() => setCelebrationStar(null)} 
+              onComplete={handleCelebrationComplete} 
             />
           )}
         </AnimatePresence>
