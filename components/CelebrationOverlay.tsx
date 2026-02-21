@@ -42,26 +42,34 @@ export const CelebrationOverlay: React.FC<CelebrationOverlayProps> = ({ starCoun
   const quote = DEEP_QUOTES[lang][(starCount - 1) % DEEP_QUOTES[lang].length];
 
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = 0.5;
-      audioRef.current.play().catch(e => console.warn("Celebration audio failed:", e));
+    const audio = audioRef.current;
+    if (audio) {
+      audio.volume = 0.5;
+      audio.loop = false;
+      audio.play().catch(e => console.warn("Celebration audio failed:", e));
     }
+    
     const timer = setTimeout(() => {
       onComplete();
     }, 10000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+    };
   }, [onComplete]);
 
   return (
-    <AnimatePresence>
-      <MotionDiv
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-2xl overflow-hidden perspective-[2000px]"
-      >
-        <audio ref={audioRef} src="/assets/sounds/celebration.mp3" />
+    <MotionDiv
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-2xl overflow-hidden perspective-[2000px]"
+    >
+      <audio ref={audioRef} src="/assets/sounds/celebration.mp3" />
         
         {/* Dynamic 3D Background Particles */}
         <div className="absolute inset-0 pointer-events-none">
@@ -209,6 +217,5 @@ export const CelebrationOverlay: React.FC<CelebrationOverlayProps> = ({ starCoun
           />
         </div>
       </MotionDiv>
-    </AnimatePresence>
   );
 };
