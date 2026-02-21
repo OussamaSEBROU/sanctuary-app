@@ -45,11 +45,12 @@ export interface FlashCard {
 }
 
 export interface HabitData {
-  history: string[]; // YYYY-MM-DD (Successful days)
+  history: string[]; // YYYY-MM-DD (Full days)
   missedDays: string[]; // YYYY-MM-DD (Gaps)
   shields: number;
   streak: number;
   lastUpdated: string; // YYYY-MM-DD
+  consecutiveFullDays: number; // Counter for earning shields
 }
 
 export enum ViewState {
