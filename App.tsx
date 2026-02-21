@@ -137,6 +137,18 @@ const App: React.FC = () => {
     if (activeShelfId === shelfId) setActiveShelfId('default');
   };
 
+  const handleReaderBack = React.useCallback(() => {
+    setBooks(storageService.getBooks());
+    setView(ViewState.SHELF);
+  }, []);
+
+  const handleStatsUpdate = React.useCallback((starReached?: number | null) => {
+    setBooks(storageService.getBooks());
+    if (starReached) {
+      setCelebrationStar(starReached);
+    }
+  }, []);
+
   const handleCelebrationComplete = React.useCallback(() => {
     setCelebrationStar(null);
   }, []);
@@ -290,18 +302,14 @@ const App: React.FC = () => {
                 <Reader 
                   book={selectedBook} 
                   lang={lang} 
-                  onBack={() => { setBooks(storageService.getBooks()); setView(ViewState.SHELF); }} 
-                  onStatsUpdate={(starReached) => {
-                    setBooks(storageService.getBooks());
-                    if (starReached) {
-                      setCelebrationStar(starReached);
-                    }
-                  }} 
+                  onBack={handleReaderBack} 
+                  onStatsUpdate={handleStatsUpdate} 
                 />
               </MotionDiv>
             )}
           </AnimatePresence>
         </div>
+
 
         {/* Overlay Modals */}
         <AnimatePresence>
