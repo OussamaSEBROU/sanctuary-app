@@ -62,7 +62,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
     const timePoints = [0, 0.2, 0.4, 0.6, 0.8, 1.0];
     return bookStats.slice(0, 12).map(book => ({
       ...book,
-      points: timePoints.map(p => Math.floor(book.minutes * p * (0.8 + Math.random() * 0.4)))
+      // Simulate cumulative growth: each point is a fraction of total minutes
+      points: timePoints.map(p => Math.floor(book.minutes * p))
     }));
   }, [bookStats]);
 
@@ -93,37 +94,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
     <MotionDiv 
       initial={{ opacity: 0 }} 
       animate={{ opacity: 1 }} 
-      className="p-4 w-full max-w-7xl mx-auto space-y-12 md:space-y-24 md:p-8 mb-24 bg-[#020502] min-h-screen"
+      className="p-3 md:p-8 w-full max-w-7xl mx-auto space-y-8 md:space-y-24 mb-24 bg-[#020502] min-h-screen"
     >
       {/* Header Sticky Bar */}
-      <header className="flex flex-col md:flex-row items-center justify-between gap-6 sticky top-0 bg-[#020502]/95 backdrop-blur-3xl py-6 md:py-8 z-[100] border-b border-white/5 px-6 rounded-none md:rounded-b-[3rem] shadow-2xl">
-        <button onClick={onBack} className="self-start p-3 bg-white/5 rounded-full text-white/60 flex items-center gap-2 active:scale-95 transition-all hover:bg-[#ff0000]/20 hover:text-white border border-white/5">
-          <ChevronLeft size={20} className={`${isRTL ? "rotate-180" : ""}`} />
-          <span className="text-[10px] font-black uppercase tracking-widest">{t.backToShelf}</span>
+      <header className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 sticky top-0 bg-[#020502]/95 backdrop-blur-3xl py-4 md:py-8 z-[100] border-b border-white/5 px-4 md:px-6 rounded-none md:rounded-b-[3rem] shadow-2xl">
+        <button onClick={onBack} className="self-start p-2.5 md:p-3 bg-white/5 rounded-full text-white/60 flex items-center gap-2 active:scale-95 transition-all hover:bg-[#ff0000]/20 hover:text-white border border-white/5">
+          <ChevronLeft size={18} className={`${isRTL ? "rotate-180" : ""}`} />
+          <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">{t.backToShelf}</span>
         </button>
         <div className="text-center">
-          <h2 className="text-2xl md:text-5xl font-black italic uppercase tracking-tighter flex items-center justify-center gap-4">
-            <LayoutPanelTop className="text-[#ff0000] size-6 md:size-10 animate-pulse" />
+          <h2 className="text-xl md:text-5xl font-black italic uppercase tracking-tighter flex items-center justify-center gap-3 md:gap-4">
+            <LayoutPanelTop className="text-[#ff0000] size-5 md:size-10 animate-pulse" />
             {t.dashboard}
           </h2>
-          <p className="text-[9px] md:text-xs uppercase font-bold tracking-[0.5em] text-white/20 mt-2">Neural Comparative Interface v5.5</p>
+          <p className="text-[8px] md:text-xs uppercase font-bold tracking-[0.3em] md:tracking-[0.5em] text-white/20 mt-1 md:mt-2">Neural Comparative Interface v5.5</p>
         </div>
-        <div className="flex items-center gap-4">
-           <button onClick={() => setShowClearConfirm(true)} className="p-3 bg-red-600/10 border border-red-600/20 rounded-full text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-xl shadow-red-600/5">
-             <Trash2 size={20} />
+        <div className="flex items-center gap-3 md:gap-4">
+           <button onClick={() => setShowClearConfirm(true)} className="p-2.5 md:p-3 bg-red-600/10 border border-red-600/20 rounded-full text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-xl shadow-red-600/5">
+             <Trash2 className="size-4 md:size-5" />
            </button>
         </div>
       </header>
 
       {/* SECTION 1: INDIVIDUAL MANUSCRIPT EVOLUTION (BARS) */}
-      <section className="bg-white/[0.02] border border-white/10 p-6 md:p-20 rounded-[2rem] md:rounded-[5rem] space-y-12 md:space-y-16 shadow-4xl relative overflow-hidden">
-        <div className="flex items-center gap-6 relative z-10">
-          <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-            <BarChart3 className="text-[#ef4444] size-6 md:size-8" />
+      <section className="bg-white/[0.02] border border-white/10 p-5 md:p-20 rounded-[1.5rem] md:rounded-[5rem] space-y-8 md:space-y-16 shadow-4xl relative overflow-hidden">
+        <div className="flex items-center gap-4 md:gap-6 relative z-10">
+          <div className="p-3 md:p-4 bg-white/5 rounded-xl md:rounded-2xl border border-white/10">
+            <BarChart3 className="text-[#ef4444] size-5 md:size-8" />
           </div>
           <div>
-            <h3 className="text-xl md:text-5xl font-black uppercase tracking-tighter italic">{t.bookGrowthBenchmark}</h3>
-            <p className="text-[9px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-1 md:mt-2">Individual Manuscript Concentration Metrics</p>
+            <h3 className="text-lg md:text-5xl font-black uppercase tracking-tighter italic">{t.bookGrowthBenchmark}</h3>
+            <p className="text-[8px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-1 md:mt-2">Individual Manuscript Concentration Metrics</p>
           </div>
         </div>
 
@@ -165,39 +166,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
       </section>
 
       {/* SECTION 1.5: MANUSCRIPT BADGES (NEW) */}
-      <section className="bg-white/[0.02] border border-white/10 p-6 md:p-20 rounded-[2rem] md:rounded-[5rem] space-y-12 md:space-y-16 shadow-4xl relative overflow-hidden">
-        <div className="flex items-center gap-6 relative z-10">
-          <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-            <ShieldCheck className="text-yellow-500 size-6 md:size-8" />
+      <section className="bg-white/[0.02] border border-white/10 p-5 md:p-20 rounded-[1.5rem] md:rounded-[5rem] space-y-8 md:space-y-16 shadow-4xl relative overflow-hidden">
+        <div className="flex items-center gap-4 md:gap-6 relative z-10">
+          <div className="p-3 md:p-4 bg-white/5 rounded-xl md:rounded-2xl border border-white/10">
+            <ShieldCheck className="text-yellow-500 size-5 md:size-8" />
           </div>
           <div>
-            <h3 className="text-xl md:text-5xl font-black uppercase tracking-tighter italic">{isRTL ? 'أوسمة المخطوطات' : 'Manuscript Badges'}</h3>
-            <p className="text-[9px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-1 md:mt-2">Earned Distinctions per Manuscript</p>
+            <h3 className="text-lg md:text-5xl font-black uppercase tracking-tighter italic">{isRTL ? 'أوسمة المخطوطات' : 'Manuscript Badges'}</h3>
+            <p className="text-[8px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-1 md:mt-2">Earned Distinctions per Manuscript</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 relative z-10">
           {books.map((book) => (
-            <div key={book.id} className="p-6 bg-black/40 border border-white/5 rounded-[2rem] space-y-4 hover:border-red-600/30 transition-all group">
+            <div key={book.id} className="p-4 md:p-6 bg-black/40 border border-white/5 rounded-[1.5rem] md:rounded-[2rem] space-y-4 hover:border-red-600/30 transition-all group">
               <div className="flex justify-between items-start">
-                <h4 className="text-xs font-black uppercase tracking-widest text-white/80 group-hover:text-white transition-colors truncate max-w-[150px]">{book.title}</h4>
-                <div className="flex items-center gap-1.5 bg-red-600/10 px-2 py-1 rounded-full border border-red-600/20">
-                  <Star size={10} className="text-red-600 fill-red-600" />
-                  <span className="text-[9px] font-black text-red-600">{book.stars || 0}</span>
+                <h4 className="text-[10px] md:text-xs font-black uppercase tracking-widest text-white/80 group-hover:text-white transition-colors truncate max-w-[120px] md:max-w-[150px]">{book.title}</h4>
+                <div className="flex items-center gap-1 bg-red-600/10 px-2 py-0.5 md:py-1 rounded-full border border-red-600/20">
+                  <Star className="text-red-600 fill-red-600 size-2 md:size-2.5" />
+                  <span className="text-[8px] md:text-[9px] font-black text-red-600">{book.stars || 0}</span>
                 </div>
               </div>
               
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5 md:gap-2">
                 {[...Array(7)].map((_, i) => {
                   const isEarned = (book.stars || 0) > i;
                   return (
                     <div 
                       key={i} 
-                      className={`p-2 rounded-xl border transition-all flex items-center gap-2 ${isEarned ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500' : 'bg-white/5 border-transparent text-white/10 grayscale opacity-40'}`}
+                      className={`p-1.5 md:p-2 rounded-lg md:rounded-xl border transition-all flex items-center gap-1.5 md:gap-2 ${isEarned ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500' : 'bg-white/5 border-transparent text-white/10 grayscale opacity-40'}`}
                       title={t.badges[i]}
                     >
-                      <Sparkles size={12} className={isEarned ? "animate-pulse" : ""} />
-                      <span className="text-[8px] font-black uppercase tracking-tighter">{t.badges[i]}</span>
+                      <Sparkles className={`size-2.5 md:size-3 ${isEarned ? "animate-pulse" : ""}`} />
+                      <span className="text-[7px] md:text-[8px] font-black uppercase tracking-tighter">{t.badges[i]}</span>
                     </div>
                   );
                 })}
@@ -205,7 +206,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
             </div>
           ))}
           {books.length === 0 && (
-             <div className="col-span-full py-20 text-center opacity-20 uppercase font-black tracking-widest text-xs italic">
+             <div className="col-span-full py-12 md:py-20 text-center opacity-20 uppercase font-black tracking-widest text-[10px] md:text-xs italic">
                {isRTL ? 'لا توجد أوسمة محصلة بعد' : 'No badges earned yet'}
              </div>
           )}
@@ -213,14 +214,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
       </section>
 
       {/* SECTION 1.7: BADGE CRITERIA TABLE (NEW) */}
-      <section className="bg-white/[0.02] border border-white/10 p-6 md:p-20 rounded-[2rem] md:rounded-[5rem] space-y-12 md:space-y-16 shadow-4xl relative overflow-hidden">
-        <div className="flex items-center gap-6 relative z-10">
-          <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-            <LayoutPanelTop className="text-red-600 size-6 md:size-8" />
+      <section className="bg-white/[0.02] border border-white/10 p-5 md:p-20 rounded-[1.5rem] md:rounded-[5rem] space-y-8 md:space-y-16 shadow-4xl relative overflow-hidden">
+        <div className="flex items-center gap-4 md:gap-6 relative z-10">
+          <div className="p-3 md:p-4 bg-white/5 rounded-xl md:rounded-2xl border border-white/10">
+            <LayoutPanelTop className="text-red-600 size-5 md:size-8" />
           </div>
           <div>
-            <h3 className="text-xl md:text-5xl font-black uppercase tracking-tighter italic">{isRTL ? 'معايير الاستحقاق' : 'Merit Criteria'}</h3>
-            <p className="text-[9px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-1 md:mt-2">Temporal Thresholds for Intellectual Distinctions</p>
+            <h3 className="text-lg md:text-5xl font-black uppercase tracking-tighter italic">{isRTL ? 'معايير الاستحقاق' : 'Merit Criteria'}</h3>
+            <p className="text-[8px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-1 md:mt-2">Temporal Thresholds for Intellectual Distinctions</p>
           </div>
         </div>
 
@@ -280,32 +281,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
       </section>
 
       {/* SECTION 2: NEURAL SYNERGY FLOW (LINE CHART) */}
-      <section className="bg-white/[0.01] border border-white/5 p-6 md:p-20 rounded-[2rem] md:rounded-[5rem] space-y-12 md:space-y-16 relative overflow-hidden shadow-3xl">
-        <div className="absolute top-0 right-0 p-8 md:p-16 opacity-[0.03] pointer-events-none rotate-12">
-          <LineChart size={window.innerWidth < 768 ? 200 : 350} />
+      <section className="bg-white/[0.01] border border-white/5 p-5 md:p-20 rounded-[1.5rem] md:rounded-[5rem] space-y-8 md:space-y-16 relative overflow-hidden shadow-3xl">
+        <div className="absolute top-0 right-0 p-6 md:p-16 opacity-[0.03] pointer-events-none rotate-12">
+          <LineChart size={window.innerWidth < 768 ? 150 : 350} />
         </div>
         
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10">
-          <div className="flex items-center gap-6">
-            <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-              <Activity className="text-[#3b82f6] size-6 md:size-8" />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8 relative z-10">
+          <div className="flex items-center gap-4 md:gap-6">
+            <div className="p-3 md:p-4 bg-white/5 rounded-xl md:rounded-2xl border border-white/10">
+              <Activity className="text-[#3b82f6] size-5 md:size-8" />
             </div>
             <div>
-              <h3 className="text-xl md:text-5xl font-black uppercase tracking-tighter italic">{t.bookSynergy}</h3>
-              <p className="text-[9px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-1 md:mt-2">Comparative Intellectual Velocity over Time</p>
+              <h3 className="text-lg md:text-5xl font-black uppercase tracking-tighter italic">{t.bookSynergy}</h3>
+              <p className="text-[8px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-1 md:mt-2">Comparative Intellectual Velocity over Time</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 md:gap-4 max-w-lg justify-end">
+          <div className="flex flex-wrap gap-1.5 md:gap-4 max-w-lg justify-start md:justify-end">
             {bookStats.slice(0, 8).map(b => (
-              <div key={b.id} className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full border border-white/5 backdrop-blur-md">
-                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: b.color, boxShadow: `0 0 8px ${b.color}` }} />
-                <span className="text-[7px] font-black uppercase tracking-widest opacity-40 truncate max-w-[60px] md:max-w-[80px]">{b.title}</span>
+              <div key={b.id} className="flex items-center gap-1.5 md:gap-2 bg-black/40 px-2.5 py-1 md:py-1.5 rounded-full border border-white/5 backdrop-blur-md">
+                <div className="w-1 md:w-1.5 h-1 md:h-1.5 rounded-full" style={{ backgroundColor: b.color, boxShadow: `0 0 8px ${b.color}` }} />
+                <span className="text-[6px] md:text-[7px] font-black uppercase tracking-widest opacity-40 truncate max-w-[50px] md:max-w-[80px]">{b.title}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="h-[300px] md:h-[500px] w-full relative mt-8 md:mt-16 px-2">
+        <div className="h-[250px] md:h-[500px] w-full relative mt-8 md:mt-16 px-2">
           <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
             <defs>
               {bookEvolutionData.map((s, i) => (
@@ -354,7 +355,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
               );
             })}
           </svg>
-          <div className="absolute bottom-0 left-0 right-0 flex justify-between px-2 pt-6 border-t border-white/5 opacity-10 text-[7px] md:text-[9px] font-black uppercase tracking-[0.4em] md:tracking-[0.6em]">
+          <div className="absolute bottom-0 left-0 right-0 flex justify-between px-2 pt-4 md:pt-6 border-t border-white/5 opacity-10 text-[6px] md:text-[9px] font-black uppercase tracking-[0.2em] md:tracking-[0.6em]">
             <span>Genesis</span>
             <span>Archive Growth</span>
             <span>Current Mastery</span>
@@ -363,24 +364,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
       </section>
 
       {/* SECTION 3: CHRONO-PEAK ANALYSIS */}
-      <section className="bg-white/[0.02] border border-white/10 p-6 md:p-20 rounded-[2rem] md:rounded-[5rem] space-y-12 md:space-y-16 shadow-2xl relative">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-          <div className="flex items-center gap-6">
-            <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-              <Timer className="text-[#f59e0b] size-6 md:size-8" />
+      <section className="bg-white/[0.02] border border-white/10 p-5 md:p-20 rounded-[1.5rem] md:rounded-[5rem] space-y-8 md:space-y-16 shadow-2xl relative">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8">
+          <div className="flex items-center gap-4 md:gap-6">
+            <div className="p-3 md:p-4 bg-white/5 rounded-xl md:rounded-2xl border border-white/10">
+              <Timer className="text-[#f59e0b] size-5 md:size-8" />
             </div>
             <div>
-              <h3 className="text-xl md:text-5xl font-black uppercase tracking-tighter italic">{t.peakFocusHours}</h3>
-              <p className="text-[9px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-1 md:mt-2">Circadian Reading Intensity Over 24-Hour Cycle</p>
+              <h3 className="text-lg md:text-5xl font-black uppercase tracking-tighter italic">{t.peakFocusHours}</h3>
+              <p className="text-[8px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-1 md:mt-2">Circadian Reading Intensity Over 24-Hour Cycle</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 bg-white/5 px-4 md:px-6 py-2 md:py-3 rounded-full border border-white/10 self-start md:self-auto">
-             <div className="w-1.5 h-1.5 rounded-full bg-[#f59e0b] animate-ping" />
-             <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-[#f59e0b]">Active Chrono-Mapping</span>
+          <div className="flex items-center gap-2 bg-white/5 px-3 md:px-6 py-1.5 md:py-3 rounded-full border border-white/10 self-start md:self-auto">
+             <div className="w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-[#f59e0b] animate-ping" />
+             <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[#f59e0b]">Active Chrono-Mapping</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-6 md:grid-cols-12 lg:grid-cols-24 gap-1 md:gap-2 h-[180px] md:h-[220px] items-end mt-8 md:mt-12 px-2 border-b border-white/5 pb-2">
+        <div className="grid grid-cols-6 md:grid-cols-12 lg:grid-cols-24 gap-1 md:gap-2 h-[120px] md:h-[220px] items-end mt-8 md:mt-12 px-2 border-b border-white/5 pb-2">
           {peakHours.map((h, i) => (
             <div key={i} className="flex-1 group relative h-full flex flex-col justify-end">
               <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white text-black text-[8px] px-1.5 py-0.5 rounded font-black whitespace-nowrap z-50">
@@ -406,13 +407,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
       <section className="bg-gradient-to-br from-[#ff0000]/[0.05] via-[#020502] to-[#020502] border border-white/5 p-8 md:p-24 rounded-[3rem] md:rounded-[6rem] shadow-[0_50px_150px_rgba(0,0,0,0.8)] relative overflow-hidden">
         <div className="absolute bottom-0 left-0 w-full h-2 bg-gradient-to-r from-transparent via-[#ff0000]/30 to-transparent" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] md:w-[800px] h-[600px] md:h-[800px] bg-[#ff0000]/5 rounded-full blur-[150px] md:blur-[200px] pointer-events-none" />
-        <div className="absolute top-0 right-0 p-12 md:p-24 opacity-[0.05] pointer-events-none">
-          <Globe2 size={window.innerWidth < 768 ? 200 : 500} />
+        <div className="absolute top-0 right-0 p-6 md:p-24 opacity-[0.05] pointer-events-none">
+          <Globe2 className="size-32 md:size-[500px]" />
         </div>
 
-        <div className="text-center mb-16 md:mb-24 relative z-10">
-          <div className="inline-flex p-6 md:p-8 bg-white/5 rounded-[2.5rem] md:rounded-[3.5rem] border border-white/10 mb-6 md:mb-10 shadow-3xl">
-            <Zap size={window.innerWidth < 768 ? 32 : 56} className="text-[#ff0000] drop-shadow-[0_0_30px_#ff0000]" />
+        <div className="text-center mb-12 md:mb-24 relative z-10">
+          <div className="inline-flex p-4 md:p-8 bg-white/5 rounded-[1.5rem] md:rounded-[3.5rem] border border-white/10 mb-6 md:mb-10 shadow-3xl">
+            <Zap className="text-[#ff0000] drop-shadow-[0_0_30px_#ff0000] size-6 md:size-14" />
           </div>
           <h3 className="text-3xl md:text-9xl font-black italic uppercase tracking-tighter leading-none mb-6 md:mb-8">The Sanctuary Zenith</h3>
           <p className="text-[10px] md:text-2xl font-bold uppercase tracking-[0.4em] md:tracking-[0.8em] text-white/20">Holistic Cognitive Synthesis</p>
@@ -430,8 +431,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
               whileHover={{ scale: 1.05, y: -5 }}
               className="p-8 md:p-16 bg-black/60 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] md:rounded-[5rem] flex flex-col items-center text-center gap-6 md:gap-8 shadow-5xl group"
             >
-              <div className="p-4 md:p-6 rounded-2xl md:rounded-[2rem] bg-white/5 group-hover:bg-white/10 transition-colors" style={{ color: stat.color }}>
-                <stat.icon size={window.innerWidth < 768 ? 32 : 48} />
+              <div className="p-3 md:p-6 rounded-xl md:rounded-[2rem] bg-white/5 group-hover:bg-white/10 transition-colors" style={{ color: stat.color }}>
+                <stat.icon className="size-6 md:size-12" />
               </div>
               <div>
                 <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] opacity-30 mb-2 md:mb-4">{stat.label}</p>
@@ -441,26 +442,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
           ))}
         </div>
 
-        <div className="mt-16 md:mt-24 pt-12 md:pt-24 border-t border-white/5 grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 relative z-10">
-           <div className="flex items-center gap-6 md:gap-8 p-6 md:p-10 bg-white/[0.02] rounded-[2rem] md:rounded-[3.5rem] border border-white/5 group hover:border-white/20 transition-all">
-             <Fingerprint size={32} className="text-white/20 group-hover:text-[#ff0000] transition-colors" />
+        <div className="mt-12 md:mt-24 pt-8 md:pt-24 border-t border-white/5 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-12 relative z-10">
+           <div className="flex items-center gap-4 md:gap-8 p-4 md:p-10 bg-white/[0.02] rounded-[1.5rem] md:rounded-[3.5rem] border border-white/5 group hover:border-white/20 transition-all">
+             <Fingerprint className="text-white/20 group-hover:text-[#ff0000] transition-colors size-6 md:size-8" />
              <div>
-               <p className="text-[8px] md:text-[10px] font-black uppercase tracking-widest opacity-20">Identity Hash</p>
-               <p className="text-xs md:text-sm font-mono font-bold tracking-tighter opacity-50 truncate max-w-[150px]">SNCT-CORE-{globalSeconds.toString(16).toUpperCase()}</p>
+               <p className="text-[7px] md:text-[10px] font-black uppercase tracking-widest opacity-20">Identity Hash</p>
+               <p className="text-[10px] md:text-sm font-mono font-bold tracking-tighter opacity-50 truncate max-w-[120px] md:max-w-[150px]">SNCT-CORE-{globalSeconds.toString(16).toUpperCase()}</p>
              </div>
            </div>
-           <div className="flex items-center gap-6 md:gap-8 p-6 md:p-10 bg-white/[0.02] rounded-[2rem] md:rounded-[3.5rem] border border-white/5 group hover:border-white/20 transition-all">
-             <ShieldCheck size={32} className="text-white/20 group-hover:text-[#10b981] transition-colors" />
+           <div className="flex items-center gap-4 md:gap-8 p-4 md:p-10 bg-white/[0.02] rounded-[1.5rem] md:rounded-[3.5rem] border border-white/5 group hover:border-white/20 transition-all">
+             <ShieldCheck className="text-white/20 group-hover:text-[#10b981] transition-colors size-6 md:size-8" />
              <div>
-               <p className="text-[8px] md:text-[10px] font-black uppercase tracking-widest opacity-20">Neural Integrity</p>
-               <p className="text-xs md:text-sm font-black text-[#10b981] uppercase tracking-widest">Systems Optimized</p>
+               <p className="text-[7px] md:text-[10px] font-black uppercase tracking-widest opacity-20">Neural Integrity</p>
+               <p className="text-[10px] md:text-sm font-black text-[#10b981] uppercase tracking-widest">Systems Optimized</p>
              </div>
            </div>
-           <div className="flex items-center gap-6 md:gap-8 p-6 md:p-10 bg-white/[0.02] rounded-[2rem] md:rounded-[3.5rem] border border-white/5 group hover:border-white/20 transition-all">
-             <Rocket size={32} className="text-white/20 group-hover:text-[#3b82f6] transition-colors" />
+           <div className="flex items-center gap-4 md:gap-8 p-4 md:p-10 bg-white/[0.02] rounded-[1.5rem] md:rounded-[3.5rem] border border-white/5 group hover:border-white/20 transition-all">
+             <Rocket className="text-white/20 group-hover:text-[#3b82f6] transition-colors size-6 md:size-8" />
              <div>
-               <p className="text-[8px] md:text-[10px] font-black uppercase tracking-widest opacity-20">Archive Velocity</p>
-               <p className="text-xs md:text-sm font-black text-[#3b82f6] uppercase tracking-widest">{(globalMinutes / Math.max(books.length, 1)).toFixed(1)} m/b</p>
+               <p className="text-[7px] md:text-[10px] font-black uppercase tracking-widest opacity-20">Archive Velocity</p>
+               <p className="text-[10px] md:text-sm font-black text-[#3b82f6] uppercase tracking-widest">{(globalMinutes / Math.max(books.length, 1)).toFixed(1)} m/b</p>
              </div>
            </div>
         </div>
@@ -469,16 +470,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
       {/* Wipe Confirmation Overlay */}
       <AnimatePresence>
         {showClearConfirm && (
-          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/98 backdrop-blur-[100px] flex items-center justify-center p-6 text-center">
-            <MotionDiv initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/10 p-10 md:p-16 rounded-[3rem] md:rounded-[5rem] w-full max-w-lg shadow-[0_0_150px_rgba(255,0,0,0.2)]">
-               <div className="w-16 h-16 md:w-24 md:h-24 bg-red-600/10 rounded-full flex items-center justify-center text-red-600 mx-auto mb-6 md:mb-10 border border-red-600/20"><AlertTriangle size={window.innerWidth < 768 ? 32 : 48} /></div>
-               <h3 className="text-xl md:text-3xl font-black uppercase italic mb-6 md:mb-8 tracking-tighter">{isRTL ? 'تأكيد المسح الشامل' : 'TOTAL ARCHIVE WIPE'}</h3>
-               <p className="text-[10px] md:text-sm text-white/40 font-bold uppercase tracking-[0.2em] mb-12 md:mb-16 leading-relaxed">
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/98 backdrop-blur-[100px] flex items-center justify-center p-4 md:p-6 text-center">
+            <MotionDiv initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/10 p-8 md:p-16 rounded-[2rem] md:rounded-[5rem] w-full max-w-lg shadow-[0_0_150px_rgba(255,0,0,0.2)]">
+               <div className="w-12 h-12 md:w-24 md:h-24 bg-red-600/10 rounded-full flex items-center justify-center text-red-600 mx-auto mb-6 md:mb-10 border border-red-600/20"><AlertTriangle className="size-6 md:size-12" /></div>
+               <h3 className="text-lg md:text-3xl font-black uppercase italic mb-4 md:mb-8 tracking-tighter">{isRTL ? 'تأكيد المسح الشامل' : 'TOTAL ARCHIVE WIPE'}</h3>
+               <p className="text-[8px] md:text-sm text-white/40 font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] mb-8 md:mb-16 leading-relaxed">
                  {isRTL ? 'سيتم مسح جميع المخطوطات والتقدم والنجوم نهائياً من المحراب. لا يمكن التراجع عن هذا الفعل.' : 'Permanent erasure of all neural records and manuscripts. This action is irreversible.'}
                </p>
-               <div className="flex flex-col gap-4 md:gap-5">
-                 <button onClick={handleClearAll} className="w-full bg-red-600 py-4 md:py-6 rounded-[1.5rem] md:rounded-[2.5rem] font-black text-[10px] md:text-xs uppercase text-white tracking-[0.3em] md:tracking-[0.4em] shadow-2xl hover:bg-red-500 transition-all">{isRTL ? 'نعم، امسح كل شيء' : 'YES, PURGE ARCHIVE'}</button>
-                 <button onClick={() => setShowClearConfirm(false)} className="w-full bg-white/5 py-4 md:py-6 rounded-[1.5rem] md:rounded-[2.5rem] font-black text-[10px] md:text-xs uppercase text-white/30 tracking-[0.3em] md:tracking-[0.4em] hover:bg-white/10 transition-all">{isRTL ? 'إلغاء' : 'CANCEL'}</button>
+               <div className="flex flex-col gap-3 md:gap-5">
+                 <button onClick={handleClearAll} className="w-full bg-red-600 py-3 md:py-6 rounded-[1rem] md:rounded-[2.5rem] font-black text-[9px] md:text-xs uppercase text-white tracking-[0.2em] md:tracking-[0.4em] shadow-2xl hover:bg-red-500 transition-all">{isRTL ? 'نعم، امسح كل شيء' : 'YES, PURGE ARCHIVE'}</button>
+                 <button onClick={() => setShowClearConfirm(false)} className="w-full bg-white/5 py-3 md:py-6 rounded-[1rem] md:rounded-[2.5rem] font-black text-[9px] md:text-xs uppercase text-white/30 tracking-[0.2em] md:tracking-[0.4em] hover:bg-white/10 transition-all">{isRTL ? 'إلغاء' : 'CANCEL'}</button>
                </div>
             </MotionDiv>
           </MotionDiv>
