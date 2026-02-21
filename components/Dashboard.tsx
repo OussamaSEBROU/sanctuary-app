@@ -330,15 +330,40 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
             </div>
             <p className="text-xs text-white/50 leading-relaxed uppercase font-bold">
               {isRTL 
-                ? 'كل 7 أيام متتالية من القراءة الكاملة (أكثر من 10 دقائق) تمنحك "درع حماية" إضافياً (بحد أقصى 3). الدروع هي رصيد طوارئ يُستهلك تلقائياً عند الغياب الاضطراري لحماية مسارك.' 
-                : 'Every 7 consecutive full days (10+ min) earns you an additional "Protection Shield" (max 3). Shields are emergency credits consumed automatically during unavoidable absences to safeguard your path.'}
+                ? 'كل 7 أيام متتالية من القراءة الكاملة تمنحك درعاً واحداً. كما أن الوصول للنجمة الخامسة في أي كتاب يمنحك درعين إضافيين فوراً (بحد أقصى 3 دروع إجمالاً).' 
+                : 'Every 7 consecutive full days earns you 1 shield. Additionally, reaching the 5th star in any book grants you 2 extra shields immediately (max 3 total).'}
             </p>
           </div>
         </div>
 
-        <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[2rem] space-y-4">
-          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">{isRTL ? 'منهجية التعامل مع الفجوات' : 'Gap Management Methodology'}</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[2rem] space-y-6">
+          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">{isRTL ? 'سياسة التطبيق وتوجيهات الاستخدام' : 'App Policy & User Guidance'}</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/80">{isRTL ? 'إدارة الطوارئ' : 'Emergency Management'}</span>
+              </div>
+              <p className="text-[10px] text-white/40 uppercase font-bold leading-relaxed">
+                {isRTL 
+                  ? 'النظام مصمم ليدعمك في ظروفك الصعبة. لا تشعر بالإحباط عند استهلاك درع؛ فقد وُجدت لهذا الغرض. ركز على العودة للمسار في أقرب فرصة.' 
+                  : 'The system is designed to support you during tough times. Don\'t feel discouraged when a shield is consumed; they exist for this purpose. Focus on returning to the path as soon as possible.'}
+              </p>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/80">{isRTL ? 'النمو المعرفي' : 'Cognitive Growth'}</span>
+              </div>
+              <p className="text-[10px] text-white/40 uppercase font-bold leading-relaxed">
+                {isRTL 
+                  ? 'الوصول للنجمة الخامسة يتطلب تركيزاً عميقاً وتراكماً معرفياً. مكافأة الدرعين هي تقديراً لجهدك في الغوص في أعماق المخطوطة.' 
+                  : 'Reaching the 5th star requires deep focus and knowledge accumulation. The 2-shield reward is a recognition of your effort in diving deep into the manuscript.'}
+              </p>
+            </div>
+          </div>
+          
+          <div className="pt-6 border-t border-white/5 grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex gap-4">
               <div className="text-blue-500 font-black text-xl">01</div>
               <p className="text-[10px] text-white/40 uppercase font-bold leading-tight">{isRTL ? 'الأولوية لحماية السلسلة (Streak) عبر جلسات الإنقاذ.' : 'Priority is given to streak preservation via Rescue Sessions.'}</p>
