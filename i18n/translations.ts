@@ -59,6 +59,15 @@ export const translations = {
     starAchieved: 'STAR ACHIEVED',
     starMotivation: 'Your focus is illuminating the sanctuary. The light of knowledge grows stronger.',
     continueJourney: 'CONTINUE DECIPHERING',
+    badges: [
+      'Reader Badge',
+      'Habit Former Badge',
+      'Scholar Badge',
+      'Dawn of Knowledge Badge',
+      'Cognitive Structure Badge',
+      'Intellectual Badge',
+      'Elite Intellectual Badge'
+    ],
     uploadCustomSound: 'Upload Custom Sound (MP3)',
     custom: 'Custom Sound',
     shelfEvolution: 'Shelf Evolution Curve',
@@ -152,6 +161,15 @@ export const translations = {
     starAchieved: 'تم تحصيل نجمة جديدة',
     starMotivation: 'تركيزك يضيء المحراب الآن. شعلة المعرفة تزداد اتقاداً بداخلك، استمر في الارتقاء.',
     continueJourney: 'مواصلة فك التشفير',
+    badges: [
+      'وسام المطالع',
+      'وسام تكوين عادة القراءة',
+      'وسام القارئ',
+      'وسام بِدءُ المعرفة',
+      'وسام التكوين المعرفي',
+      'وسام المثقف',
+      'وسام المثقف النخبوي'
+    ],
     uploadCustomSound: 'رفع مقطع صوتي خاص (MP3)',
     custom: 'مقطع مخصص',
     shelfEvolution: 'منحنى تطور الأرفف',
