@@ -53,7 +53,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, activeIndex, onActive
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         onDragEnd={handleDragEnd}
-        className="relative w-full h-[400px] md:h-[600px] flex items-center justify-center perspective-1000 -mt-16 md:-mt-24 touch-none cursor-grab active:cursor-grabbing"
+        className="relative w-full h-[450px] md:h-[500px] flex items-center justify-center perspective-1000 -mt-8 md:mt-0 touch-none cursor-grab active:cursor-grabbing"
       >
         <AnimatePresence mode="popLayout">
           {books.map((book, index) => {
@@ -67,7 +67,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, activeIndex, onActive
                 initial={false}
                 animate={{ 
                   opacity: isCenter ? 1 : 0.7, 
-                  x: diff * (window.innerWidth < 768 ? 140 : 320), 
+                  x: diff * (window.innerWidth < 768 ? 140 : 240), 
                   scale: isCenter ? 1.05 : 0.8, 
                   rotateY: diff * (window.innerWidth < 768 ? -10 : -20),
                   zIndex: 20 - Math.abs(diff),
@@ -76,7 +76,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, activeIndex, onActive
                 exit={{ opacity: 0, scale: 0.5 }}
                 transition={{ type: 'spring', stiffness: 350, damping: 35 }}
                 onClick={() => isCenter ? onSelectBook(book) : onActiveIndexChange(index)}
-                className="absolute w-[220px] h-[310px] md:w-[380px] md:h-[540px]"
+                className="absolute w-[220px] h-[310px] md:w-[280px] md:h-[400px]"
               >
                 <div className={`relative w-full h-full rounded-[2.5rem] overflow-hidden border transition-all duration-700
                    ${isCenter ? 'border-[#ff0000]/50 shadow-[0_0_60px_rgba(255,0,0,0.4)]' : 'border-white/5 shadow-none'}`}>
@@ -112,4 +112,3 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, activeIndex, onActive
     </div>
   );
 };
-
