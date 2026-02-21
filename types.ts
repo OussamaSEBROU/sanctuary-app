@@ -10,13 +10,13 @@ export type Language = 'en' | 'ar';
 
 export interface Annotation {
   id: string;
-  page: number;
+  page?: number;
   pageIndex: number;
   title: string;
   chapter?: string;
   content?: string;
   text?: string;
-  timestamp: number;
+  timestamp?: number;
   color: string;
   type?: 'highlight' | 'underline' | 'box' | 'note';
   rect?: { x: number, y: number, w: number, h: number };
