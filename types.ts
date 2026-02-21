@@ -45,7 +45,9 @@ export interface FlashCard {
 }
 
 export interface HabitData {
-  history: string[]; // YYYY-MM-DD
+  history: string[]; // YYYY-MM-DD (Successful days)
+  missedDays: string[]; // YYYY-MM-DD (Gaps)
+  shields: number;
   streak: number;
   lastUpdated: string; // YYYY-MM-DD
 }
