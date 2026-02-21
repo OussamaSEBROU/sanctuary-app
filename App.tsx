@@ -23,7 +23,9 @@ import {
   Clock,
   Star,
   Upload,
-  Zap
+  Zap,
+  ShieldCheck,
+  BrainCircuit
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -205,6 +207,37 @@ const App: React.FC = () => {
                     </div>
                   </section>
                   
+                  <section className="space-y-3 md:space-y-4">
+                    <div className="flex items-center gap-3 opacity-20 px-2"><BrainCircuit size={12} className="text-white" /><span className="text-[9px] font-black uppercase tracking-widest text-white">{lang === 'ar' ? 'طريقة عمل التطبيق' : 'How it Works'}</span></div>
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-3">
+                      <p className="text-[9px] font-bold text-white/40 leading-relaxed uppercase">
+                        {lang === 'ar' 
+                          ? 'يعتمد التطبيق على مسار الـ 40 يوماً لبناء عادة القراءة العميقة، مقسمة لثلاث مراحل: المقاومة، التثبيت، والانصهار التام.' 
+                          : 'The app uses a 40-day path to build deep reading habits, divided into three phases: Resistance, Installation, and Integration.'}
+                      </p>
+                    </div>
+                  </section>
+
+                  <section className="space-y-3 md:space-y-4">
+                    <div className="flex items-center gap-3 opacity-20 px-2"><ShieldCheck size={12} className="text-white" /><span className="text-[9px] font-black uppercase tracking-widest text-white">{lang === 'ar' ? 'سياسة التطبيق' : 'App Policy'}</span></div>
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-3">
+                      <ul className="space-y-2">
+                        <li className="flex gap-2 text-[8px] font-black uppercase text-white/30">
+                          <div className="w-1 h-1 rounded-full bg-blue-500 mt-1 shrink-0" />
+                          <span>{lang === 'ar' ? 'جلسة الإنقاذ (2 دقيقة) تحمي السلسلة.' : 'Rescue Session (2 min) saves streak.'}</span>
+                        </li>
+                        <li className="flex gap-2 text-[8px] font-black uppercase text-white/30">
+                          <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1 shrink-0" />
+                          <span>{lang === 'ar' ? 'درع كل 7 أيام أو عند النجمة 5.' : 'Shield every 7 days or at 5th star.'}</span>
+                        </li>
+                        <li className="flex gap-2 text-[8px] font-black uppercase text-white/30">
+                          <div className="w-1 h-1 rounded-full bg-red-600 mt-1 shrink-0" />
+                          <span>{lang === 'ar' ? 'الحد الأقصى للدروع هو 3.' : 'Maximum shields allowed is 3.'}</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </section>
+
                   <section className="space-y-3 md:space-y-4 pb-12">
                     <div className="flex items-center justify-between px-2">
                       <div className="flex items-center gap-3 opacity-20"><Library size={12} className="text-white" /><span className="text-[9px] font-black uppercase tracking-widest text-white">{t.collections}</span></div>
