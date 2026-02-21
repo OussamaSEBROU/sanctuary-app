@@ -252,12 +252,12 @@ const App: React.FC = () => {
           <AnimatePresence mode="wait">
             {view === ViewState.SHELF && (
               <MotionDiv key="shelf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col relative">
-                <header className="flex flex-col items-center text-center pt-20 md:pt-14 pb-2 md:pb-4 shrink-0 overflow-visible">
-                  <h1 className="text-[clamp(2.5rem,14vw,9.5rem)] font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[1.0] text-center w-full max-w-full drop-shadow-2xl">{t.title}</h1>
-                  <p className="shining-text text-[11px] md:text-base font-bold mt-2 md:mt-3 px-8 md:px-12 max-w-2xl tracking-[0.4em] leading-relaxed opacity-90 italic">{t.philosophy}</p>
+                <header className="flex flex-col items-center text-center pt-20 md:pt-4 pb-2 md:pb-1 shrink-0 overflow-visible">
+                  <h1 className="text-[clamp(2.5rem,6vw,5rem)] font-black text-white uppercase big-title-white tracking-tighter px-4 leading-[1.0] text-center w-full max-w-full drop-shadow-2xl">{t.title}</h1>
+                  <p className="shining-text text-[11px] md:text-xs font-bold mt-2 md:mt-1 px-8 md:px-12 max-w-2xl tracking-[0.4em] leading-relaxed opacity-90 italic">{t.philosophy}</p>
                   
                   {/* Book Specific Stats in Header - Linked to active index */}
-                  <div className="mt-4 md:mt-6 flex items-center gap-4 md:gap-8 bg-black/40 backdrop-blur-3xl px-5 md:px-8 py-2 md:py-3 rounded-full border border-white/10 shadow-3xl relative overflow-hidden group">
+                  <div className="mt-4 md:mt-2 flex items-center gap-4 md:gap-8 bg-black/40 backdrop-blur-3xl px-5 md:px-8 py-2 md:py-2 rounded-full border border-white/10 shadow-3xl relative overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent animate-shimmer" />
                     <MotionDiv key={`min-${activeBookIndex}`} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center relative z-10">
                       <div className="flex items-center gap-2">
