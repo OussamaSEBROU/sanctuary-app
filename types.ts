@@ -44,6 +44,12 @@ export interface FlashCard {
   nextReviewDate: number;
 }
 
+export interface HabitData {
+  history: string[]; // YYYY-MM-DD
+  streak: number;
+  lastUpdated: string; // YYYY-MM-DD
+}
+
 export enum ViewState {
   SHELF = 'SHELF',
   READER = 'READER',
