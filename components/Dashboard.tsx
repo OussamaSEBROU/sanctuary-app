@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Book, ShelfData, Language } from '../types';
@@ -7,8 +6,12 @@ import { storageService } from '../services/storageService';
 import { 
   Clock, Star, ChevronLeft, BrainCircuit, Activity, Trash2, AlertTriangle,
   BarChart3, LineChart, BookOpen, Zap, Globe2, ShieldCheck, Fingerprint, 
-  LayoutPanelTop, Timer, Rocket
+  LayoutPanelTop, Timer, Rocket, Sparkles
 } from 'lucide-react';
+
+// Using any to bypass motion property type errors
+const MotionDiv = motion.div as any;
+const MotionPath = motion.path as any;
 
 interface DashboardProps {
   books: Book[];
@@ -87,7 +90,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
   };
 
   return (
-    <motion.div 
+    <MotionDiv 
       initial={{ opacity: 0 }} 
       animate={{ opacity: 1 }} 
       className="p-4 w-full max-w-7xl mx-auto space-y-12 md:space-y-24 md:p-8 mb-24 bg-[#020502] min-h-screen"
@@ -137,7 +140,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
                   <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-white text-black font-black text-[9px] px-2 py-1 rounded-full whitespace-nowrap z-20 shadow-xl">
                     {book.minutes}m / {book.stars}★
                   </div>
-                  <motion.div 
+                  <MotionDiv 
                     initial={{ height: 0 }}
                     animate={{ height: `${Math.max(4, barHeight)}%` }}
                     transition={{ duration: 1.5, delay: i * 0.08, ease: "circOut" }}
@@ -148,7 +151,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
                     }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-white/10" />
-                  </motion.div>
+                  </MotionDiv>
                   <div className="mt-6 h-24 md:h-32 flex items-center justify-center overflow-visible">
                     <span className={`text-[7px] md:text-[11px] font-black uppercase tracking-tighter rotate-[-45deg] origin-center whitespace-nowrap transition-all duration-500 group-hover:text-white ${isRTL ? "text-right" : "text-left"}`} style={{ color: book.color }}>
                       {book.title}
@@ -159,6 +162,54 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
             })}
           </div>
         )}
+      </section>
+
+      {/* SECTION 1.5: MANUSCRIPT BADGES (NEW) */}
+      <section className="bg-white/[0.02] border border-white/10 p-6 md:p-20 rounded-[2rem] md:rounded-[5rem] space-y-12 md:space-y-16 shadow-4xl relative overflow-hidden">
+        <div className="flex items-center gap-6 relative z-10">
+          <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+            <ShieldCheck className="text-yellow-500 size-6 md:size-8" />
+          </div>
+          <div>
+            <h3 className="text-xl md:text-5xl font-black uppercase tracking-tighter italic">{isRTL ? 'أوسمة المخطوطات' : 'Manuscript Badges'}</h3>
+            <p className="text-[9px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-1 md:mt-2">Earned Distinctions per Manuscript</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+          {books.map((book) => (
+            <div key={book.id} className="p-6 bg-black/40 border border-white/5 rounded-[2rem] space-y-4 hover:border-red-600/30 transition-all group">
+              <div className="flex justify-between items-start">
+                <h4 className="text-xs font-black uppercase tracking-widest text-white/80 group-hover:text-white transition-colors truncate max-w-[150px]">{book.title}</h4>
+                <div className="flex items-center gap-1.5 bg-red-600/10 px-2 py-1 rounded-full border border-red-600/20">
+                  <Star size={10} className="text-red-600 fill-red-600" />
+                  <span className="text-[9px] font-black text-red-600">{book.stars || 0}</span>
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap gap-2">
+                {[...Array(7)].map((_, i) => {
+                  const isEarned = (book.stars || 0) > i;
+                  return (
+                    <div 
+                      key={i} 
+                      className={`p-2 rounded-xl border transition-all flex items-center gap-2 ${isEarned ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500' : 'bg-white/5 border-transparent text-white/10 grayscale opacity-40'}`}
+                      title={t.badges[i]}
+                    >
+                      <Sparkles size={12} className={isEarned ? "animate-pulse" : ""} />
+                      <span className="text-[8px] font-black uppercase tracking-tighter">{t.badges[i]}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          {books.length === 0 && (
+             <div className="col-span-full py-20 text-center opacity-20 uppercase font-black tracking-widest text-xs italic">
+               {isRTL ? 'لا توجد أوسمة محصلة بعد' : 'No badges earned yet'}
+             </div>
+          )}
+        </div>
       </section>
 
       {/* SECTION 2: NEURAL SYNERGY FLOW (LINE CHART) */}
@@ -214,7 +265,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
 
               return (
                 <g key={book.id}>
-                  <motion.path 
+                  <MotionPath 
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: 1 }}
                     transition={{ duration: 3, ease: "easeInOut", delay: sIdx * 0.2 }}
@@ -225,7 +276,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
                     strokeLinecap="round"
                     style={{ filter: `drop-shadow(0 0 8px ${book.color}66)` }}
                   />
-                  <motion.path 
+                  <MotionPath 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 2, delay: 1.5 + sIdx * 0.2 }}
@@ -268,7 +319,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
               <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white text-black text-[8px] px-1.5 py-0.5 rounded font-black whitespace-nowrap z-50">
                 {h.hour}:00
               </div>
-              <motion.div 
+              <MotionDiv 
                 initial={{ height: 0 }}
                 animate={{ height: `${Math.max(4, h.normalized)}%` }}
                 transition={{ duration: 1, delay: i * 0.04 }}
@@ -307,7 +358,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
             { label: 'Neural Entries', value: globalAnnotations, icon: BrainCircuit, color: '#3b82f6' },
             { label: 'Archived Texts', value: books.length, icon: BookOpen, color: '#10b981' }
           ].map((stat, i) => (
-            <motion.div 
+            <MotionDiv 
               key={i}
               whileHover={{ scale: 1.05, y: -5 }}
               className="p-8 md:p-16 bg-black/60 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] md:rounded-[5rem] flex flex-col items-center text-center gap-6 md:gap-8 shadow-5xl group"
@@ -319,7 +370,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
                 <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] opacity-30 mb-2 md:mb-4">{stat.label}</p>
                 <p className="text-4xl md:text-8xl font-black italic tracking-tighter">{stat.value}</p>
               </div>
-            </motion.div>
+            </MotionDiv>
           ))}
         </div>
 
@@ -351,8 +402,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
       {/* Wipe Confirmation Overlay */}
       <AnimatePresence>
         {showClearConfirm && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/98 backdrop-blur-[100px] flex items-center justify-center p-6 text-center">
-            <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/10 p-10 md:p-16 rounded-[3rem] md:rounded-[5rem] w-full max-w-lg shadow-[0_0_150px_rgba(255,0,0,0.2)]">
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/98 backdrop-blur-[100px] flex items-center justify-center p-6 text-center">
+            <MotionDiv initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/10 p-10 md:p-16 rounded-[3rem] md:rounded-[5rem] w-full max-w-lg shadow-[0_0_150px_rgba(255,0,0,0.2)]">
                <div className="w-16 h-16 md:w-24 md:h-24 bg-red-600/10 rounded-full flex items-center justify-center text-red-600 mx-auto mb-6 md:mb-10 border border-red-600/20"><AlertTriangle size={window.innerWidth < 768 ? 32 : 48} /></div>
                <h3 className="text-xl md:text-3xl font-black uppercase italic mb-6 md:mb-8 tracking-tighter">{isRTL ? 'تأكيد المسح الشامل' : 'TOTAL ARCHIVE WIPE'}</h3>
                <p className="text-[10px] md:text-sm text-white/40 font-bold uppercase tracking-[0.2em] mb-12 md:mb-16 leading-relaxed">
@@ -362,10 +413,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
                  <button onClick={handleClearAll} className="w-full bg-red-600 py-4 md:py-6 rounded-[1.5rem] md:rounded-[2.5rem] font-black text-[10px] md:text-xs uppercase text-white tracking-[0.3em] md:tracking-[0.4em] shadow-2xl hover:bg-red-500 transition-all">{isRTL ? 'نعم، امسح كل شيء' : 'YES, PURGE ARCHIVE'}</button>
                  <button onClick={() => setShowClearConfirm(false)} className="w-full bg-white/5 py-4 md:py-6 rounded-[1.5rem] md:rounded-[2.5rem] font-black text-[10px] md:text-xs uppercase text-white/30 tracking-[0.3em] md:tracking-[0.4em] hover:bg-white/10 transition-all">{isRTL ? 'إلغاء' : 'CANCEL'}</button>
                </div>
-            </motion.div>
-          </motion.div>
+            </MotionDiv>
+          </MotionDiv>
         )}
       </AnimatePresence>
-    </motion.div>
+    </MotionDiv>
   );
 };
