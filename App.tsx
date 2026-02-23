@@ -424,29 +424,6 @@ const App: React.FC = () => {
 
         {/* Main Content View Switcher */}
         <div className="flex-1 relative overflow-hidden flex flex-col">
-          {/* Habit Insights Overlay */}
-          {view === ViewState.SHELF && showInsights && insights.length > 0 && (
-            <div className="fixed bottom-12 left-0 right-0 md:left-12 md:right-auto z-[2500] flex justify-center md:justify-start px-6 pointer-events-none">
-              <AnimatePresence mode="wait">
-                <MotionDiv
-                  key={activeInsightIndex}
-                  initial={{ x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 0.4 }}
-                  whileHover={{ opacity: 0.8 }}
-                  exit={{ x: 20, opacity: 0 }}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/5 backdrop-blur-sm shadow-sm pointer-events-auto transition-opacity duration-500 ${insights[activeInsightIndex % insights.length].color}`}
-                >
-                  <div className="shrink-0 scale-75 md:scale-90">
-                    {insights[activeInsightIndex % insights.length].icon}
-                  </div>
-                  <span className="text-[7px] md:text-[8px] font-bold uppercase tracking-[0.15em] text-white/60 whitespace-nowrap">
-                    {insights[activeInsightIndex % insights.length].text}
-                  </span>
-                </MotionDiv>
-              </AnimatePresence>
-            </div>
-          )}
-
           <AnimatePresence mode="wait">
             {view === ViewState.SHELF && (
               <MotionDiv key="shelf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col relative">
@@ -486,6 +463,28 @@ const App: React.FC = () => {
                     )}
                   </div>
                 </header>
+
+                {/* Habit Insights Overlay - Moved here as per user request */}
+                <div className="mt-4 mb-2 flex justify-center px-6 pointer-events-none min-h-[40px]">
+                  <AnimatePresence mode="wait">
+                    {showInsights && insights.length > 0 && (
+                      <MotionDiv
+                        key={activeInsightIndex}
+                        initial={{ y: 10, opacity: 0 }}
+                        animate={{ y: 0, opacity: 0.8 }}
+                        exit={{ y: -10, opacity: 0 }}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md shadow-xl pointer-events-auto transition-all duration-500 ${insights[activeInsightIndex % insights.length].color}`}
+                      >
+                        <div className="shrink-0 scale-90 md:scale-100">
+                          {insights[activeInsightIndex % insights.length].icon}
+                        </div>
+                        <span className="text-[9px] md:text-[11px] font-black uppercase tracking-[0.1em] text-white whitespace-nowrap">
+                          {insights[activeInsightIndex % insights.length].text}
+                        </span>
+                      </MotionDiv>
+                    )}
+                  </AnimatePresence>
+                </div>
                 
                 <div className="flex-1 flex flex-col justify-center items-center">
                   <Shelf 
