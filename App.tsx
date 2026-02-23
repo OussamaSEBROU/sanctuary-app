@@ -27,7 +27,8 @@ import {
   Zap,
   ShieldCheck,
   BrainCircuit,
-  Mail
+  Mail,
+  Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -55,6 +56,20 @@ const App: React.FC = () => {
   const [newShelfName, setNewShelfName] = useState('');
   const [pendingFileData, setPendingFileData] = useState<ArrayBuffer | null>(null);
   const [celebrationStar, setCelebrationStar] = useState<number | null>(null);
+  const [activeInsightIndex, setActiveInsightIndex] = useState(0);
+  const [showInsights, setShowInsights] = useState(false);
+
+  useEffect(() => {
+    if (view === ViewState.SHELF) {
+      setShowInsights(true);
+      const timer = setTimeout(() => {
+        setShowInsights(false);
+      }, 45000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowInsights(false);
+    }
+  }, [view]);
 
   useEffect(() => {
     const loadedBooks = storageService.getBooks();
@@ -67,7 +82,17 @@ const App: React.FC = () => {
   const filteredBooks = books.filter(b => b.shelfId === activeShelfId);
   const fontClass = lang === 'ar' ? 'font-ar' : 'font-en';
 
-  // حساب إحصائيات الكتاب النشط حالياً في العرض
+  const habitData = useMemo(() => storageService.getHabitData(), [books]);
+  const habitStreak = habitData.streak;
+
+  const totalTodayMinutes = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return Math.floor(books.reduce((acc, b) => {
+      if (b.lastReadDate === today) return acc + (b.dailyTimeSeconds || 0);
+      return acc;
+    }, 0) / 60);
+  }, [books]);
+
   const activeBookStats = useMemo(() => {
     if (filteredBooks.length > 0 && filteredBooks[activeBookIndex]) {
       const book = filteredBooks[activeBookIndex];
@@ -79,15 +104,62 @@ const App: React.FC = () => {
     return { minutes: 0, stars: 0 };
   }, [filteredBooks, activeBookIndex]);
 
-  const totalTodayMinutes = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    return Math.floor(books.reduce((acc, b) => {
-      if (b.lastReadDate === today) return acc + (b.dailyTimeSeconds || 0);
-      return acc;
-    }, 0) / 60);
-  }, [books]);
+  const insights = useMemo(() => {
+    const list = [];
+    const isRTL = lang === 'ar';
+    const streak = habitData.streak;
+    
+    if (totalTodayMinutes < 2) {
+      list.push({
+        text: isRTL ? 'تنبيه: السلسلة في خطر! تحتاج جلسة إنقاذ (دقيقتان) الآن.' : 'Streak at risk! You need a 2-min Rescue Session now.',
+        icon: <Zap size={14} className="text-orange-500 animate-pulse" />,
+        color: 'border-orange-500/30 bg-orange-500/5'
+      });
+    } else if (totalTodayMinutes < 15) {
+      list.push({
+        text: isRTL ? `تم الإنقاذ! اقرأ ${15 - totalTodayMinutes} دقائق إضافية للتقدم في مسار الـ 40 يوماً.` : `Rescue complete! Read ${15 - totalTodayMinutes} more mins to advance the 40-day path.`,
+        icon: <Check size={14} className="text-emerald-500" />,
+        color: 'border-emerald-500/30 bg-emerald-500/5'
+      });
+    }
 
-  const habitStreak = useMemo(() => storageService.getHabitData().streak, [books]);
+    let phaseName = '';
+    let phaseColor = '';
+    if (streak <= 10) {
+      phaseName = isRTL ? 'مرحلة المقاومة' : 'Resistance Phase';
+      phaseColor = 'text-red-500';
+    } else if (streak <= 21) {
+      phaseName = isRTL ? 'مرحلة التثبيت' : 'Installation Phase';
+      phaseColor = 'text-orange-500';
+    } else {
+      phaseName = isRTL ? 'مرحلة الانصهار' : 'Integration Phase';
+      phaseColor = 'text-emerald-500';
+    }
+    
+    list.push({
+      text: isRTL ? `أنت في ${phaseName} (اليوم ${streak}/40)` : `You are in ${phaseName} (Day ${streak}/40)`,
+      icon: <BrainCircuit size={14} className={phaseColor} />,
+      color: 'border-white/10 bg-white/5'
+    });
+
+    if (habitData.shields > 0) {
+      list.push({
+        text: isRTL ? `لديك ${habitData.shields} دروع تحميك في الأيام الصعبة.` : `You have ${habitData.shields} shields protecting you on tough days.`,
+        icon: <ShieldCheck size={14} className="text-blue-500" />,
+        color: 'border-blue-500/30 bg-blue-500/5'
+      });
+    }
+
+    return list;
+  }, [habitData, totalTodayMinutes, lang]);
+
+  useEffect(() => {
+    if (insights.length <= 1) return;
+    const timer = setInterval(() => {
+      setActiveInsightIndex(prev => (prev + 1) % insights.length);
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [insights]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -352,6 +424,26 @@ const App: React.FC = () => {
 
         {/* Main Content View Switcher */}
         <div className="flex-1 relative overflow-hidden flex flex-col">
+          {/* Habit Insights Overlay */}
+          {view === ViewState.SHELF && showInsights && insights.length > 0 && (
+            <div className="absolute bottom-24 left-0 right-0 z-[2500] flex justify-center px-6 pointer-events-none">
+              <AnimatePresence mode="wait">
+                <MotionDiv
+                  key={activeInsightIndex}
+                  initial={{ y: 10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 0.6 }}
+                  exit={{ y: -10, opacity: 0 }}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full border backdrop-blur-md shadow-lg pointer-events-auto scale-90 md:scale-100 ${insights[activeInsightIndex % insights.length].color}`}
+                >
+                  {insights[activeInsightIndex % insights.length].icon}
+                  <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider text-white">
+                    {insights[activeInsightIndex % insights.length].text}
+                  </span>
+                </MotionDiv>
+              </AnimatePresence>
+            </div>
+          )}
+
           <AnimatePresence mode="wait">
             {view === ViewState.SHELF && (
               <MotionDiv key="shelf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col relative">
