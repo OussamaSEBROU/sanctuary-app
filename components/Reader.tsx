@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Book, Language, Annotation } from '../types';
+import { Language } from '../types';
+import type { Book, Annotation } from '../types';
 import { translations } from '../i18n/translations';
 import { storageService } from '../services/storageService';
 import { pdfStorage } from '../services/pdfStorage';
@@ -38,12 +39,12 @@ const COLORS = [
 
 const SOUNDS = [
   { id: 'none', icon: VolumeX, url: '' },
-  { id: 'rain', icon: CloudLightning, url: '/assets/sounds/rain.mp3' },
-  { id: 'sea', icon: Waves, url: '/assets/sounds/sea.mp3' },
-  { id: 'river', icon: Droplets, url: '/assets/sounds/river.mp3' },
-  { id: 'night', icon: Moon, url: '/assets/sounds/night.mp3' },
-  { id: 'birds', icon: Bird, url: '/assets/sounds/birds.mp3' },
-  { id: 'fire', icon: Flame, url: '/assets/sounds/fire.mp3' }
+  { id: 'rain', icon: CloudLightning, url: 'https://www.soundjay.com/nature/rain-01.mp3' },
+  { id: 'sea', icon: Waves, url: 'https://www.soundjay.com/nature/ocean-wave-1.mp3' },
+  { id: 'river', icon: Droplets, url: 'https://www.soundjay.com/nature/river-1.mp3' },
+  { id: 'night', icon: Moon, url: 'https://www.soundjay.com/nature/cricket-chirping-1.mp3' },
+  { id: 'birds', icon: Bird, url: 'https://www.soundjay.com/nature/birds-chirping-1.mp3' },
+  { id: 'fire', icon: Flame, url: 'https://www.soundjay.com/nature/fire-1.mp3' }
 ];
 
 const TOOL_ICONS = {
@@ -146,6 +147,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         const pdf = await pdfjsLib.getDocument({ data: fileData }).promise;
         setTotalPages(pdf.numPages);
         const tempPages = new Array(pdf.numPages).fill(null);
+        
         const renderSinglePage = async (idx: number) => {
           if (idx < 0 || idx >= pdf.numPages || tempPages[idx]) return;
           const p = await pdf.getPage(idx + 1);
@@ -156,8 +158,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
           tempPages[idx] = cv.toDataURL('image/jpeg', 0.8);
           setPages([...tempPages]);
         };
+
         await renderSinglePage(currentPage);
         setIsLoading(false);
+
         const loadRest = async () => {
           for (let i = 0; i < pdf.numPages; i++) {
             if (!tempPages[i]) await renderSinglePage(i);
@@ -167,15 +171,23 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       } catch (err) {}
     };
     loadPdf();
+
     timerRef.current = window.setInterval(() => {
       setSessionSeconds(s => s + 1);
       const { starReached } = storageService.updateBookStats(book.id, 1);
       onStatsUpdate(starReached);
     }, 1000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
+
+    return () => { 
+      if (timerRef.current) clearInterval(timerRef.current); 
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); 
+    };
   }, [book.id]);
 
-  useEffect(() => { storageService.updateBookAnnotations(book.id, annotations); onStatsUpdate(); }, [annotations]);
+  useEffect(() => { 
+    storageService.updateBookAnnotations(book.id, annotations); 
+    onStatsUpdate(); 
+  }, [annotations]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 0 && newPage < totalPages && newPage !== currentPage) {
@@ -213,7 +225,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Strict MP3 validation for mobile and desktop
     const isMp3 = file.type === 'audio/mpeg' || file.name.toLowerCase().endsWith('.mp3');
     if (!isMp3) {
       alert(lang === 'ar' ? 'يرجى اختيار ملف MP3 فقط' : 'Please select an MP3 file only');
@@ -380,7 +391,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               onTouchEnd={handleEnd} 
               animate={{ scale: zoomScale }} 
               className={`relative shadow-[0_0_100px_rgba(0,0,0,1)] overflow-hidden touch-none will-change-transform ${isZenMode ? 'h-full w-full rounded-none' : 'max-h-[85vh] w-auto aspect-[1/1.41] rounded-2xl md:rounded-3xl'}`} 
-              style={{ backgroundColor: isNightMode ? '#001122' : '#ffffff', transformOrigin: 'center center', userSelect: 'none' }}
+              style={{ backgroundColor: isNightMode ? '#000000' : '#ffffff', transformOrigin: 'center center', userSelect: 'none' }}
             >
               <AnimatePresence mode="wait">
                 <MotionDiv
