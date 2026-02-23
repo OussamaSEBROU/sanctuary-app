@@ -241,34 +241,73 @@ const App: React.FC = () => {
                     </div>
                   </section>
 
-                  <section className="space-y-3 md:space-y-4 pb-12">
+                  <section className="space-y-4 pb-12">
                     <div className="flex items-center justify-between px-2">
-                      <div className="flex items-center gap-3 opacity-20"><Library size={12} className="text-white" /><span className="text-[9px] font-black uppercase tracking-widest text-white">{t.collections}</span></div>
-                      <button onClick={() => setIsAddingShelf(true)} className="p-1.5 bg-[#ff0000]/20 rounded-full text-[#ff0000] hover:scale-110 transition-transform"><Plus size={12}/></button>
+                      <div className="flex items-center gap-3 opacity-20">
+                        <Library size={12} className="text-white" />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-white">{t.collections}</span>
+                      </div>
+                      <button 
+                        onClick={() => setIsAddingShelf(true)} 
+                        className="p-2 bg-white/5 rounded-full text-white/40 hover:bg-red-600 hover:text-white transition-all active:scale-90 shadow-lg"
+                      >
+                        <Plus size={12}/>
+                      </button>
                     </div>
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-2">
                       {shelves.map(shelf => (
-                        <div key={shelf.id} onClick={() => { setActiveShelfId(shelf.id); setActiveBookIndex(0); setView(ViewState.SHELF); setIsSidebarOpen(false); }} className={`group w-full text-left px-4 md:px-5 py-3 md:py-4 rounded-xl md:rounded-2xl border transition-all text-[10px] md:text-xs font-bold flex items-center justify-between cursor-pointer ${activeShelfId === shelf.id ? 'bg-[#ff0000]/10 border-[#ff0000]/30 text-white' : 'bg-transparent border-transparent text-white/30 hover:bg-white/5'}`}>
-                          <div className="flex items-center gap-3 md:gap-4 truncate"><div className={`w-1.5 h-1.5 rounded-full shrink-0 ${activeShelfId === shelf.id ? 'bg-[#ff0000]' : 'bg-white/10'}`} /><span className="truncate">{shelf.name}</span></div>
-                          {shelf.id !== 'default' && <button onClick={(e) => handleDeleteShelf(e, shelf.id)} className="p-2 text-white/0 group-hover:text-white/20 hover:text-red-600 transition-all rounded-lg hover:bg-white/5"><Trash2 size={12} /></button>}
+                        <div 
+                          key={shelf.id} 
+                          onClick={() => { setActiveShelfId(shelf.id); setActiveBookIndex(0); setView(ViewState.SHELF); setIsSidebarOpen(false); }} 
+                          className={`group w-full text-left px-5 py-4 rounded-2xl border transition-all text-[10px] md:text-xs font-bold flex items-center justify-between cursor-pointer ${activeShelfId === shelf.id ? 'bg-white/10 border-white/20 text-white shadow-xl' : 'bg-transparent border-transparent text-white/30 hover:bg-white/5'}`}
+                        >
+                          <div className="flex items-center gap-4 truncate">
+                            <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${activeShelfId === shelf.id ? 'bg-red-600 shadow-[0_0_8px_#ff0000]' : 'bg-white/10'}`} />
+                            <span className="truncate">{shelf.name}</span>
+                          </div>
+                          {shelf.id !== 'default' && (
+                            <button 
+                              onClick={(e) => handleDeleteShelf(e, shelf.id)} 
+                              className="p-2 text-white/0 group-hover:text-white/20 hover:text-red-600 transition-all rounded-lg hover:bg-white/5"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
                   </section>
 
-                  <section className="space-y-4 pb-20">
-                    <div className="flex items-center gap-3 opacity-20 px-2"><Mail size={12} className="text-white" /><span className="text-[9px] font-black uppercase tracking-widest text-white">{lang === 'ar' ? 'تواصل معنا' : 'Contact Us'}</span></div>
+                  <section className="space-y-4 pb-12">
+                    <div className="flex items-center gap-3 opacity-20 px-2">
+                      <Mail size={12} className="text-white" />
+                      <span className="text-[9px] font-black uppercase tracking-widest text-white">
+                        {lang === 'ar' ? 'الدعم الفني' : 'Support'}
+                      </span>
+                    </div>
                     <a 
-                      href={`mailto:oussama.sebrou@gmail.com?subject=${encodeURIComponent(lang === 'ar' ? 'تعليقات حول تطبيق المحراب' : 'Sanctuary Reader Feedback')}&body=${encodeURIComponent(lang === 'ar' ? 'مرحباً أسامة،\n\nأنا أستخدم تطبيق المحراب ولدي بعض الملاحظات/الاستفسارات:\n\n...' : 'Hello Oussama,\n\nI am using the Sanctuary Reader app and I have some feedback/questions:\n\n...')}`}
-                      className="w-full flex items-center gap-4 p-4 md:p-5 rounded-[1.5rem] md:rounded-[2rem] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all group"
+                      href={`mailto:oussama.sebrou@gmail.com?subject=${encodeURIComponent(lang === 'ar' ? 'استفسار رسمي: تطبيق المحراب للقراءة' : 'Official Inquiry: Sanctuary Reader Application')}&body=${encodeURIComponent(lang === 'ar' ? 'إلى فريق تطوير تطبيق المحراب،\n\nأكتب إليكم بصفتي مستخدماً للمنصة، وأود تقديم الملاحظات التالية لتعزيز التجربة المعرفية:\n\n[اكتب رسالتك هنا]\n\nمع خالص التقدير،\n[اسمك]' : 'To the Sanctuary Development Team,\n\nI am writing to you as a user of the platform, and I would like to provide the following feedback to enhance the cognitive experience:\n\n[Your Message Here]\n\nBest regards,\n[Your Name]')}`}
+                      className="w-full flex items-center gap-4 p-5 rounded-[2rem] bg-white/[0.03] border border-white/10 hover:bg-white/[0.08] hover:border-white/20 transition-all group shadow-xl"
                     >
-                      <div className="p-2 md:p-3 rounded-lg md:rounded-xl bg-red-600/10 group-hover:bg-red-600/20"><Mail size={20} className="text-red-600" /></div>
+                      <div className="p-3 rounded-2xl bg-red-600/10 group-hover:bg-red-600/20 transition-colors">
+                        <Mail size={20} className="text-red-600" />
+                      </div>
                       <div className="flex flex-col items-start">
-                        <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-white">{lang === 'ar' ? 'راسل المطور' : 'Email Developer'}</span>
-                        <span className="text-[8px] md:text-[9px] uppercase font-black opacity-30 text-white">oussama.sebrou@gmail.com</span>
+                        <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-white group-hover:text-red-500 transition-colors">
+                          {lang === 'ar' ? 'فريق دعم المحراب' : 'Contact Us Sanctuary Team'}
+                        </span>
+                        <span className="text-[8px] md:text-[9px] uppercase font-black opacity-20 text-white">
+                          Official Support Channel
+                        </span>
                       </div>
                     </a>
                   </section>
+
+                  <div className="pt-8 pb-12 text-center border-t border-white/5">
+                    <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/10">
+                      Sanctuary Reader v2.1.0
+                    </span>
+                  </div>
                 </div>
               </MotionAside>
             </React.Fragment>
