@@ -275,7 +275,7 @@ const App: React.FC = () => {
 
   return (
     <Layout lang={lang}>
-      <div className={`flex flex-col h-screen-safe overflow-hidden ${fontClass}`}>
+      <div className={`flex flex-col h-screen-safe overflow-y-auto custom-scroll ${fontClass}`}>
         {/* Sidebar Navigation - Fixed z-index and functionality */}
         <AnimatePresence>
           {isSidebarOpen && (
@@ -527,7 +527,7 @@ const App: React.FC = () => {
                   </AnimatePresence>
                 </div>
                 
-                <div className="flex-1 flex flex-col justify-center items-center">
+                <div className="flex-1 flex flex-col justify-center items-center pb-12 md:pb-20">
                   <Shelf 
                     books={filteredBooks} 
                     lang={lang} 
