@@ -26,7 +26,8 @@ import {
   Upload,
   Zap,
   ShieldCheck,
-  BrainCircuit
+  BrainCircuit,
+  Mail
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -180,7 +181,8 @@ const App: React.FC = () => {
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                 className={`fixed top-0 bottom-0 ${lang === 'ar' ? 'right-0' : 'left-0'} w-[85vw] md:w-80 bg-[#050f05] border-none z-[4100] flex flex-col shadow-2xl overflow-hidden pointer-events-auto`}
               >
-                <div className="p-6 md:p-8 flex items-center justify-between border-b border-white/5 shrink-0">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,0,0,0.05),transparent_70%)] pointer-events-none" />
+                <div className="p-6 md:p-8 flex items-center justify-between border-b border-white/5 shrink-0 relative z-10">
                    <div className="flex items-center gap-3">
                     <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-[#ff0000] flex items-center justify-center shadow-[0_0_20px_rgba(255,0,0,0.3)]">
                       <Sparkles size={16} className="text-white" />
@@ -190,8 +192,8 @@ const App: React.FC = () => {
                    <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-full bg-white/5 text-white/40 hover:text-white transition-all"><X size={18}/></button>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 space-y-8 md:space-y-10">
-                  <button onClick={() => { setView(ViewState.DASHBOARD); setIsSidebarOpen(false); }} className="w-full flex items-center gap-4 p-4 md:p-5 rounded-[1.5rem] md:rounded-[2rem] bg-[#ff0000]/10 border border-[#ff0000]/20 hover:bg-[#ff0000] hover:border-[#ff0000] transition-all group">
+                <div className="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 space-y-8 md:space-y-10 relative z-10">
+                  <button onClick={() => { setView(ViewState.DASHBOARD); setIsSidebarOpen(false); }} className="w-full flex items-center gap-4 p-4 md:p-5 rounded-[1.5rem] md:rounded-[2rem] bg-[#ff0000]/10 border border-[#ff0000]/20 hover:bg-[#ff0000] hover:border-[#ff0000] transition-all group shadow-lg shadow-red-900/10">
                     <div className="p-2 md:p-3 rounded-lg md:rounded-xl bg-white/10 group-hover:bg-white/20"><LayoutDashboard size={20} className="text-[#ff0000] group-hover:text-white" /></div>
                     <div className="flex flex-col items-start"><span className="text-[10px] md:text-xs font-black uppercase tracking-widest group-hover:text-white">{t.dashboard}</span><span className="text-[8px] md:text-[9px] uppercase font-black opacity-30 group-hover:opacity-60 group-hover:text-white">{t.cognitiveMetrics}</span></div>
                   </button>
@@ -200,7 +202,7 @@ const App: React.FC = () => {
                     <div className="flex items-center gap-3 opacity-20 px-2"><Globe size={12} className="text-white" /><span className="text-[9px] font-black uppercase tracking-widest text-white">{t.language}</span></div>
                     <div className="flex flex-col gap-2">
                       {['ar', 'en'].map((l) => (
-                        <button key={l} onClick={() => { setLang(l as Language); setIsSidebarOpen(false); }} className={`w-full p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all flex items-center justify-between ${lang === l ? 'bg-white text-black border-white' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'}`}>
+                        <button key={l} onClick={() => { setLang(l as Language); setIsSidebarOpen(false); }} className={`w-full p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all flex items-center justify-between ${lang === l ? 'bg-white text-black border-white shadow-xl' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10 hover:border-white/10'}`}>
                           <span className="text-xs md:text-sm font-bold uppercase">{l === 'ar' ? 'العربية' : 'English'}</span>
                           {lang === l && <div className="w-1.5 h-1.5 rounded-full bg-red-600" />}
                         </button>
@@ -210,8 +212,8 @@ const App: React.FC = () => {
                   
                   <section className="space-y-3 md:space-y-4">
                     <div className="flex items-center gap-3 opacity-20 px-2"><BrainCircuit size={12} className="text-white" /><span className="text-[9px] font-black uppercase tracking-widest text-white">{lang === 'ar' ? 'طريقة عمل التطبيق' : 'How it Works'}</span></div>
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-3">
-                      <p className="text-[9px] font-bold text-white/40 leading-relaxed uppercase">
+                    <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/5 space-y-3 shadow-inner">
+                      <p className="text-[10px] font-bold text-white/50 leading-relaxed uppercase tracking-tight">
                         {lang === 'ar' 
                           ? 'يعتمد التطبيق على مسار الـ 40 يوماً لبناء عادة القراءة العميقة، مقسمة لثلاث مراحل: المقاومة، التثبيت، والانصهار التام.' 
                           : 'The app uses a 40-day path to build deep reading habits, divided into three phases: Resistance, Installation, and Integration.'}
@@ -221,19 +223,19 @@ const App: React.FC = () => {
 
                   <section className="space-y-3 md:space-y-4">
                     <div className="flex items-center gap-3 opacity-20 px-2"><ShieldCheck size={12} className="text-white" /><span className="text-[9px] font-black uppercase tracking-widest text-white">{lang === 'ar' ? 'سياسة التطبيق' : 'App Policy'}</span></div>
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-3">
-                      <ul className="space-y-2">
-                        <li className="flex gap-2 text-[8px] font-black uppercase text-white/30">
-                          <div className="w-1 h-1 rounded-full bg-blue-500 mt-1 shrink-0" />
-                          <span>{lang === 'ar' ? 'جلسة الإنقاذ (2 دقيقة) تحمي السلسلة.' : 'Rescue Session (2 min) saves streak.'}</span>
+                    <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/5 space-y-4 shadow-inner">
+                      <ul className="space-y-3">
+                        <li className="flex gap-3 text-[9px] font-black uppercase text-white/40 group">
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1 shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                          <span className="group-hover:text-white/60 transition-colors">{lang === 'ar' ? 'جلسة الإنقاذ (2 دقيقة) تحمي السلسلة.' : 'Rescue Session (2 min) saves streak.'}</span>
                         </li>
-                        <li className="flex gap-2 text-[8px] font-black uppercase text-white/30">
-                          <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1 shrink-0" />
-                          <span>{lang === 'ar' ? 'درع كل 7 أيام أو عند النجمة 5.' : 'Shield every 7 days or at 5th star.'}</span>
+                        <li className="flex gap-3 text-[9px] font-black uppercase text-white/40 group">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1 shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                          <span className="group-hover:text-white/60 transition-colors">{lang === 'ar' ? 'درع كل 7 أيام أو عند النجمة 5.' : 'Shield every 7 days or at 5th star.'}</span>
                         </li>
-                        <li className="flex gap-2 text-[8px] font-black uppercase text-white/30">
-                          <div className="w-1 h-1 rounded-full bg-red-600 mt-1 shrink-0" />
-                          <span>{lang === 'ar' ? 'الحد الأقصى للدروع هو 3.' : 'Maximum shields allowed is 3.'}</span>
+                        <li className="flex gap-3 text-[9px] font-black uppercase text-white/40 group">
+                          <div className="w-1.5 h-1.5 rounded-full bg-red-600 mt-1 shrink-0 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                          <span className="group-hover:text-white/60 transition-colors">{lang === 'ar' ? 'الحد الأقصى للدروع هو 3.' : 'Maximum shields allowed is 3.'}</span>
                         </li>
                       </ul>
                     </div>
@@ -252,6 +254,20 @@ const App: React.FC = () => {
                         </div>
                       ))}
                     </div>
+                  </section>
+
+                  <section className="space-y-4 pb-20">
+                    <div className="flex items-center gap-3 opacity-20 px-2"><Mail size={12} className="text-white" /><span className="text-[9px] font-black uppercase tracking-widest text-white">{lang === 'ar' ? 'تواصل معنا' : 'Contact Us'}</span></div>
+                    <a 
+                      href={`mailto:oussama.sebrou@gmail.com?subject=${encodeURIComponent(lang === 'ar' ? 'تعليقات حول تطبيق المحراب' : 'Sanctuary Reader Feedback')}&body=${encodeURIComponent(lang === 'ar' ? 'مرحباً أسامة،\n\nأنا أستخدم تطبيق المحراب ولدي بعض الملاحظات/الاستفسارات:\n\n...' : 'Hello Oussama,\n\nI am using the Sanctuary Reader app and I have some feedback/questions:\n\n...')}`}
+                      className="w-full flex items-center gap-4 p-4 md:p-5 rounded-[1.5rem] md:rounded-[2rem] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all group"
+                    >
+                      <div className="p-2 md:p-3 rounded-lg md:rounded-xl bg-red-600/10 group-hover:bg-red-600/20"><Mail size={20} className="text-red-600" /></div>
+                      <div className="flex flex-col items-start">
+                        <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-white">{lang === 'ar' ? 'راسل المطور' : 'Email Developer'}</span>
+                        <span className="text-[8px] md:text-[9px] uppercase font-black opacity-30 text-white">oussama.sebrou@gmail.com</span>
+                      </div>
+                    </a>
                   </section>
                 </div>
               </MotionAside>
@@ -353,7 +369,13 @@ const App: React.FC = () => {
               </MotionDiv>
             )}
             {view === ViewState.DASHBOARD && (
-              <MotionDiv key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 overflow-y-auto custom-scroll">
+              <MotionDiv 
+                key="dashboard" 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }} 
+                className="fixed inset-0 z-[4000] bg-[#020502] overflow-y-auto custom-scroll flex flex-col"
+              >
                 <Dashboard books={books} shelves={shelves} lang={lang} onBack={() => setView(ViewState.SHELF)} />
               </MotionDiv>
             )}
