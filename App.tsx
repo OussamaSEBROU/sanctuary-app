@@ -260,36 +260,36 @@ const App: React.FC = () => {
         </AnimatePresence>
 
         {/* Global Fixed Controls - Elevated z-index to ensure visibility and clickability */}
-        <div className="fixed top-0 left-0 right-0 z-[3000] p-4 md:p-8 pointer-events-none flex justify-between items-start">
+        <div className="fixed top-0 left-0 right-0 z-[3000] p-3 md:p-8 pointer-events-none flex justify-between items-center">
           <button 
             onClick={() => setIsSidebarOpen(true)} 
-            className="p-3.5 md:p-5 rounded-full bg-black/60 backdrop-blur-2xl border border-white/10 pointer-events-auto hover:bg-[#ff0000] hover:border-[#ff0000] transition-all shadow-2xl group active:scale-95 z-[3001]"
+            className="p-3 md:p-5 rounded-full bg-black/60 backdrop-blur-2xl border border-white/10 pointer-events-auto hover:bg-[#ff0000] hover:border-[#ff0000] transition-all shadow-2xl group active:scale-95 z-[3001]"
           >
-            <Menu size={20} className="group-hover:text-white text-white/40 md:size-6"/>
+            <Menu size={18} className="group-hover:text-white text-white/40 md:size-6"/>
           </button>
           
           {view === ViewState.SHELF && (
-            <div className="flex flex-row items-center gap-3 pointer-events-auto">
-              <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3 bg-black/60 backdrop-blur-xl px-4 py-2.5 md:px-6 md:py-3.5 rounded-full border border-[#ff0000]/30 shadow-xl">
-                <Clock size={16} className="text-[#ff0000] animate-pulse" />
+            <div className="flex flex-row items-center gap-1.5 md:gap-3 pointer-events-auto max-w-[80vw] justify-end">
+              <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-1.5 md:gap-3 bg-black/60 backdrop-blur-xl px-3 py-2 md:px-6 md:py-3.5 rounded-full border border-[#ff0000]/30 shadow-xl shrink-0">
+                <Clock size={14} className="text-[#ff0000] animate-pulse md:size-4" />
                 <div className="flex flex-col items-start leading-none">
-                  <span className="text-[7px] font-black uppercase tracking-widest opacity-30 mb-0.5">{t.todayFocus}</span>
-                  <span className="text-[11px] font-black text-[#ff0000]">{totalTodayMinutes} {lang === 'ar' ? 'دقيقة' : 'min'}</span>
+                  <span className="text-[6px] md:text-[7px] font-black uppercase tracking-widest opacity-30 mb-0.5">{t.todayFocus}</span>
+                  <span className="text-[9px] md:text-[11px] font-black text-[#ff0000]">{totalTodayMinutes}{lang === 'ar' ? 'د' : 'm'}</span>
                 </div>
               </MotionDiv>
               
               {habitStreak > 0 && (
-                <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3 bg-black/60 backdrop-blur-xl px-4 py-2.5 md:px-6 md:py-3.5 rounded-full border border-orange-500/30 shadow-xl">
-                  <Zap size={16} className="text-orange-500" />
+                <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-1.5 md:gap-3 bg-black/60 backdrop-blur-xl px-3 py-2 md:px-6 md:py-3.5 rounded-full border border-orange-500/30 shadow-xl shrink-0">
+                  <Zap size={14} className="text-orange-500 md:size-4" />
                   <div className="flex flex-col items-start leading-none">
-                    <span className="text-[7px] font-black uppercase tracking-widest opacity-30 mb-0.5">{lang === 'ar' ? 'الاستمرارية' : 'Streak'}</span>
-                    <span className="text-[11px] font-black text-orange-500">{habitStreak} {lang === 'ar' ? 'يوم' : 'Days'}</span>
+                    <span className="text-[6px] md:text-[7px] font-black uppercase tracking-widest opacity-30 mb-0.5">{lang === 'ar' ? 'الاستمرارية' : 'Streak'}</span>
+                    <span className="text-[9px] md:text-[11px] font-black text-orange-500">{habitStreak}{lang === 'ar' ? 'ي' : 'd'}</span>
                   </div>
                 </MotionDiv>
               )}
 
-              <button onClick={() => setIsAddingBook(true)} className="px-5 md:px-8 py-3 md:py-4 rounded-full bg-white text-black text-[9px] md:text-[11px] font-black uppercase tracking-[0.3em] shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all flex items-center gap-2.5 active:scale-95">
-                <Plus size={14} />{lang === 'ar' ? 'إضافة كتاب' : 'Add Work'}
+              <button onClick={() => setIsAddingBook(true)} className="px-4 md:px-8 py-2.5 md:py-4 rounded-full bg-white text-black text-[8px] md:text-[11px] font-black uppercase tracking-[0.1em] md:tracking-[0.3em] shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all flex items-center gap-1.5 active:scale-95 shrink-0">
+                <Plus size={12} className="md:size-3.5" />{lang === 'ar' ? 'إضافة' : 'Add'}
               </button>
             </div>
           )}
@@ -305,32 +305,32 @@ const App: React.FC = () => {
                   <p className="shining-text text-[11px] md:text-xs font-bold mt-2 md:mt-1 px-8 md:px-12 max-w-2xl tracking-[0.4em] leading-relaxed opacity-90 italic">{t.philosophy}</p>
                   
                   {/* Book Specific Stats in Header - Linked to active index */}
-                  <div className="mt-4 md:mt-2 flex items-center gap-4 md:gap-8 bg-black/40 backdrop-blur-3xl px-5 md:px-8 py-2 md:py-2 rounded-full border border-white/10 shadow-3xl relative overflow-hidden group">
+                  <div className="mt-3 md:mt-2 flex items-center gap-3 md:gap-8 bg-black/40 backdrop-blur-3xl px-4 md:px-8 py-1.5 md:py-2 rounded-full border border-white/10 shadow-3xl relative overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent animate-shimmer" />
                     <MotionDiv key={`min-${activeBookIndex}`} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center relative z-10">
-                      <div className="flex items-center gap-2">
-                        <Clock size={12} className="text-[#ff0000]" />
-                        <span className="text-sm md:text-lg font-black text-white">{activeBookStats.minutes} {lang === 'ar' ? 'د' : 'm'}</span>
+                      <div className="flex items-center gap-1.5 md:gap-2">
+                        <Clock size={10} className="text-[#ff0000] md:size-3" />
+                        <span className="text-xs md:text-lg font-black text-white">{activeBookStats.minutes}{lang === 'ar' ? 'د' : 'm'}</span>
                       </div>
-                      <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest opacity-20">{lang === 'ar' ? 'دقائق الكتاب' : 'Book Minutes'}</span>
+                      <span className="text-[6px] md:text-[8px] font-black uppercase tracking-widest opacity-20">{lang === 'ar' ? 'دقائق الكتاب' : 'Book Minutes'}</span>
                     </MotionDiv>
-                    <div className="w-[1px] h-5 md:h-6 bg-white/10 relative z-10" />
+                    <div className="w-[1px] h-4 md:h-6 bg-white/10 relative z-10" />
                     <MotionDiv key={`star-${activeBookIndex}`} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center relative z-10">
-                      <div className="flex items-center gap-2">
-                        <Star size={12} className="text-[#ff0000] fill-[#ff0000]" />
-                        <span className="text-sm md:text-lg font-black text-white">{activeBookStats.stars}</span>
+                      <div className="flex items-center gap-1.5 md:gap-2">
+                        <Star size={10} className="text-[#ff0000] fill-[#ff0000] md:size-3" />
+                        <span className="text-xs md:text-lg font-black text-white">{activeBookStats.stars}</span>
                       </div>
-                      <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest opacity-20">{t.stars}</span>
+                      <span className="text-[6px] md:text-[8px] font-black uppercase tracking-widest opacity-20">{t.stars}</span>
                     </MotionDiv>
                     {activeBookStats.stars > 0 && (
                       <>
-                        <div className="w-[1px] h-5 md:h-6 bg-white/10 relative z-10" />
+                        <div className="w-[1px] h-4 md:h-6 bg-white/10 relative z-10" />
                         <MotionDiv initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="flex flex-col items-center relative z-10">
-                          <div className="flex items-center gap-2">
-                            <Sparkles size={12} className="text-yellow-500" />
-                            <span className="text-[10px] md:text-xs font-black text-white uppercase tracking-tighter">{t.badges[activeBookStats.stars - 1]}</span>
+                          <div className="flex items-center gap-1.5 md:gap-2">
+                            <Sparkles size={10} className="text-yellow-500 md:size-3" />
+                            <span className="text-[9px] md:text-xs font-black text-white uppercase tracking-tighter">{t.badges[activeBookStats.stars - 1]}</span>
                           </div>
-                          <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest opacity-20">{lang === 'ar' ? 'الوسام الحالي' : 'Current Badge'}</span>
+                          <span className="text-[6px] md:text-[8px] font-black uppercase tracking-widest opacity-20">{lang === 'ar' ? 'الوسام الحالي' : 'Current Badge'}</span>
                         </MotionDiv>
                       </>
                     )}
