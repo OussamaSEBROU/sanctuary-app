@@ -426,17 +426,20 @@ const App: React.FC = () => {
         <div className="flex-1 relative overflow-hidden flex flex-col">
           {/* Habit Insights Overlay */}
           {view === ViewState.SHELF && showInsights && insights.length > 0 && (
-            <div className="absolute bottom-24 left-0 right-0 z-[2500] flex justify-center px-6 pointer-events-none">
+            <div className="fixed bottom-12 left-0 right-0 md:left-12 md:right-auto z-[2500] flex justify-center md:justify-start px-6 pointer-events-none">
               <AnimatePresence mode="wait">
                 <MotionDiv
                   key={activeInsightIndex}
-                  initial={{ y: 10, opacity: 0 }}
-                  animate={{ y: 0, opacity: 0.6 }}
-                  exit={{ y: -10, opacity: 0 }}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full border backdrop-blur-md shadow-lg pointer-events-auto scale-90 md:scale-100 ${insights[activeInsightIndex % insights.length].color}`}
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 0.4 }}
+                  whileHover={{ opacity: 0.8 }}
+                  exit={{ x: 20, opacity: 0 }}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/5 backdrop-blur-sm shadow-sm pointer-events-auto transition-opacity duration-500 ${insights[activeInsightIndex % insights.length].color}`}
                 >
-                  {insights[activeInsightIndex % insights.length].icon}
-                  <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider text-white">
+                  <div className="shrink-0 scale-75 md:scale-90">
+                    {insights[activeInsightIndex % insights.length].icon}
+                  </div>
+                  <span className="text-[7px] md:text-[8px] font-bold uppercase tracking-[0.15em] text-white/60 whitespace-nowrap">
                     {insights[activeInsightIndex % insights.length].text}
                   </span>
                 </MotionDiv>
