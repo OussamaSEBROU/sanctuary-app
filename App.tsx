@@ -109,6 +109,7 @@ const App: React.FC = () => {
     const isRTL = lang === 'ar';
     const streak = habitData.streak;
     
+    // 1. Rescue Alert
     if (totalTodayMinutes < 2) {
       list.push({
         text: isRTL ? 'تنبيه: السلسلة في خطر! تحتاج جلسة إنقاذ (دقيقتان) الآن.' : 'Streak at risk! You need a 2-min Rescue Session now.',
@@ -123,6 +124,7 @@ const App: React.FC = () => {
       });
     }
 
+    // 2. Phase Info
     let phaseName = '';
     let phaseColor = '';
     if (streak <= 10) {
@@ -142,16 +144,55 @@ const App: React.FC = () => {
       color: 'border-white/10 bg-white/5'
     });
 
+    // 3. Shield Progress
+    if (habitData.shields < 3) {
+      const daysLeft = 7 - habitData.consecutiveFullDays;
+      list.push({
+        text: isRTL ? `اقرأ 15 دقيقة لمدة ${daysLeft} أيام إضافية للحصول على درع جديد.` : `Read 15 mins for ${daysLeft} more days to earn a new shield.`,
+        icon: <ShieldCheck size={14} className="text-emerald-400" />,
+        color: 'border-emerald-400/20 bg-emerald-400/5'
+      });
+    }
+
+    // 4. Shield Usage Advice
     if (habitData.shields > 0) {
       list.push({
-        text: isRTL ? `لديك ${habitData.shields} دروع تحميك في الأيام الصعبة.` : `You have ${habitData.shields} shields protecting you on tough days.`,
+        text: isRTL ? `لديك ${habitData.shields} دروع. سيتم استخدامها تلقائياً إذا فاتك يوم.` : `You have ${habitData.shields} shields. They're used automatically if you miss a day.`,
         icon: <ShieldCheck size={14} className="text-blue-500" />,
         color: 'border-blue-500/30 bg-blue-500/5'
       });
     }
 
+    // 5. Library Stats
+    const totalBooks = books.length;
+    if (totalBooks > 0) {
+      list.push({
+        text: isRTL ? `محرابك يحتوي الآن على ${totalBooks} كتاباً.` : `Your sanctuary now holds ${totalBooks} volumes.`,
+        icon: <Library size={14} className="text-purple-400" />,
+        color: 'border-purple-400/20 bg-purple-400/5'
+      });
+    }
+
+    // 6. Total Time Stats
+    const totalSeconds = books.reduce((acc, b) => acc + b.timeSpentSeconds, 0);
+    const totalHours = (totalSeconds / 3600).toFixed(1);
+    if (parseFloat(totalHours) > 0) {
+      list.push({
+        text: isRTL ? `إجمالي وقت الحكمة المتراكم: ${totalHours} ساعة.` : `Total wisdom accumulated: ${totalHours} hours.`,
+        icon: <Clock size={14} className="text-yellow-400" />,
+        color: 'border-yellow-400/20 bg-yellow-400/5'
+      });
+    }
+
+    // 7. General Encouragement
+    list.push({
+      text: isRTL ? 'الاستمرارية هي مفتاح المعرفة العميقة.' : 'Consistency is the key to deep knowledge.',
+      icon: <Sparkles size={14} className="text-white/40" />,
+      color: 'border-white/5 bg-white/[0.02]'
+    });
+
     return list;
-  }, [habitData, totalTodayMinutes, lang]);
+  }, [habitData, totalTodayMinutes, lang, books]);
 
   useEffect(() => {
     if (insights.length <= 1) return;
