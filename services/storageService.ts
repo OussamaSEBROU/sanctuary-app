@@ -1,5 +1,5 @@
 
-import { Book, FlashCard, ShelfData, Annotation, HabitData } from '../types';
+import type { Book, FlashCard, ShelfData, Annotation, HabitData } from '../types';
 
 const STORAGE_KEYS = {
   BOOKS: 'sanctuary_books',
@@ -92,6 +92,12 @@ export const storageService = {
       
       if (stars > oldStars) {
         starReached = stars;
+        // Award 2 shields when reaching the 5th star
+        if (stars === 5) {
+          const habit = storageService.getHabitData();
+          habit.shields = Math.min(habit.shields + 2, 3);
+          storageService.saveHabitData(habit);
+        }
       }
 
       book.stars = stars;
@@ -109,7 +115,7 @@ export const storageService = {
 
   getHabitData: (): HabitData => {
     const data = localStorage.getItem(STORAGE_KEYS.HABIT);
-    return data ? JSON.parse(data) : { 
+    const defaultHabit: HabitData = { 
       history: [], 
       missedDays: [], 
       shields: 2, 
@@ -117,6 +123,18 @@ export const storageService = {
       lastUpdated: '',
       consecutiveFullDays: 0
     };
+    if (!data) return defaultHabit;
+    try {
+      const parsed = JSON.parse(data);
+      return {
+        ...defaultHabit,
+        ...parsed,
+        history: Array.isArray(parsed.history) ? parsed.history : [],
+        missedDays: Array.isArray(parsed.missedDays) ? parsed.missedDays : []
+      };
+    } catch (e) {
+      return defaultHabit;
+    }
   },
 
   saveHabitData: (habit: HabitData) => {
