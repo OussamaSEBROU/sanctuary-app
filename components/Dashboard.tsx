@@ -107,9 +107,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
 
   return (
     <MotionDiv 
-      initial={{ opacity: 0 }} 
       animate={{ opacity: 1 }} 
-      className="p-3 md:p-8 w-full max-w-7xl mx-auto space-y-8 md:space-y-24 mb-24 bg-[#020502] min-h-screen"
+      className="p-3 md:p-8 w-full max-w-7xl mx-auto space-y-8 md:space-y-24 mb-24 bg-[#020502] min-h-full"
     >
       {/* Header Sticky Bar */}
       <header className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 sticky top-0 bg-[#020502]/95 backdrop-blur-3xl py-4 md:py-8 z-[100] border-b border-white/5 px-4 md:px-6 rounded-none md:rounded-b-[3rem] shadow-2xl">
