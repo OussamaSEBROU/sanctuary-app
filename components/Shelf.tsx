@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Book, Language } from '../types';
+import { Language } from '../types';
+import type { Book } from '../types';
 import { translations } from '../i18n/translations';
 import { Upload } from 'lucide-react';
 
