@@ -151,7 +151,7 @@ export const storageService = {
     }, 0);
 
     const habit = storageService.getHabitData();
-    const FULL_DAY_THRESHOLD = 600; // 10 minutes
+    const FULL_DAY_THRESHOLD = 900; // 15 minutes
     const RESCUE_THRESHOLD = 120; // 2 minutes
 
     // If already recorded as full day today, nothing to do
