@@ -92,16 +92,6 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, activeIndex, onActive
                   
                   {isCenter && (
                     <>
-                      <MotionDiv 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 hover:opacity-100 transition-opacity"
-                      >
-                        <div className="bg-white text-black px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest shadow-2xl">
-                          {lang === 'ar' ? 'دخول' : 'Enter'}
-                        </div>
-                      </MotionDiv>
-                      
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
