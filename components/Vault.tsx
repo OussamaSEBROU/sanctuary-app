@@ -1,10 +1,13 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FlashCard, Language } from '../types';
+import { Language } from '../types';
+import type { FlashCard } from '../types';
 import { translations } from '../i18n/translations';
 import { storageService } from '../services/storageService';
 import { ChevronLeft, Layers, Calendar } from 'lucide-react';
+
+// Using any to bypass motion property type errors
+const MotionDiv = motion.div as any;
 
 interface VaultProps {
   lang: Language;
@@ -36,7 +39,7 @@ export const Vault: React.FC<VaultProps> = ({ lang, onBack }) => {
           </div>
         ) : (
           cards.map((card, idx) => (
-            <motion.div
+            <MotionDiv
               key={card.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -54,14 +57,14 @@ export const Vault: React.FC<VaultProps> = ({ lang, onBack }) => {
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5 opacity-50 group-hover:opacity-100 transition-opacity">
                   <div className="flex items-center gap-2 text-xs">
                     <Calendar size={14} />
-                    {new Date(card.createdAt || card.addedAt).toLocaleDateString()}
+                    {new Date(card.createdAt).toLocaleDateString()}
                   </div>
                   <div className="text-[10px] uppercase font-bold tracking-widest text-[#ff0000]">
                     Review Pending
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </MotionDiv>
           ))
         )}
       </div>
