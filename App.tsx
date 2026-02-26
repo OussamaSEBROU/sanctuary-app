@@ -7,6 +7,7 @@ import { Shelf } from './components/Shelf';
 import { Reader } from './components/Reader';
 import { Dashboard } from './components/Dashboard';
 import { CelebrationOverlay } from './components/CelebrationOverlay';
+import { Onboarding } from './components/Onboarding';
 import { translations } from './i18n/translations';
 import { storageService } from './services/storageService';
 import { pdfStorage } from './services/pdfStorage';
@@ -58,6 +59,19 @@ const App: React.FC = () => {
   const [celebrationStar, setCelebrationStar] = useState<number | null>(null);
   const [activeInsightIndex, setActiveInsightIndex] = useState(0);
   const [showInsights, setShowInsights] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    const onboardingSeen = localStorage.getItem('sanctuary_onboarding_seen');
+    if (!onboardingSeen) {
+      setShowOnboarding(true);
+    }
+  }, []);
+
+  const handleOnboardingComplete = () => {
+    localStorage.setItem('sanctuary_onboarding_seen', 'true');
+    setShowOnboarding(false);
+  };
 
   useEffect(() => {
     if (view === ViewState.SHELF) {
@@ -569,6 +583,9 @@ const App: React.FC = () => {
 
         {/* Overlay Modals */}
         <AnimatePresence>
+          {showOnboarding && (
+            <Onboarding lang={lang} onComplete={handleOnboardingComplete} />
+          )}
           {isAddingBook && (
             <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] flex items-center justify-center p-0 md:p-6 bg-black/98 backdrop-blur-3xl">
               <MotionDiv initial={{ scale: 0.95, y: 30 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/5 p-8 md:p-12 rounded-none md:rounded-[4rem] w-full max-w-xl min-h-screen md:min-h-0 shadow-2xl relative flex flex-col justify-center">
