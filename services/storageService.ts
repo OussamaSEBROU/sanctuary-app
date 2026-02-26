@@ -43,6 +43,12 @@ export const storageService = {
     localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(books));
   },
 
+  deleteBook: (bookId: string) => {
+    const books = storageService.getBooks();
+    const updatedBooks = books.filter(b => b.id !== bookId);
+    storageService.saveBooks(updatedBooks);
+  },
+
   updateBookAnnotations: (bookId: string, annotations: Annotation[]) => {
     const books = storageService.getBooks();
     const index = books.findIndex(b => b.id === bookId);
