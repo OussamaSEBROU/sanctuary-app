@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ViewState, Language } from './types';
+import { ViewState, Language, Insight } from './types';
 import type { Book, ShelfData } from './types';
 import { Layout } from './components/Layout';
 import { Shelf } from './components/Shelf';
@@ -60,6 +60,8 @@ const App: React.FC = () => {
   const [activeInsightIndex, setActiveInsightIndex] = useState(0);
   const [showInsights, setShowInsights] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [bookToDelete, setBookToDelete] = useState<Book | null>(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
 
   useEffect(() => {
     const onboardingSeen = localStorage.getItem('sanctuary_onboarding_seen');
@@ -73,6 +75,23 @@ const App: React.FC = () => {
   const handleOnboardingComplete = () => {
     localStorage.setItem('sanctuary_onboarding_seen', 'true');
     setShowOnboarding(false);
+  };
+
+  const confirmDeleteBook = async () => {
+    if (!bookToDelete || deleteConfirmInput !== 'امسح من المحراب') return;
+    
+    await pdfStorage.deleteFile(bookToDelete.id);
+    storageService.deleteBook(bookToDelete.id);
+    
+    const updatedBooks = storageService.getBooks();
+    setBooks(updatedBooks);
+    setBookToDelete(null);
+    setDeleteConfirmInput('');
+    
+    // Reset index if needed
+    if (activeBookIndex >= updatedBooks.filter(b => b.shelfId === activeShelfId).length) {
+      setActiveBookIndex(Math.max(0, updatedBooks.filter(b => b.shelfId === activeShelfId).length - 1));
+    }
   };
 
   useEffect(() => {
@@ -120,12 +139,48 @@ const App: React.FC = () => {
     return { minutes: 0, stars: 0 };
   }, [filteredBooks, activeBookIndex]);
 
-  const insights = useMemo(() => {
-    const list = [];
+  const insights = useMemo<Insight[]>(() => {
+    const list: Insight[] = [];
     const isRTL = lang === 'ar';
     const streak = habitData.streak;
     
-    // 1. Rescue Alert
+    // 0. First Experience / Empty State (Strictly Exclusive)
+    if (books.length === 0) {
+      list.push({
+        text: isRTL ? 'مرحباً بك في طبقة النخبة.. هنا نصنع الوعي ونعيد صياغة الفكر.' : 'Welcome to the elite.. Here we craft awareness and reshape thought.',
+        icon: <Sparkles size={16} className="text-[#ff0000] drop-shadow-[0_0_8px_rgba(255,0,0,0.6)]" />,
+        color: 'border-[#ff0000]/40 bg-[#ff0000]/10 backdrop-blur-md shadow-[0_10px_30px_rgba(255,0,0,0.1)]',
+        isShining: true
+      });
+      list.push({
+        text: isRTL ? 'قاعدة الـ 3%: تحسن طفيف يومياً يجعلك في القمة خلال عام واحد.' : 'The 3% Rule: Slight daily improvement puts you at the top within a year.',
+        icon: <Zap size={16} className="text-emerald-400" />,
+        color: 'border-emerald-500/30 bg-emerald-500/5',
+        isShining: false
+      });
+      list.push({
+        text: isRTL ? '«القراءة هي تذكرة سفر للارتقاء من العامة إلى الخاصة.» — ابدأ الآن.' : '"Reading is a ticket to elevate from the common to the elite." — Start now.',
+        icon: <BrainCircuit size={16} className="text-purple-400" />,
+        color: 'border-purple-500/20 bg-purple-500/5',
+        isShining: true
+      });
+      list.push({
+        text: isRTL ? 'فعل القراءة ليس مجرد اطلاع، بل هو تمرين يومي لعضلة الحكمة.' : 'The act of reading is not just information, it is a daily exercise for the wisdom muscle.',
+        icon: <BookOpen size={16} className="text-blue-400" />,
+        color: 'border-blue-500/20 bg-blue-500/5',
+        isShining: false
+      });
+      list.push({
+        text: isRTL ? 'اضغط على (+) لتضع أول لبنة في صرح ثقافتك العظيمة.' : 'Click (+) to lay the first brick in the monument of your great culture.',
+        icon: <Plus size={18} className="text-white animate-pulse" />,
+        color: 'border-white/20 bg-white/5 shadow-xl',
+        isShining: true
+      });
+      
+      return list; // Return early so daily habit notes don't show for empty state
+    }
+
+    // 1. Rescue Alert (Only for active users)
     if (totalTodayMinutes < 2) {
       list.push({
         text: isRTL ? 'تنبيه: السلسلة في خطر! تحتاج جلسة إنقاذ (دقيقتان) الآن.' : 'Streak at risk! You need a 2-min Rescue Session now.',
@@ -527,15 +582,17 @@ const App: React.FC = () => {
                     {showInsights && insights.length > 0 && (
                       <MotionDiv
                         key={activeInsightIndex}
-                        initial={{ y: 10, opacity: 0 }}
-                        animate={{ y: 0, opacity: 0.8 }}
-                        exit={{ y: -10, opacity: 0 }}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md shadow-xl pointer-events-auto transition-all duration-500 ${insights[activeInsightIndex % insights.length].color}`}
+                        initial={{ y: 20, opacity: 0, rotateX: -45, scale: 0.9 }}
+                        animate={{ y: 0, opacity: 0.9, rotateX: 0, scale: 1 }}
+                        exit={{ y: -20, opacity: 0, rotateX: 45, scale: 0.9 }}
+                        transition={{ type: "spring", damping: 15, stiffness: 100 }}
+                        className={`flex items-center gap-2 px-5 py-3 rounded-full border border-white/10 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] pointer-events-auto transition-all duration-700 ${insights[activeInsightIndex % insights.length].color}`}
+                        style={{ perspective: '1000px' }}
                       >
                         <div className="shrink-0 scale-90 md:scale-100">
                           {insights[activeInsightIndex % insights.length].icon}
                         </div>
-                        <span className="text-[9px] md:text-[11px] font-black uppercase tracking-[0.1em] text-white whitespace-nowrap">
+                        <span className={`text-[9px] md:text-[11px] font-black uppercase tracking-[0.1em] text-white whitespace-nowrap ${insights[activeInsightIndex % insights.length].isShining ? 'shining-text' : ''}`}>
                           {insights[activeInsightIndex % insights.length].text}
                         </span>
                       </MotionDiv>
@@ -551,6 +608,7 @@ const App: React.FC = () => {
                     onActiveIndexChange={setActiveBookIndex}
                     onSelectBook={(b) => { setSelectedBook(b); setView(ViewState.READER); }} 
                     onAddBook={() => setIsAddingBook(true)} 
+                    onDeleteBook={(b) => setBookToDelete(b)}
                   />
                 </div>
                 <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none opacity-5">
@@ -625,6 +683,62 @@ const App: React.FC = () => {
               onComplete={handleCelebrationComplete} 
             />
           )}
+
+          {bookToDelete && (
+            <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[7000] flex items-center justify-center p-6 bg-black/95 backdrop-blur-3xl">
+              <MotionDiv initial={{ scale: 0.9, y: 40 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/10 p-10 md:p-14 rounded-[4rem] w-full max-w-lg shadow-[0_30px_100px_rgba(255,0,0,0.15)] relative text-center overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-red-600/5 to-transparent pointer-events-none" />
+                
+                <div className="relative z-10">
+                  <div className="w-24 h-24 rounded-full bg-red-600/10 flex items-center justify-center mx-auto mb-8 border border-red-600/20 shadow-[0_0_40px_rgba(255,0,0,0.1)]">
+                    <Trash2 className="text-red-600" size={40} />
+                  </div>
+                  
+                  <h2 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter italic mb-4">
+                    {lang === 'ar' ? 'هل أنت متأكد؟' : 'Are you sure?'}
+                  </h2>
+                  
+                  <p className="text-sm md:text-base text-white/60 font-bold leading-relaxed mb-8">
+                    {lang === 'ar' 
+                      ? `أنت على وشك حذف "${bookToDelete.title}". سيتم مسح جميع ملاحظاتك وتعديلاتك وإحصائيات القراءة لهذا الكتاب نهائياً.` 
+                      : `You are about to delete "${bookToDelete.title}". All your notes, annotations, and reading stats for this book will be permanently erased.`}
+                  </p>
+                  
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <p className="text-[10px] text-red-600/60 uppercase font-black tracking-widest">
+                        {lang === 'ar' ? 'اكتب العبارة التالية للتأكيد:' : 'Type the following phrase to confirm:'}
+                      </p>
+                      <p className="text-lg font-black text-white italic tracking-tighter">امسح من المحراب</p>
+                      <input 
+                        type="text" 
+                        value={deleteConfirmInput} 
+                        onChange={(e) => setDeleteConfirmInput(e.target.value)} 
+                        className="w-full bg-white/[0.03] border border-white/10 rounded-3xl px-8 py-5 text-white text-center focus:outline-none focus:border-red-600/50 transition-all font-bold text-lg" 
+                        placeholder="..."
+                      />
+                    </div>
+                    
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <button 
+                        onClick={() => { setBookToDelete(null); setDeleteConfirmInput(''); }} 
+                        className="flex-1 bg-white/5 text-white/40 py-5 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] hover:bg-white/10 hover:text-white transition-all"
+                      >
+                        {lang === 'ar' ? 'تراجع' : 'Cancel'}
+                      </button>
+                      <button 
+                        onClick={confirmDeleteBook}
+                        disabled={deleteConfirmInput !== 'امسح من المحراب'}
+                        className={`flex-1 py-5 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all shadow-2xl ${deleteConfirmInput === 'امسح من المحراب' ? 'bg-red-600 text-white hover:bg-red-700 active:scale-95' : 'bg-white/5 text-white/10 cursor-not-allowed'}`}
+                      >
+                        {lang === 'ar' ? 'تأكيد الحذف' : 'Confirm Deletion'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </MotionDiv>
+            </MotionDiv>
+          )}
         </AnimatePresence>
       </div>
     </Layout>
@@ -632,4 +746,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
