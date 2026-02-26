@@ -40,7 +40,7 @@ export interface FlashCard {
   id: string;
   bookId: string;
   content: string;
-  createdAt: number;
+  addedAt: number;
   nextReviewDate: number;
 }
 
@@ -68,4 +68,3 @@ export interface Insight {
   color: string;
   isShining?: boolean;
 }
-
