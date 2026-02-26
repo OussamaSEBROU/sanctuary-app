@@ -63,7 +63,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const onboardingSeen = localStorage.getItem('sanctuary_onboarding_seen');
-    if (!onboardingSeen) {
+    const actualBooks = storageService.getBooks();
+    // Only show if never seen AND library is truly empty (new user)
+    if (!onboardingSeen && actualBooks.length === 0) {
       setShowOnboarding(true);
     }
   }, []);
