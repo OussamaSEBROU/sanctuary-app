@@ -34,5 +34,16 @@ export const pdfStorage = {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
+  },
+
+  deleteFile: async (id: string): Promise<void> => {
+    const db = await pdfStorage.init();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(pdfStorage.storeName, 'readwrite');
+      const store = transaction.objectStore(pdfStorage.storeName);
+      const request = store.delete(id);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
   }
 };
