@@ -68,3 +68,4 @@ export interface Insight {
   color: string;
   isShining?: boolean;
 }
+
