@@ -147,25 +147,25 @@ const App: React.FC = () => {
     // 0. First Experience / Empty State (Strictly Exclusive)
     if (books.length === 0) {
       list.push({
-        text: isRTL ? 'مرحباً بك في في المحراب الفكري .. هنا تبني وعيك بالاستمرارية والعمل القرائي اليومي.' : 'Welcome to the elite.. Here we craft awareness and reshape thought.',
+        text: isRTL ? 'مرحباً بك في طبقة النخبة.. هنا نصنع الوعي ونعيد صياغة الفكر.' : 'Welcome to the elite.. Here we craft awareness and reshape thought.',
         icon: <Sparkles size={16} className="text-[#ff0000] drop-shadow-[0_0_8px_rgba(255,0,0,0.6)]" />,
         color: 'border-[#ff0000]/40 bg-[#ff0000]/10 backdrop-blur-md shadow-[0_10px_30px_rgba(255,0,0,0.1)]',
         isShining: true
       });
       list.push({
-        text: isRTL ? 'قاعدة الـ 3%: تحسن طفيف يومياً يبني صروح ثقافتك ويخرجك من دوامات التفاهة والتشتت الفكري.' : 'The 3% Rule: Slight daily improvement puts you at the top within a year.',
+        text: isRTL ? 'قاعدة الـ 3%: تحسن طفيف يومياً يجعلك في القمة خلال عام واحد.' : 'The 3% Rule: Slight daily improvement puts you at the top within a year.',
         icon: <Zap size={16} className="text-emerald-400" />,
         color: 'border-emerald-500/30 bg-emerald-500/5',
         isShining: false
       });
       list.push({
-        text: isRTL ? '«اننا نقرء لنكون احرارا .. من لايقرء مستعبد للجهل» — ابدأ الآن.' : '"Reading is a ticket to elevate from the common to the elite." — Start now.',
+        text: isRTL ? '«القراءة هي تذكرة سفر للارتقاء من العامة إلى الخاصة.» — ابدأ الآن.' : '"Reading is a ticket to elevate from the common to the elite." — Start now.',
         icon: <BrainCircuit size={16} className="text-purple-400" />,
         color: 'border-purple-500/20 bg-purple-500/5',
         isShining: true
       });
       list.push({
-        text: isRTL ? 'متوسط ساعات القراءة الاسبوعي في الدول المتقدمة هو 10 ساعات وخمس دقائق حسب احصائيات دقيقة, تابع احصائيات تطورك بدقة مع المحراب' : 'The act of reading is not just information, it is a daily exercise for the wisdom muscle.',
+        text: isRTL ? 'فعل القراءة ليس مجرد اطلاع، بل هو تمرين يومي لعضلة الحكمة.' : 'The act of reading is not just information, it is a daily exercise for the wisdom muscle.',
         icon: <BookOpen size={16} className="text-blue-400" />,
         color: 'border-blue-500/20 bg-blue-500/5',
         isShining: false
