@@ -159,7 +159,7 @@ const App: React.FC = () => {
         isShining: false
       });
       list.push({
-        text: isRTL ? '«اننا نقرء لكون احرارا .. من لايقرء مستعبد للجهل» — ابدأ الآن.' : '"Reading is a ticket to elevate from the common to the elite." — Start now.',
+        text: isRTL ? '«اننا نقرء لنكون احرارا .. من لايقرء مستعبد للجهل» — ابدأ الآن.' : '"Reading is a ticket to elevate from the common to the elite." — Start now.',
         icon: <BrainCircuit size={16} className="text-purple-400" />,
         color: 'border-purple-500/20 bg-purple-500/5',
         isShining: true
