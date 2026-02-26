@@ -685,51 +685,51 @@ const App: React.FC = () => {
           )}
 
           {bookToDelete && (
-            <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[7000] flex items-center justify-center p-6 bg-black/95 backdrop-blur-3xl">
-              <MotionDiv initial={{ scale: 0.9, y: 40 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/10 p-10 md:p-14 rounded-[4rem] w-full max-w-lg shadow-[0_30px_100px_rgba(255,0,0,0.15)] relative text-center overflow-hidden">
+            <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[7000] flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-3xl">
+              <MotionDiv initial={{ scale: 0.9, y: 40 }} animate={{ scale: 1, y: 0 }} className="bg-[#0b140b] border border-white/10 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] w-full max-w-md shadow-[0_30px_100px_rgba(255,0,0,0.15)] relative text-center overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-red-600/5 to-transparent pointer-events-none" />
                 
                 <div className="relative z-10">
-                  <div className="w-24 h-24 rounded-full bg-red-600/10 flex items-center justify-center mx-auto mb-8 border border-red-600/20 shadow-[0_0_40px_rgba(255,0,0,0.1)]">
-                    <Trash2 className="text-red-600" size={40} />
+                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-red-600/10 flex items-center justify-center mx-auto mb-6 border border-red-600/20 shadow-[0_0_40px_rgba(255,0,0,0.1)]">
+                    <Trash2 className="text-red-600" size={32} />
                   </div>
                   
-                  <h2 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter italic mb-4">
+                  <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter italic mb-3">
                     {lang === 'ar' ? 'هل أنت متأكد؟' : 'Are you sure?'}
                   </h2>
                   
-                  <p className="text-sm md:text-base text-white/60 font-bold leading-relaxed mb-8">
+                  <p className="text-xs md:text-sm text-white/60 font-bold leading-relaxed mb-6">
                     {lang === 'ar' 
                       ? `أنت على وشك حذف "${bookToDelete.title}". سيتم مسح جميع ملاحظاتك وتعديلاتك وإحصائيات القراءة لهذا الكتاب نهائياً.` 
                       : `You are about to delete "${bookToDelete.title}". All your notes, annotations, and reading stats for this book will be permanently erased.`}
                   </p>
                   
-                  <div className="space-y-6">
-                    <div className="space-y-3">
-                      <p className="text-[10px] text-red-600/60 uppercase font-black tracking-widest">
+                  <div className="space-y-5">
+                    <div className="space-y-2">
+                      <p className="text-[9px] text-red-600/60 uppercase font-black tracking-widest">
                         {lang === 'ar' ? 'اكتب العبارة التالية للتأكيد:' : 'Type the following phrase to confirm:'}
                       </p>
-                      <p className="text-lg font-black text-white italic tracking-tighter">امسح من المحراب</p>
+                      <p className="text-base font-black text-white italic tracking-tighter">امسح من المحراب</p>
                       <input 
                         type="text" 
                         value={deleteConfirmInput} 
                         onChange={(e) => setDeleteConfirmInput(e.target.value)} 
-                        className="w-full bg-white/[0.03] border border-white/10 rounded-3xl px-8 py-5 text-white text-center focus:outline-none focus:border-red-600/50 transition-all font-bold text-lg" 
+                        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-white text-center focus:outline-none focus:border-red-600/50 transition-all font-bold text-base" 
                         placeholder="..."
                       />
                     </div>
                     
-                    <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex flex-col md:flex-row gap-3">
                       <button 
                         onClick={() => { setBookToDelete(null); setDeleteConfirmInput(''); }} 
-                        className="flex-1 bg-white/5 text-white/40 py-5 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] hover:bg-white/10 hover:text-white transition-all"
+                        className="flex-1 bg-white/5 text-white/40 py-4 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] hover:bg-white/10 hover:text-white transition-all order-2 md:order-1"
                       >
                         {lang === 'ar' ? 'تراجع' : 'Cancel'}
                       </button>
                       <button 
                         onClick={confirmDeleteBook}
                         disabled={deleteConfirmInput !== 'امسح من المحراب'}
-                        className={`flex-1 py-5 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all shadow-2xl ${deleteConfirmInput === 'امسح من المحراب' ? 'bg-red-600 text-white hover:bg-red-700 active:scale-95' : 'bg-white/5 text-white/10 cursor-not-allowed'}`}
+                        className={`flex-1 py-4 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] transition-all shadow-2xl order-1 md:order-2 ${deleteConfirmInput === 'امسح من المحراب' ? 'bg-red-600 text-white hover:bg-red-700 active:scale-95' : 'bg-white/5 text-white/10 cursor-not-allowed'}`}
                       >
                         {lang === 'ar' ? 'تأكيد الحذف' : 'Confirm Deletion'}
                       </button>
