@@ -14,66 +14,76 @@ interface OnboardingProps {
 const onboardingData = {
   ar: [
     {
-      title: "مرحباً بك في محرابك",
-      description: "مساحتك الخاصة للغوص في أعماق المعرفة بعيداً عن ضجيج العالم الرقمي.",
-      icon: <BookOpen className="text-[#ff0000]" size={48} />,
-      color: "from-[#ff0000]/20 to-transparent"
+      title: "بداية التكوين",
+      description: "«القراءة هي محاورة لأفضل العقول في القرون الماضية.» — ديكارت. هنا تبدأ رحلتك في بناء ذاتك الفكرية.",
+      icon: <BookOpen className="text-[#ff0000] drop-shadow-[0_0_15px_rgba(255,0,0,0.5)]" size={56} />,
+      color: "from-[#ff0000]/30 to-transparent",
+      quote: "المعرفة قوة"
     },
     {
-      title: "بناء عادة متينة",
-      description: "نظامنا مصمم لمرافقتك في رحلة الـ 40 يوماً الذهبية لتحويل القراءة من فعل عابر إلى روتين حياة.",
-      icon: <BrainCircuit className="text-emerald-500" size={48} />,
-      color: "from-emerald-500/20 to-transparent"
+      title: "هندسة العادة",
+      description: "«نحن ما نفعله بانتظام. التميز إذن ليس فعلاً، بل عادة.» — أرسطو. التزم بمسار الـ 40 يوماً لتثبيت وعيك.",
+      icon: <BrainCircuit className="text-emerald-500 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" size={56} />,
+      color: "from-emerald-500/30 to-transparent",
+      quote: "التكرار يولد الإتقان"
     },
     {
-      title: "جلسات الإنقاذ",
-      description: "في أيامك المزدحمة، دقيقتان فقط كافية لإنقاذ سلسلتك (Streak) والحفاظ على الزخم.",
-      icon: <Zap className="text-orange-500" size={48} />,
-      color: "from-orange-500/20 to-transparent"
+      title: "فلسفة الإنقاذ",
+      description: "«القليل الدائم خير من الكثير المنقطع.» في أشد أيامك انشغالاً، دقيقتان كفيلة بإبقاء شعلة الفكر متقدة.",
+      icon: <Zap className="text-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.5)]" size={56} />,
+      color: "from-orange-500/30 to-transparent",
+      quote: "لا تستسلم للفراغ"
     },
     {
-      title: "دروع الحماية",
-      description: "التزم بـ 15 دقيقة يومياً لتحصل على دروع تحميك تلقائياً في الأيام التي قد تضطر فيها للتوقف.",
-      icon: <ShieldCheck className="text-blue-500" size={48} />,
-      color: "from-blue-500/20 to-transparent"
+      title: "دروع الوعي",
+      description: "«الكتاب هو الجليس الذي لا يطريك، والصديق الذي لا يغريك.» احمِ استمراريتك بالدروع عبر الالتزام اليومي.",
+      icon: <ShieldCheck className="text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" size={56} />,
+      color: "from-blue-500/30 to-transparent",
+      quote: "حصن عقلك"
     },
     {
-      title: "رابطة القراءة",
-      description: "بيئة سينمائية هادئة تعيد صياغة علاقتك بالكتاب، لتصبح القراءة ملاذك المفضل.",
-      icon: <Sparkles className="text-purple-500" size={48} />,
-      color: "from-purple-500/20 to-transparent"
+      title: "رابطة المحراب",
+      description: "«بيت بلا كتب جسد بلا روح.» — شيشرون. اجعل من هذا المكان ملاذك المقدس للنمو والارتقاء.",
+      icon: <Sparkles className="text-purple-500 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]" size={56} />,
+      color: "from-purple-500/30 to-transparent",
+      quote: "ارتقِ بفكرك"
     }
   ],
   en: [
     {
-      title: "Welcome to Your Sanctuary",
-      description: "Your private space to dive into deep knowledge away from digital noise.",
-      icon: <BookOpen className="text-[#ff0000]" size={48} />,
-      color: "from-[#ff0000]/20 to-transparent"
+      title: "The Genesis",
+      description: "\"The reading of all good books is like a conversation with the finest minds of past centuries.\" — Descartes. Your intellectual journey starts here.",
+      icon: <BookOpen className="text-[#ff0000] drop-shadow-[0_0_15px_rgba(255,0,0,0.5)]" size={56} />,
+      color: "from-[#ff0000]/30 to-transparent",
+      quote: "Knowledge is Power"
     },
     {
-      title: "Build Solid Habits",
-      description: "Our system is designed to guide you through the golden 40-day journey to make reading a lifestyle.",
-      icon: <BrainCircuit className="text-emerald-500" size={48} />,
-      color: "from-emerald-500/20 to-transparent"
+      title: "Habit Engineering",
+      description: "\"We are what we repeatedly do. Excellence, then, is not an act, but a habit.\" — Aristotle. Master the 40-day path.",
+      icon: <BrainCircuit className="text-emerald-500 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" size={56} />,
+      color: "from-emerald-500/30 to-transparent",
+      quote: "Repetition is Mastery"
     },
     {
-      title: "Rescue Sessions",
-      description: "On busy days, just 2 minutes are enough to save your streak and maintain momentum.",
-      icon: <Zap className="text-orange-500" size={48} />,
-      color: "from-orange-500/20 to-transparent"
+      title: "The Rescue Philosophy",
+      description: "\"Small, steady steps lead to great distances.\" On your busiest days, 2 minutes keep the intellectual flame alive.",
+      icon: <Zap className="text-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.5)]" size={56} />,
+      color: "from-orange-500/30 to-transparent",
+      quote: "Never Yield to Void"
     },
     {
-      title: "Protective Shields",
-      description: "Commit to 15 minutes daily to earn shields that automatically protect you on days you can't read.",
-      icon: <ShieldCheck className="text-blue-500" size={48} />,
-      color: "from-blue-500/20 to-transparent"
+      title: "Shields of Awareness",
+      description: "\"A book is a companion that does not flatter you, and a friend that does not tempt you.\" Protect your streak with daily commitment.",
+      icon: <ShieldCheck className="text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" size={56} />,
+      color: "from-blue-500/30 to-transparent",
+      quote: "Fortify Your Mind"
     },
     {
-      title: "The Reading Bond",
-      description: "A cinematic, quiet environment that reshapes your relationship with books, making reading your favorite retreat.",
-      icon: <Sparkles className="text-purple-500" size={48} />,
-      color: "from-purple-500/20 to-transparent"
+      title: "The Sanctuary Bond",
+      description: "\"A room without books is like a body without a soul.\" — Cicero. Make this your sacred retreat for growth.",
+      icon: <Sparkles className="text-purple-500 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]" size={56} />,
+      color: "from-purple-500/30 to-transparent",
+      quote: "Elevate Your Soul"
     }
   ]
 };
@@ -103,60 +113,80 @@ export const Onboarding: React.FC<OnboardingProps> = ({ lang, onComplete }) => {
       initial={{ opacity: 0 }} 
       animate={{ opacity: 1 }} 
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[9999] bg-[#000a00] flex items-center justify-center p-6"
+      className="fixed inset-0 z-[9999] bg-[#000a00] flex items-center justify-center p-6 overflow-hidden"
     >
+      {/* Dynamic Background Aura */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className={`absolute inset-0 bg-gradient-to-b ${steps[currentIndex].color} opacity-30 transition-colors duration-1000`} />
+        <MotionDiv
+          animate={{ 
+            scale: [1, 1.2, 1],
+            opacity: [0.2, 0.4, 0.2]
+          }}
+          transition={{ duration: 8, repeat: Infinity }}
+          className={`absolute inset-0 bg-gradient-to-tr ${steps[currentIndex].color} blur-[120px] transition-colors duration-1000`} 
+        />
       </div>
 
-      <div className="relative w-full max-w-lg flex flex-col items-center text-center">
+      <div className="relative w-full max-w-xl flex flex-col items-center text-center perspective-1000">
         <AnimatePresence mode="wait">
           <MotionDiv
             key={currentIndex}
-            initial={{ y: 20, opacity: 0, scale: 0.9 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: -20, opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            className="flex flex-col items-center"
+            initial={{ rotateY: isRTL ? 45 : -45, opacity: 0, scale: 0.8, z: -100 }}
+            animate={{ rotateY: 0, opacity: 1, scale: 1, z: 0 }}
+            exit={{ rotateY: isRTL ? -45 : 45, opacity: 0, scale: 0.8, z: -100 }}
+            transition={{ type: "spring", stiffness: 100, damping: 20 }}
+            className="flex flex-col items-center w-full"
           >
-            <div className="mb-12 p-8 rounded-[3rem] bg-white/[0.03] border border-white/10 shadow-2xl">
-              {steps[currentIndex].icon}
+            <div className="mb-10 relative group">
+              <div className="absolute inset-0 bg-white/20 blur-3xl rounded-full scale-150 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative p-10 rounded-[3.5rem] bg-white/[0.02] border border-white/10 shadow-[0_0_50px_rgba(255,255,255,0.05)] backdrop-blur-xl">
+                {steps[currentIndex].icon}
+              </div>
             </div>
             
-            <h2 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter mb-6 italic">
+            <div className="mb-4">
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-[#ff0000] shining-text">
+                {steps[currentIndex].quote}
+              </span>
+            </div>
+
+            <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter mb-6 italic drop-shadow-2xl">
               {steps[currentIndex].title}
             </h2>
             
-            <p className="text-sm md:text-base text-white/60 font-bold leading-relaxed max-w-sm mb-12">
+            <p className="text-base md:text-lg text-white/70 font-bold leading-relaxed max-w-md mb-12 px-4 drop-shadow-lg">
               {steps[currentIndex].description}
             </p>
           </MotionDiv>
         </AnimatePresence>
 
-        <div className="flex items-center gap-4 mb-12">
+        <div className="flex items-center gap-3 mb-12">
           {steps.map((_, i) => (
             <div 
               key={i} 
-              className={`h-1 rounded-full transition-all duration-500 ${i === currentIndex ? 'w-8 bg-[#ff0000]' : 'w-2 bg-white/10'}`} 
+              className={`h-1.5 rounded-full transition-all duration-700 ${i === currentIndex ? 'w-12 bg-[#ff0000] shadow-[0_0_15px_rgba(255,0,0,0.8)]' : 'w-3 bg-white/5'}`} 
             />
           ))}
         </div>
 
-        <div className="flex items-center gap-6 w-full">
+        <div className="flex items-center gap-6 w-full max-w-md">
           {currentIndex > 0 && (
             <button 
               onClick={prev}
-              className="p-4 rounded-full bg-white/5 text-white/40 hover:text-white transition-all border border-white/10"
+              className="p-5 rounded-full bg-white/5 text-white/40 hover:text-white transition-all border border-white/10 hover:bg-white/10 active:scale-90"
             >
-              {isRTL ? <ChevronRight size={24} /> : <ChevronLeft size={24} />}
+              {isRTL ? <ChevronRight size={28} /> : <ChevronLeft size={28} />}
             </button>
           )}
           
           <button 
             onClick={next}
-            className="flex-1 bg-white text-black py-5 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all active:scale-95"
+            className="flex-1 bg-white text-black py-6 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.4em] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:bg-[#ff0000] hover:text-white transition-all active:scale-95 relative overflow-hidden group"
           >
-            {isLastStep ? (lang === 'ar' ? 'ابدأ الرحلة' : 'Begin Journey') : (lang === 'ar' ? 'التالي' : 'Next')}
+            <span className="relative z-10">
+              {isLastStep ? (lang === 'ar' ? 'ابدأ الرحلة' : 'Begin Journey') : (lang === 'ar' ? 'التالي' : 'Next')}
+            </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
           </button>
         </div>
       </div>
