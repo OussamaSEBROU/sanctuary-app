@@ -4,21 +4,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Language } from '../types';
 import type { Book } from '../types';
 import { translations } from '../i18n/translations';
-import { Upload } from 'lucide-react';
+import { Upload, Trash2 } from 'lucide-react';
 
 const MotionDiv = motion.div as any;
 
 interface ShelfProps {
   books: Book[];
   lang: Language;
-  activeIndex: number; // مدخل من الخارج
-  onActiveIndexChange: (index: number) => void; // مخرج للخارج
+  activeIndex: number;
+  onActiveIndexChange: (index: number) => void;
   onSelectBook: (book: Book) => void;
   onAddBook: () => void;
+  onDeleteBook: (book: Book) => void;
 }
 
-export const Shelf: React.FC<ShelfProps> = ({ books, lang, activeIndex, onActiveIndexChange, onSelectBook, onAddBook }) => {
+export const Shelf: React.FC<ShelfProps> = ({ books, lang, activeIndex, onActiveIndexChange, onSelectBook, onAddBook, onDeleteBook }) => {
   const t = translations[lang];
+  const isRTL = lang === 'ar';
 
   if (books.length === 0) {
     return (
@@ -75,7 +77,7 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, activeIndex, onActive
                   filter: isCenter ? 'none' : 'brightness(0.8)' 
                 }}
                 exit={{ opacity: 0, scale: 0.5 }}
-                transition={{ type: 'spring', stiffness: 350, damping: 35 }}
+                transition={{ type: 'spring', stiffness: 450, damping: 40, mass: 0.8 }}
                 onClick={() => isCenter ? onSelectBook(book) : onActiveIndexChange(index)}
                 className="absolute w-[220px] h-[310px] md:w-[280px] md:h-[400px]"
               >
@@ -89,15 +91,27 @@ export const Shelf: React.FC<ShelfProps> = ({ books, lang, activeIndex, onActive
                   </div>
                   
                   {isCenter && (
-                    <MotionDiv 
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 hover:opacity-100 transition-opacity"
-                    >
-                      <div className="bg-white text-black px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest shadow-2xl">
-                        {lang === 'ar' ? 'دخول' : 'Enter'}
-                      </div>
-                    </MotionDiv>
+                    <>
+                      <MotionDiv 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 hover:opacity-100 transition-opacity"
+                      >
+                        <div className="bg-white text-black px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest shadow-2xl">
+                          {lang === 'ar' ? 'دخول' : 'Enter'}
+                        </div>
+                      </MotionDiv>
+                      
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteBook(book);
+                        }}
+                        className="absolute top-6 right-6 p-3 rounded-full bg-black/40 border border-white/10 text-white/40 hover:text-[#ff0000] hover:bg-black/60 transition-all shadow-xl backdrop-blur-md"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </>
                   )}
                 </div>
               </MotionDiv>
