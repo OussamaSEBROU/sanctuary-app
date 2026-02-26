@@ -1,29 +1,22 @@
 
-export enum ViewState {
-  SHELF = 'SHELF',
-  READER = 'READER',
-  DASHBOARD = 'DASHBOARD',
-  VAULT = 'VAULT'
+export interface ShelfData {
+  id: string;
+  name: string;
+  color?: string;
 }
-
-export type Language = 'en' | 'ar';
 
 export interface Annotation {
   id: string;
-  page?: number;
+  type: 'highlight' | 'underline' | 'box' | 'note';
   pageIndex: number;
-  title: string;
-  chapter?: string;
-  content?: string;
-  text?: string;
-  timestamp?: number;
+  x: number; // Percentage
+  y: number; // Percentage
+  width?: number; // Percentage
+  height?: number; // Percentage
+  text?: string; // For notes/content
+  title?: string; // Title for the modification
+  chapter?: string; // Chapter / Bab name
   color: string;
-  type?: 'highlight' | 'underline' | 'box' | 'note';
-  rect?: { x: number, y: number, w: number, h: number };
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
 }
 
 export interface Book {
@@ -34,36 +27,44 @@ export interface Book {
   cover: string;
   content: string;
   timeSpentSeconds: number;
-  dailyTimeSeconds: number;
-  lastReadDate: string;
+  dailyTimeSeconds?: number; // New: track daily progress
+  lastReadDate?: string; // New: YYYY-MM-DD to detect new days
   stars: number;
   addedAt: number;
-  lastPage: number;
-  annotations: Annotation[];
   lastReadAt?: number;
-}
-
-export interface ShelfData {
-  id: string;
-  name: string;
-  color: string;
+  lastPage?: number; // New field to resume reading
+  annotations?: Annotation[];
 }
 
 export interface FlashCard {
   id: string;
   bookId: string;
-  front: string;
-  back: string;
-  content?: string;
-  addedAt: number;
-  createdAt?: number;
+  content: string;
+  createdAt: number;
+  nextReviewDate: number;
 }
 
 export interface HabitData {
-  history: string[];
-  missedDays: string[];
+  history: string[]; // YYYY-MM-DD (Full days)
+  missedDays: string[]; // YYYY-MM-DD (Gaps)
   shields: number;
   streak: number;
-  lastUpdated: string;
-  consecutiveFullDays: number;
+  lastUpdated: string; // YYYY-MM-DD
+  consecutiveFullDays: number; // Counter for earning shields
+}
+
+export enum ViewState {
+  SHELF = 'SHELF',
+  READER = 'READER',
+  VAULT = 'VAULT',
+  DASHBOARD = 'DASHBOARD'
+}
+
+export type Language = 'en' | 'ar';
+
+export interface Insight {
+  text: string;
+  icon: React.ReactNode;
+  color: string;
+  isShining?: boolean;
 }
