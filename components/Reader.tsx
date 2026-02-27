@@ -600,7 +600,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   <button onClick={() => setIsChatOpen(!isChatOpen)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all ${isChatOpen ? 'bg-red-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
                     <MessageCircle size={18} />
                   </button>
-                  <button onClick={toggleMic} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all relative ${isMicActive ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                  <button onClick={toggleMic} title={isRTL ? 'المناقشة الصوتية' : 'Voice Discussion'} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all relative ${isMicActive ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
                     {isMicActive ? <Mic size={18} className="animate-pulse" /> : <MicOff size={18} />}
                     {isMicActive && (
                       <span className="absolute -top-1 -right-1 flex h-3 w-3">
@@ -608,6 +608,17 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                         <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                       </span>
                     )}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const url = `${window.location.origin}?room=${roomId}`;
+                      navigator.clipboard.writeText(url);
+                      setShowCopySuccess(true);
+                      setTimeout(() => setShowCopySuccess(false), 2000);
+                    }}
+                    className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all relative ${showCopySuccess ? 'bg-emerald-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                  >
+                    {showCopySuccess ? <Check size={18} /> : <Share2 size={18} />}
                   </button>
                   {isAdmin && (
                     <button onClick={summonAll} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-emerald-600/20 text-emerald-500 rounded-full hover:bg-emerald-600 hover:text-white transition-all group relative">
