@@ -903,4 +903,3 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     </div>
   );
 };
-
