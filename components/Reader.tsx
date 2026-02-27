@@ -39,12 +39,12 @@ const COLORS = [
 
 const SOUNDS = [
   { id: 'none', icon: VolumeX, url: '' },
-  { id: 'rain', icon: CloudLightning, url: 'https://www.soundjay.com/nature/rain-01.mp3' },
-  { id: 'sea', icon: Waves, url: 'https://www.soundjay.com/nature/ocean-wave-1.mp3' },
-  { id: 'river', icon: Droplets, url: 'https://www.soundjay.com/nature/river-1.mp3' },
-  { id: 'night', icon: Moon, url: 'https://www.soundjay.com/nature/cricket-chirping-1.mp3' },
-  { id: 'birds', icon: Bird, url: 'https://www.soundjay.com/nature/birds-chirping-1.mp3' },
-  { id: 'fire', icon: Flame, url: 'https://www.soundjay.com/nature/fire-1.mp3' }
+  { id: 'rain', icon: CloudLightning, url: '/assets/sounds/rain.mp3' },
+  { id: 'sea', icon: Waves, url: '/assets/sounds/sea.mp3' },
+  { id: 'river', icon: Droplets, url: '/assets/sounds/river.mp3' },
+  { id: 'night', icon: Moon, url: '/assets/sounds/night.mp3' },
+  { id: 'birds', icon: Bird, url: '/assets/sounds/birds.mp3' },
+  { id: 'fire', icon: Flame, url: '/assets/sounds/fire.mp3' }
 ];
 
 const TOOL_ICONS = {
@@ -78,6 +78,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isThumbnailsOpen, setIsThumbnailsOpen] = useState(false);
   const [activeSoundId, setActiveSoundId] = useState('none');
+  const [volume, setVolume] = useState(0.5);
   const [customSoundName, setCustomSoundName] = useState('');
   const [targetPageInput, setTargetPageInput] = useState('');
   const [sessionSeconds, setSessionSeconds] = useState(0);
