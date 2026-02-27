@@ -1,12 +1,13 @@
 
-import type { Book, FlashCard, ShelfData, Annotation, HabitData } from '../types';
+import type { Book, FlashCard, ShelfData, Annotation, HabitData, CollectiveSession } from '../types';
 
 const STORAGE_KEYS = {
   BOOKS: 'sanctuary_books',
   SHELVES: 'sanctuary_shelves',
   CARDS: 'sanctuary_cards',
   SETTINGS: 'sanctuary_settings',
-  HABIT: 'sanctuary_habit'
+  HABIT: 'sanctuary_habit',
+  COLLECTIVE: 'sanctuary_collective'
 };
 
 const DEFAULT_SHELF: ShelfData = {
@@ -117,6 +118,17 @@ export const storageService = {
   getCards: (): FlashCard[] => {
     const data = localStorage.getItem(STORAGE_KEYS.CARDS);
     return data ? JSON.parse(data) : [];
+  },
+
+  getCollectiveSessions: (): CollectiveSession[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.COLLECTIVE);
+    return data ? JSON.parse(data) : [];
+  },
+
+  saveCollectiveSession: (session: CollectiveSession) => {
+    const sessions = storageService.getCollectiveSessions();
+    sessions.push(session);
+    localStorage.setItem(STORAGE_KEYS.COLLECTIVE, JSON.stringify(sessions));
   },
 
   getHabitData: (): HabitData => {
