@@ -103,7 +103,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [isMicActive, setIsMicActive] = useState(false);
   const [showCopySuccess, setShowCopySuccess] = useState(false);
   const [speakingMembers, setSpeakingMembers] = useState<Set<string>>(new Set());
-  const [sessionSeconds, setSessionSeconds] = useState(0);
   const isAdmin = socket && roomData?.adminId === socket.id;
   
   const initialPinchDistance = useRef<number | null>(null);
