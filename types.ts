@@ -44,6 +44,24 @@ export interface FlashCard {
   nextReviewDate: number;
 }
 
+export interface CollectiveSession {
+  id: string;
+  roomId: string;
+  bookId: string;
+  bookTitle: string;
+  date: number;
+  duration: number;
+  participants: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  time: number;
+}
+
 export interface HabitData {
   history: string[]; // YYYY-MM-DD (Full days)
   missedDays: string[]; // YYYY-MM-DD (Gaps)
