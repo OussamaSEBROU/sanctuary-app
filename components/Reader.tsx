@@ -12,8 +12,11 @@ import {
   ListOrdered, Volume2, CloudLightning, Waves, 
   Moon, Bird, Flame, VolumeX, Sparkles, Search, Droplets,
   Edit3, Sun, Clock, BoxSelect, Palette, Check, LayoutGrid,
-  FileAudio
+  FileAudio, Users, Send, MessageCircle, Share2, Zap,
+  Smile, Heart, ThumbsUp, PartyPopper, Ghost, Mic, MicOff
 } from 'lucide-react';
+import { Socket } from 'socket.io-client';
+import { ChatMessage } from '../types';
 
 declare const pdfjsLib: any;
 
@@ -25,6 +28,9 @@ interface ReaderProps {
   lang: Language;
   onBack: () => void;
   onStatsUpdate: (starReached?: number | null) => void;
+  socket?: Socket | null;
+  roomId?: string | null;
+  roomData?: any;
 }
 
 type Tool = 'view' | 'highlight' | 'underline' | 'box' | 'note';
@@ -55,7 +61,7 @@ const TOOL_ICONS = {
   note: MessageSquare
 };
 
-export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdate }) => {
+export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdate, socket, roomId, roomData }) => {
   const [isZenMode, setIsZenMode] = useState(false);
   const [isNightMode, setIsNightMode] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -85,6 +91,20 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [zoomScale, setZoomScale] = useState(1);
   const [isPinching, setIsPinching] = useState(false);
   const [direction, setDirection] = useState(0); 
+
+  // Collective Mode State
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [members, setMembers] = useState<any[]>([]);
+  const [memberCursors, setMemberCursors] = useState<Record<string, { x: number, y: number, name: string }>>({});
+  const [activeReactions, setActiveReactions] = useState<any[]>([]);
+  const [isMembersListOpen, setIsMembersListOpen] = useState(false);
+  const [isMicActive, setIsMicActive] = useState(false);
+  const [showCopySuccess, setShowCopySuccess] = useState(false);
+  const [speakingMembers, setSpeakingMembers] = useState<Set<string>>(new Set());
+  const [sessionSeconds, setSessionSeconds] = useState(0);
+  const isAdmin = socket && roomData?.adminId === socket.id;
   
   const initialPinchDistance = useRef<number | null>(null);
   const initialScaleOnPinch = useRef<number>(1);
@@ -100,14 +120,109 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const fontClass = isRTL ? 'font-ar' : 'font-en';
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (isGoToPageOpen || editingAnnoId || activeTool !== 'view') return;
-      if (e.key === 'ArrowRight') handlePageChange(currentPage + 1);
-      else if (e.key === 'ArrowLeft') handlePageChange(currentPage - 1);
+    if (!roomId) return;
+    const interval = setInterval(() => {
+      setSessionSeconds(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [roomId]);
+
+  const formatSessionTime = (totalSeconds: number) => {
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    return `${hrs > 0 ? hrs + ':' : ''}${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  useEffect(() => {
+    if (!socket || !roomId) return;
+
+    socket.on("room-updated", (data) => {
+      setMembers(data.members);
+    });
+
+    socket.on("member-moved", ({ id, page }) => {
+      setMembers(prev => prev.map(m => m.id === id ? { ...m, currentPage: page } : m));
+    });
+
+    socket.on("member-cursor", ({ id, cursor }) => {
+      const member = members.find(m => m.id === id);
+      if (member) {
+        setMemberCursors(prev => ({ ...prev, [id]: { ...cursor, name: member.name } }));
+      }
+    });
+
+    socket.on("new-highlight", (highlight) => {
+      setAnnotations(prev => [...prev, highlight]);
+    });
+
+    socket.on("new-chat", (msg) => {
+      setChatMessages(prev => [...prev, msg]);
+    });
+
+    socket.on("new-reaction", ({ id, reaction }) => {
+      const member = members.find(m => m.id === id);
+      const newReaction = { id: Math.random(), emoji: reaction, name: member?.name || '...' };
+      setActiveReactions(prev => [...prev, newReaction]);
+      setTimeout(() => {
+        setActiveReactions(prev => prev.filter(r => r.id !== newReaction.id));
+      }, 3000);
+    });
+
+    socket.on("summoned", (page) => {
+      handlePageChange(page);
+    });
+
+    socket.on("mic-status-changed", ({ id, active }) => {
+      setSpeakingMembers(prev => {
+        const next = new Set(prev);
+        if (active) next.add(id);
+        else next.delete(id);
+        return next;
+      });
+    });
+
+    return () => {
+      socket.off("room-updated");
+      socket.off("member-moved");
+      socket.off("member-cursor");
+      socket.off("new-highlight");
+      socket.off("new-chat");
+      socket.off("new-reaction");
+      socket.off("summoned");
+      socket.off("mic-status-changed");
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPage, totalPages, isGoToPageOpen, editingAnnoId, activeTool]);
+  }, [socket, roomId, members]);
+
+  const toggleMic = () => {
+    if (!socket || !roomId) return;
+    const newState = !isMicActive;
+    setIsMicActive(newState);
+    socket.emit("toggle-mic", { roomId, active: newState });
+  };
+
+  const sendCursorUpdate = (clientX: number, clientY: number) => {
+    if (!socket || !roomId || activeTool !== 'view') return;
+    const { x, y } = getRelativeCoords(clientX, clientY);
+    socket.emit("cursor-move", { roomId, cursor: { x, y } });
+  };
+
+  const sendChat = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!socket || !roomId || !chatInput.trim()) return;
+    socket.emit("send-chat", { roomId, message: { text: chatInput, name: lang === 'ar' ? 'أنا' : 'Me' } });
+    setChatInput('');
+  };
+
+  const sendReaction = (emoji: string) => {
+    if (!socket || !roomId) return;
+    socket.emit("send-reaction", { roomId, reaction: emoji });
+  };
+
+  const summonAll = () => {
+    if (!socket || !roomId || !isAdmin) return;
+    socket.emit("summon-all", { roomId, page: currentPage });
+  };
 
   const toggleZenMode = async () => {
     if (!isZenMode) {
@@ -196,6 +311,9 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       setZoomScale(1);
       setCurrentPage(newPage);
       storageService.updateBookPage(book.id, newPage);
+      if (socket && roomId) {
+        socket.emit("update-page", { roomId, page: newPage });
+      }
     }
   };
 
@@ -215,12 +333,25 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       audioRef.current.pause();
       if (sound.id !== 'none') {
         audioRef.current.src = sound.url;
+        audioRef.current.volume = volume;
         audioRef.current.load();
-        audioRef.current.play().catch(e => console.warn("Audio feedback:", e));
+        audioRef.current.play().catch(e => {
+          console.error("Audio playback failed:", e);
+          // Fallback for some browsers: try playing after a short delay
+          setTimeout(() => {
+            audioRef.current?.play().catch(err => console.warn("Retry failed:", err));
+          }, 100);
+        });
       }
     }
     setIsSoundPickerOpen(false);
   };
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+  }, [volume]);
 
   const handleCustomAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -282,6 +413,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   };
 
   const handleMove = (clientX: number, clientY: number) => {
+    sendCursorUpdate(clientX, clientY);
     if (!isDrawing || isPinching) return;
     const { x: currentX, y: currentY } = getRelativeCoords(clientX, clientY);
     setCurrentRect({ x: Math.min(startPos.x, currentX), y: Math.min(startPos.y, currentY), w: Math.abs(currentX - startPos.x), h: Math.abs(currentY - startPos.y) });
@@ -307,6 +439,9 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       };
       setAnnotations(prev => [...prev, newAnno]); 
       setEditingAnnoId(newAnno.id);
+      if (socket && roomId) {
+        socket.emit("send-highlight", { roomId, highlight: newAnno });
+      }
     }
     setIsDrawing(false); setCurrentRect(null);
   };
@@ -323,10 +458,113 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       className={`h-screen flex flex-col bg-black overflow-hidden relative transition-all duration-1000 ${isZenMode && !showControls ? 'cursor-none' : ''} ${fontClass}`} 
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      <audio ref={audioRef} loop hidden />
+      <audio ref={audioRef} loop hidden preload="auto" />
       <input type="file" ref={audioInputRef} accept=".mp3,audio/mpeg" hidden onChange={handleCustomAudioUpload} />
 
       <AnimatePresence>
+        {isChatOpen && (
+          <MotionDiv 
+            initial={{ x: isRTL ? -400 : 400 }} 
+            animate={{ x: 0 }} 
+            exit={{ x: isRTL ? -400 : 400 }} 
+            className={`fixed top-0 bottom-0 ${isRTL ? 'left-0' : 'right-0'} w-full max-w-[350px] bg-black/80 backdrop-blur-3xl border-l border-white/10 z-[3000] flex flex-col shadow-5xl`}
+          >
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <MessageCircle size={20} className="text-red-600" />
+                <h3 className="text-sm font-black uppercase tracking-widest text-white/60">{isRTL ? 'نقاش المحراب' : 'Sanctuary Chat'}</h3>
+              </div>
+              <button onClick={() => setIsChatOpen(false)} className="p-2 rounded-full bg-white/5 text-white/40 hover:text-white"><X size={18}/></button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scroll">
+              {chatMessages.map(msg => (
+                <div key={msg.id} className={`flex flex-col ${msg.senderId === socket?.id ? 'items-end' : 'items-start'}`}>
+                  <span className="text-[8px] font-black text-white/20 uppercase mb-1">{msg.senderName}</span>
+                  <div className={`px-4 py-2.5 rounded-2xl text-[11px] font-bold ${msg.senderId === socket?.id ? 'bg-red-600 text-white rounded-tr-none' : 'bg-white/5 text-white/80 rounded-tl-none'}`}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <form onSubmit={sendChat} className="p-6 border-t border-white/5 flex gap-2">
+              <input 
+                type="text" 
+                value={chatInput} 
+                onChange={e => setChatInput(e.target.value)} 
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none focus:border-red-600/50" 
+                placeholder={isRTL ? 'اكتب رسالتك...' : 'Type a message...'} 
+              />
+              <button type="submit" className="w-11 h-11 bg-red-600 rounded-xl flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform">
+                <Send size={18} />
+              </button>
+            </form>
+          </MotionDiv>
+        )}
+
+        {isMembersListOpen && (
+          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-6 pointer-events-auto">
+            <MotionDiv initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-8 rounded-[3rem] w-full max-w-md shadow-5xl">
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-sm font-black uppercase tracking-widest text-white/40">{isRTL ? 'الحضور الحالي' : 'Current Presence'}</h3>
+                <button onClick={() => setIsMembersListOpen(false)} className="p-2 rounded-full bg-white/5 text-white/40 hover:text-white"><X size={18}/></button>
+              </div>
+              <div className="space-y-3 max-h-[50vh] overflow-y-auto no-scrollbar">
+                {members.map(m => (
+                  <div key={m.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center text-white font-black text-xs shadow-lg">
+                        {m.name.substring(0, 1)}
+                      </div>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-white">{m.name} {m.id === socket?.id && `(${isRTL ? 'أنت' : 'You'})`}</span>
+                          {speakingMembers.has(m.id) && <Mic size={10} className="text-emerald-500 animate-pulse" />}
+                        </div>
+                        <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest">{isRTL ? 'الصفحة' : 'Page'} {m.currentPage + 1}</span>
+                      </div>
+                    </div>
+                    {roomData?.adminId === m.id && (
+                      <div className="px-2 py-1 bg-emerald-600/20 text-emerald-500 text-[7px] font-black uppercase rounded-full border border-emerald-500/30">
+                        Admin
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-8 pt-6 border-t border-white/5 flex flex-col gap-4">
+                <div className="flex items-center justify-between px-2">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-white/20">{isRTL ? 'رابط الغرفة' : 'Room Link'}</span>
+                  <span className="text-[9px] font-black text-red-600">{roomId}</span>
+                </div>
+                <button 
+                  onClick={() => {
+                    const url = `${window.location.origin}?room=${roomId}`;
+                    navigator.clipboard.writeText(url);
+                    setShowCopySuccess(true);
+                    setTimeout(() => setShowCopySuccess(false), 2000);
+                  }}
+                  className={`w-full ${showCopySuccess ? 'bg-emerald-600' : 'bg-white/5'} border border-white/10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white transition-all flex items-center justify-center gap-3 relative overflow-hidden`}
+                >
+                  <AnimatePresence mode="wait">
+                    {showCopySuccess ? (
+                      <MotionDiv key="success" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} className="flex items-center gap-2">
+                        <Check size={14} /> {isRTL ? 'تم نسخ الرابط!' : 'Link Copied!'}
+                      </MotionDiv>
+                    ) : (
+                      <MotionDiv key="idle" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} className="flex items-center gap-2">
+                        <Share2 size={14} /> {isRTL ? 'نسخ رابط الدعوة' : 'Copy Invite Link'}
+                      </MotionDiv>
+                    )}
+                  </AnimatePresence>
+                </button>
+              </div>
+            </MotionDiv>
+          </MotionDiv>
+        )}
+
         {isLoading && (
           <MotionDiv key="loading-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[5000] bg-black flex flex-col items-center justify-center p-8 text-center pointer-events-none">
             <Sparkles size={40} className="text-[#ff0000] animate-pulse mb-4" />
@@ -342,9 +580,44 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
           >
             <div className="flex items-center gap-2 md:gap-3 pointer-events-auto">
               {!isZenMode && <button onClick={onBack} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/60 hover:bg-white/10 active:scale-90"><ChevronLeft size={18} className={isRTL ? "rotate-180" : ""} /></button>}
+              <div className="flex flex-col">
+                <h2 className="text-[10px] md:text-xs font-black text-white uppercase italic tracking-tighter truncate max-w-[100px] md:max-w-[180px] leading-none">{book.title}</h2>
+                {roomId && (
+                  <span className="text-[7px] md:text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mt-1">
+                    {isRTL ? 'جلسة مباشرة' : 'LIVE SESSION'} • {formatSessionTime(sessionSeconds)}
+                  </span>
+                )}
+              </div>
               <button onClick={() => setIsArchiveOpen(true)} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 active:scale-90"><ListOrdered size={18} /></button>
               <button onClick={() => setIsSoundPickerOpen(true)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeSoundId !== 'none' ? 'bg-red-600 text-white shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}><Volume2 size={18} /></button>
               <button onClick={() => setIsNightMode(!isNightMode)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 ${isNightMode ? 'bg-red-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>{isNightMode ? <Sun size={18} /> : <Moon size={18} />}</button>
+              
+              {socket && roomId && (
+                <div className="flex items-center gap-2 ml-2 md:ml-4 border-l border-white/10 pl-2 md:pl-4">
+                  <button onClick={() => setIsMembersListOpen(true)} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 relative">
+                    <Users size={18} />
+                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">{members.length}</span>
+                  </button>
+                  <button onClick={() => setIsChatOpen(!isChatOpen)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all ${isChatOpen ? 'bg-red-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                    <MessageCircle size={18} />
+                  </button>
+                  <button onClick={toggleMic} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all relative ${isMicActive ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                    {isMicActive ? <Mic size={18} className="animate-pulse" /> : <MicOff size={18} />}
+                    {isMicActive && (
+                      <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                      </span>
+                    )}
+                  </button>
+                  {isAdmin && (
+                    <button onClick={summonAll} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-emerald-600/20 text-emerald-500 rounded-full hover:bg-emerald-600 hover:text-white transition-all group relative">
+                      <Zap size={18} className="group-hover:animate-pulse" />
+                      <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-[7px] font-black uppercase px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{isRTL ? 'استدعاء الجميع' : 'Summon All'}</span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2 pointer-events-auto">
               <button onClick={() => setIsToolsOpen(!isToolsOpen)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 ${isToolsOpen ? 'bg-white text-black shadow-xl' : 'bg-white/5 text-white/40'}`}><Palette size={18} /></button>
@@ -410,6 +683,36 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               </AnimatePresence>
               
               <div className="absolute inset-0 pointer-events-none">
+                {/* Floating Reactions */}
+                <div className="absolute inset-0 overflow-hidden">
+                  {activeReactions.map(r => (
+                    <MotionDiv
+                      key={r.id}
+                      initial={{ y: '100%', opacity: 0, x: `${Math.random() * 80 + 10}%` }}
+                      animate={{ y: '-10%', opacity: [0, 1, 1, 0] }}
+                      transition={{ duration: 3, ease: "easeOut" }}
+                      className="absolute bottom-0 flex flex-col items-center gap-1"
+                    >
+                      <span className="text-2xl">{r.emoji}</span>
+                      <span className="text-[6px] font-black text-white/40 uppercase">{r.name}</span>
+                    </MotionDiv>
+                  ))}
+                </div>
+
+                {/* Ghost Cursors */}
+                {Object.entries(memberCursors).map(([id, cursor]) => (
+                  <MotionDiv
+                    key={id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1, x: `${cursor.x}%`, y: `${cursor.y}%` }}
+                    className="absolute z-50 pointer-events-none"
+                    style={{ left: 0, top: 0 }}
+                  >
+                    <Ghost size={14} className="text-red-600/60" />
+                    <span className="absolute left-4 top-0 bg-black/60 text-[7px] font-black text-white px-1.5 py-0.5 rounded-full whitespace-nowrap">{cursor.name}</span>
+                  </MotionDiv>
+                ))}
+
                 {annotations.filter(a => a.pageIndex === currentPage).map(anno => (
                   <div key={anno.id} className="absolute pointer-events-auto cursor-pointer" onClick={() => setEditingAnnoId(anno.id)}
                     style={{ left: `${anno.x}%`, top: `${anno.y}%`, width: anno.width ? `${anno.width}%` : '0%', height: anno.height ? `${anno.height}%` : '0%', 
@@ -472,6 +775,28 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         </AnimatePresence>
       </div>
 
+      {/* Reactions Picker - Floating on the side */}
+      {socket && roomId && !isZenMode && (
+        <div className="fixed right-6 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-[2500]">
+          {[
+            { emoji: '💡', label: 'Insight' },
+            { emoji: '🔥', label: 'Deep' },
+            { emoji: '❤️', label: 'Love' },
+            { emoji: '👏', label: 'Bravo' },
+            { emoji: '🤔', label: 'Think' }
+          ].map(r => (
+            <button 
+              key={r.emoji} 
+              onClick={() => sendReaction(r.emoji)}
+              className="w-12 h-12 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full flex items-center justify-center text-xl hover:scale-125 hover:bg-red-600/20 transition-all shadow-xl group relative"
+            >
+              {r.emoji}
+              <span className="absolute right-full mr-4 bg-black/80 text-[7px] font-black uppercase px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{r.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <AnimatePresence>
         {isGoToPageOpen && (
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-6 pointer-events-auto">
@@ -489,6 +814,26 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
           <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 pointer-events-auto">
             <div className="bg-[#0b140b] border border-white/10 p-6 md:p-8 rounded-[2.5rem] w-full max-w-xs shadow-3xl">
               <div className="flex justify-between items-center mb-6"><h3 className="text-sm font-black italic uppercase text-white/50 tracking-widest">{t.soundscape}</h3><button onClick={() => setIsSoundPickerOpen(false)} className="hover:text-red-600 transition-colors"><X size={18}/></button></div>
+              
+              {/* Volume Slider */}
+              {activeSoundId !== 'none' && (
+                <div className="mb-6 px-2">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-white/30">{t.volume}</span>
+                    <span className="text-[9px] font-black text-red-600">{Math.round(volume * 100)}%</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="1" 
+                    step="0.01" 
+                    value={volume} 
+                    onChange={(e) => setVolume(parseFloat(e.target.value))}
+                    className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-red-600"
+                  />
+                </div>
+              )}
+
               <div className="grid gap-2 max-h-[50vh] overflow-y-auto no-scrollbar">
                 {SOUNDS.map(sound => (
                   <button key={sound.id} onClick={() => playSound(sound)} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${activeSoundId === sound.id ? 'bg-red-600/20 border-red-600/50' : 'bg-white/5 border-transparent hover:bg-white/10'}`}>
