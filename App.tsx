@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ViewState, Language, Insight } from './types';
+import { ViewState, Language, Insight, CollectiveSession } from './types';
 import type { Book, ShelfData } from './types';
 import { Layout } from './components/Layout';
 import { Shelf } from './components/Shelf';
@@ -32,6 +32,7 @@ import {
   Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { io, Socket } from 'socket.io-client';
 
 declare const pdfjsLib: any;
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -47,6 +48,7 @@ const App: React.FC = () => {
   const [activeShelfId, setActiveShelfId] = useState<string>('default');
   const [activeBookIndex, setActiveBookIndex] = useState(0); // رفع الحالة للتحكم في الإحصائيات العلوية
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [collectiveSessions, setCollectiveSessions] = useState<CollectiveSession[]>(storageService.getCollectiveSessions());
   const [isAddingBook, setIsAddingBook] = useState(false);
   const [isAddingShelf, setIsAddingShelf] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -62,6 +64,78 @@ const App: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+
+  // Collective Session State
+  const [isAddingMenuOpen, setIsAddingMenuOpen] = useState(false);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [roomId, setRoomId] = useState<string | null>(null);
+  const [isCollectiveMode, setIsCollectiveMode] = useState(false);
+  const [roomData, setRoomData] = useState<any>(null);
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
+  const [joinRoomInput, setJoinRoomInput] = useState('');
+  const [isCollectivePending, setIsCollectivePending] = useState(false);
+
+  useEffect(() => {
+    const newSocket = io(window.location.origin);
+    setSocket(newSocket);
+
+    newSocket.on("room-created", (id) => {
+      setRoomId(id);
+      setIsCollectiveMode(true);
+      setIsAddingMenuOpen(false);
+    });
+
+    newSocket.on("room-updated", (data) => {
+      setRoomData(data);
+      if (data.bookData && !selectedBook) {
+        setSelectedBook(data.bookData);
+        setView(ViewState.READER);
+      }
+    });
+
+    newSocket.on("book-selected", ({ bookId, bookData }) => {
+      // Handle remote book selection
+      // This might require fetching the PDF if the member doesn't have it
+      // For now, we assume the member has it or we'll implement a way to share
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomFromUrl = urlParams.get('room');
+    if (roomFromUrl && socket) {
+      socket.emit("join-room", { roomId: roomFromUrl, name: lang === 'ar' ? 'قارئ منضم' : 'Joined Reader' });
+      setRoomId(roomFromUrl);
+      setIsCollectiveMode(true);
+      setIsJoiningRoom(false);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [socket]);
+
+  const handleCreateRoom = (book?: Book) => {
+    if (socket) {
+      socket.emit("create-room", { 
+        adminName: lang === 'ar' ? 'أدمن المحراب' : 'Sanctuary Admin',
+        bookId: book?.id,
+        bookData: book
+      });
+    }
+  };
+
+  const handleJoinRoom = () => {
+    if (socket && joinRoomInput) {
+      socket.emit("join-room", { roomId: joinRoomInput, name: lang === 'ar' ? 'قارئ منضم' : 'Joined Reader' });
+      setRoomId(joinRoomInput);
+      setIsCollectiveMode(true);
+      setIsJoiningRoom(false);
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  };
 
   useEffect(() => {
     const onboardingSeen = localStorage.getItem('sanctuary_onboarding_seen');
@@ -304,6 +378,14 @@ const App: React.FC = () => {
     const updated = [newBook, ...books];
     setBooks(updated);
     storageService.saveBooks(updated);
+    
+    if (isCollectivePending) {
+      handleCreateRoom(newBook);
+      setSelectedBook(newBook);
+      setView(ViewState.READER);
+      setIsCollectivePending(false);
+    }
+    
     setNewBookTitle(''); setNewBookAuthor(''); setPendingFileData(null); setIsAddingBook(false);
   };
 
@@ -335,6 +417,7 @@ const App: React.FC = () => {
 
   const handleStatsUpdate = React.useCallback((starReached?: number | null) => {
     setBooks(storageService.getBooks());
+    setCollectiveSessions(storageService.getCollectiveSessions());
     if (starReached) {
       setCelebrationStar(starReached);
     }
@@ -527,9 +610,54 @@ const App: React.FC = () => {
                 </MotionDiv>
               )}
 
-              <button onClick={() => setIsAddingBook(true)} className="px-4 md:px-8 py-2.5 md:py-4 rounded-full bg-white text-black text-[8px] md:text-[11px] font-black uppercase tracking-[0.1em] md:tracking-[0.3em] shadow-2xl hover:bg-[#ff0000] hover:text-white transition-all flex items-center gap-1.5 active:scale-95 shrink-0">
-                <Plus size={12} className="md:size-3.5" />{lang === 'ar' ? 'إضافة' : 'Add'}
-              </button>
+              <div className="relative pointer-events-auto">
+                <button 
+                  onClick={() => setIsAddingMenuOpen(!isAddingMenuOpen)} 
+                  className={`px-4 md:px-8 py-2.5 md:py-4 rounded-full transition-all flex items-center gap-1.5 active:scale-95 shrink-0 ${isAddingMenuOpen ? 'bg-[#ff0000] text-white' : 'bg-white text-black'} text-[8px] md:text-[11px] font-black uppercase tracking-[0.1em] md:tracking-[0.3em] shadow-2xl`}
+                >
+                  <Plus size={12} className={`md:size-3.5 transition-transform ${isAddingMenuOpen ? 'rotate-45' : ''}`} />
+                  {lang === 'ar' ? 'إضافة' : 'Add'}
+                </button>
+
+                <AnimatePresence>
+                  {isAddingMenuOpen && (
+                    <MotionDiv
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      className={`absolute top-full mt-4 ${lang === 'ar' ? 'left-0' : 'right-0'} w-64 bg-black/80 backdrop-blur-3xl border border-white/10 rounded-[2rem] p-3 shadow-4xl z-[3100]`}
+                    >
+                      <button 
+                        onClick={() => { setIsAddingBook(true); setIsAddingMenuOpen(false); }}
+                        className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-white/5 transition-all group text-left"
+                      >
+                        <div className="p-2 rounded-xl bg-white/5 group-hover:bg-[#ff0000]/20 transition-colors">
+                          <BookOpen size={18} className="text-white/40 group-hover:text-[#ff0000]" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-white">{lang === 'ar' ? 'قراءة منفردة' : 'Single Reading'}</span>
+                          <span className="text-[8px] font-bold text-white/20 uppercase">{lang === 'ar' ? 'رفع كتاب جديد' : 'Upload new book'}</span>
+                        </div>
+                      </button>
+
+                      <div className="h-[1px] bg-white/5 my-2 mx-4" />
+
+                      <button 
+                        onClick={() => { setIsAddingBook(true); setIsCollectivePending(true); setIsAddingMenuOpen(false); }}
+                        className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-white/5 transition-all group text-left"
+                      >
+                        <div className="p-2 rounded-xl bg-white/5 group-hover:bg-emerald-500/20 transition-colors">
+                          <BrainCircuit size={18} className="text-white/40 group-hover:text-emerald-500" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-white">{lang === 'ar' ? 'جلسة جماعية' : 'Collective Session'}</span>
+                          <span className="text-[8px] font-bold text-white/20 uppercase">{lang === 'ar' ? 'فتح حلقة معرفية' : 'Open wisdom circle'}</span>
+                        </div>
+                      </button>
+                    </MotionDiv>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           )}
         </div>
@@ -624,7 +752,13 @@ const App: React.FC = () => {
                 exit={{ opacity: 0 }} 
                 className="fixed inset-0 z-[4000] bg-[#020502] overflow-y-auto custom-scroll flex flex-col"
               >
-                <Dashboard books={books} shelves={shelves} lang={lang} onBack={() => setView(ViewState.SHELF)} />
+                <Dashboard 
+                  books={books} 
+                  shelves={shelves} 
+                  collectiveSessions={collectiveSessions}
+                  lang={lang} 
+                  onBack={() => setView(ViewState.SHELF)} 
+                />
               </MotionDiv>
             )}
             {view === ViewState.READER && selectedBook && (
@@ -632,8 +766,15 @@ const App: React.FC = () => {
                 <Reader 
                   book={selectedBook} 
                   lang={lang} 
-                  onBack={handleReaderBack} 
+                  onBack={() => {
+                    handleReaderBack();
+                    setIsCollectiveMode(false);
+                    setRoomId(null);
+                  }} 
                   onStatsUpdate={handleStatsUpdate} 
+                  socket={socket}
+                  roomId={roomId}
+                  roomData={roomData}
                 />
               </MotionDiv>
             )}
@@ -672,6 +813,26 @@ const App: React.FC = () => {
                 <h3 className="text-2xl md:text-3xl font-black uppercase italic text-white mb-8 md:mb-10">{lang === 'ar' ? 'إنشاء رف' : 'New Shelf'}</h3>
                 <input autoFocus type="text" value={newShelfName} onChange={e => setNewShelfName(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-6 text-xs md:text-sm font-bold text-white outline-none mb-8 md:mb-10 focus:border-[#ff0000]/50" placeholder={lang === 'ar' ? 'اسم الرف...' : 'Shelf Name...'} />
                 <button onClick={handleAddShelf} className="w-full bg-[#ff0000] py-4 md:py-6 rounded-[1.5rem] md:rounded-[2rem] font-black text-[10px] md:text-xs uppercase shadow-2xl hover:scale-105 transition-transform text-white tracking-[0.3em] md:tracking-[0.4em]">{t.establish}</button>
+              </MotionDiv>
+            </MotionDiv>
+          )}
+
+          {isJoiningRoom && (
+            <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] flex items-center justify-center p-6 bg-black/95 backdrop-blur-3xl">
+              <MotionDiv initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-10 md:p-12 rounded-[2.5rem] md:rounded-[4rem] w-full max-w-md shadow-2xl text-center">
+                <h3 className="text-2xl md:text-3xl font-black uppercase italic text-white mb-8 md:mb-10">{lang === 'ar' ? 'انضمام للجلسة' : 'Join Session'}</h3>
+                <input 
+                  autoFocus 
+                  type="text" 
+                  value={joinRoomInput} 
+                  onChange={e => setJoinRoomInput(e.target.value)} 
+                  className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-6 text-xs md:text-sm font-bold text-white outline-none mb-8 md:mb-10 focus:border-emerald-500/50" 
+                  placeholder={lang === 'ar' ? 'معرف الغرفة...' : 'Room ID...'} 
+                />
+                <div className="flex gap-3">
+                  <button onClick={() => setIsJoiningRoom(false)} className="flex-1 py-4 md:py-6 rounded-[1.5rem] md:rounded-[2rem] font-black text-[10px] md:text-xs uppercase text-white/40 hover:text-white transition-all">{lang === 'ar' ? 'تراجع' : 'Cancel'}</button>
+                  <button onClick={handleJoinRoom} className="flex-1 bg-emerald-600 py-4 md:py-6 rounded-[1.5rem] md:rounded-[2rem] font-black text-[10px] md:text-xs uppercase shadow-2xl hover:scale-105 transition-transform text-white tracking-[0.3em] md:tracking-[0.4em]">{lang === 'ar' ? 'انضمام' : 'Join'}</button>
+                </div>
               </MotionDiv>
             </MotionDiv>
           )}
