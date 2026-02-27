@@ -1,13 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Language } from '../types';
+import { Language, CollectiveSession } from '../types';
 import type { Book, ShelfData } from '../types';
 import { translations } from '../i18n/translations';
 import { storageService } from '../services/storageService';
 import { 
   Clock, Star, ChevronLeft, BrainCircuit, Activity, Trash2, AlertTriangle,
   BarChart3, LineChart, BookOpen, Zap, Globe2, ShieldCheck, Fingerprint, 
-  LayoutPanelTop, Timer, Rocket, Sparkles
+  LayoutPanelTop, Timer, Rocket, Sparkles, Users
 } from 'lucide-react';
 
 // Using any to bypass motion property type errors
@@ -17,6 +17,7 @@ const MotionPath = motion.path as any;
 interface DashboardProps {
   books: Book[];
   shelves: ShelfData[];
+  collectiveSessions: CollectiveSession[];
   lang: Language;
   onBack: () => void;
 }
@@ -31,7 +32,7 @@ const ANALYTICAL_COLORS = [
   '#ef4444'  // Sanctuary Red
 ];
 
-export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBack }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, collectiveSessions, lang, onBack }) => {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const t = translations[lang];
   const isRTL = lang === 'ar';
@@ -670,6 +671,68 @@ export const Dashboard: React.FC<DashboardProps> = ({ books, shelves, lang, onBa
               <span className="text-[6px] font-black opacity-20 mt-3 block text-center truncate">{h.hour}h</span>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* SECTION 3.5: COLLECTIVE WISDOM CIRCLES (NEW) */}
+      <section className="bg-white/[0.02] border border-white/10 p-5 md:p-20 rounded-[1.5rem] md:rounded-[5rem] space-y-8 md:space-y-16 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none">
+          <BrainCircuit size={300} />
+        </div>
+        
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8 relative z-10">
+          <div className="flex items-center gap-4 md:gap-6">
+            <div className="p-3 md:p-4 bg-white/5 rounded-xl md:rounded-2xl border border-white/10">
+              <Globe2 className="text-emerald-500 size-5 md:size-8" />
+            </div>
+            <div>
+              <h3 className="text-lg md:text-5xl font-black uppercase tracking-tighter italic">{isRTL ? 'حلقات المعرفة الجماعية' : 'Collective Wisdom Circles'}</h3>
+              <p className="text-[8px] md:text-xs uppercase font-bold tracking-widest text-white/30 mt-1 md:mt-2">Synergistic Intellectual Engagement History</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 bg-emerald-600/10 px-5 py-2.5 rounded-full border border-emerald-600/20 backdrop-blur-md">
+            <Users className="size-4 text-emerald-500" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">{collectiveSessions.length} {isRTL ? 'جلسة' : 'Sessions'}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+          {collectiveSessions.length === 0 ? (
+            <div className="col-span-full py-20 text-center opacity-20 uppercase font-black tracking-widest text-[10px] md:text-xs italic">
+              {isRTL ? 'لم تشارك في أي حلقات جماعية بعد' : 'No collective circles joined yet'}
+            </div>
+          ) : (
+            collectiveSessions.map((session, i) => (
+              <MotionDiv 
+                key={session.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="p-6 bg-black/40 border border-white/5 rounded-[2rem] space-y-4 hover:border-emerald-500/30 transition-all group"
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex flex-col">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">{new Date(session.date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}</span>
+                    <h4 className="text-xs font-black text-white uppercase tracking-tight group-hover:text-emerald-500 transition-colors">{session.bookTitle}</h4>
+                  </div>
+                  <div className="w-8 h-8 rounded-lg bg-emerald-600/10 flex items-center justify-center text-emerald-500">
+                    <Users size={14} />
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                  <div className="flex flex-col">
+                    <span className="text-[7px] font-black text-white/20 uppercase">{isRTL ? 'المشاركون' : 'Participants'}</span>
+                    <span className="text-[10px] font-black text-white">{session.participants}</span>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[7px] font-black text-white/20 uppercase">{isRTL ? 'المدة' : 'Duration'}</span>
+                    <span className="text-[10px] font-black text-emerald-500">{Math.floor(session.duration / 60)}m</span>
+                  </div>
+                </div>
+              </MotionDiv>
+            ))
+          )}
         </div>
       </section>
 
