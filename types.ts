@@ -19,6 +19,8 @@ export interface Annotation {
   color: string;
 }
 
+import React from 'react';
+
 export interface Book {
   id: string;
   shelfId: string;
