@@ -34,6 +34,7 @@ export interface Book {
   lastReadAt?: number;
   lastPage?: number; // New field to resume reading
   annotations?: Annotation[];
+  isCollectiveOnly?: boolean;
 }
 
 export interface FlashCard {
