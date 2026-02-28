@@ -13,7 +13,8 @@ import {
   Moon, Bird, Flame, VolumeX, Sparkles, Search, Droplets,
   Edit3, Sun, Clock, BoxSelect, Palette, Check, LayoutGrid,
   FileAudio, Users, Send, MessageCircle, Share2, Zap,
-  Smile, Heart, ThumbsUp, PartyPopper, Ghost, Mic, MicOff
+  Mic, MicOff, Ghost,
+  PhoneOff, Video, VideoOff, MoreVertical, Monitor, ArrowLeft
 } from 'lucide-react';
 import { Socket } from 'socket.io-client';
 import { ChatMessage } from '../types';
@@ -101,6 +102,9 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [activeReactions, setActiveReactions] = useState<any[]>([]);
   const [isMembersListOpen, setIsMembersListOpen] = useState(false);
   const [isMicActive, setIsMicActive] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isSpeakerActive, setIsSpeakerActive] = useState(true);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [showCopySuccess, setShowCopySuccess] = useState(false);
   const [speakingMembers, setSpeakingMembers] = useState<Set<string>>(new Set());
   const isAdmin = socket && roomData?.adminId === socket.id;
@@ -503,64 +507,144 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
         )}
 
         {isMembersListOpen && (
-          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-6 pointer-events-auto">
-            <MotionDiv initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-[#0b140b] border border-white/10 p-8 rounded-[3rem] w-full max-w-md shadow-5xl">
-              <div className="flex justify-between items-center mb-8">
-                <h3 className="text-sm font-black uppercase tracking-widest text-white/40">{isRTL ? 'الحضور الحالي' : 'Current Presence'}</h3>
-                <button onClick={() => setIsMembersListOpen(false)} className="p-2 rounded-full bg-white/5 text-white/40 hover:text-white"><X size={18}/></button>
-              </div>
-              <div className="space-y-3 max-h-[50vh] overflow-y-auto no-scrollbar">
-                {members.map(m => (
-                  <div key={m.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center text-white font-black text-xs shadow-lg">
-                        {m.name.substring(0, 1)}
-                      </div>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-black text-white">{m.name} {m.id === socket?.id && `(${isRTL ? 'أنت' : 'You'})`}</span>
-                          {speakingMembers.has(m.id) && <Mic size={10} className="text-emerald-500 animate-pulse" />}
-                        </div>
-                        <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest">{isRTL ? 'الصفحة' : 'Page'} {m.currentPage + 1}</span>
-                      </div>
-                    </div>
-                    {roomData?.adminId === m.id && (
-                      <div className="px-2 py-1 bg-emerald-600/20 text-emerald-500 text-[7px] font-black uppercase rounded-full border border-emerald-500/30">
-                        Admin
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              
-              <div className="mt-8 pt-6 border-t border-white/5 flex flex-col gap-4">
-                <div className="flex items-center justify-between px-2">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-white/20">{isRTL ? 'رابط الغرفة' : 'Room Link'}</span>
-                  <span className="text-[9px] font-black text-red-600">{roomId}</span>
+          <MotionDiv 
+            initial={{ y: '100%' }} 
+            animate={{ y: 0 }} 
+            exit={{ y: '100%' }} 
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-[6000] bg-[#0f1721] flex flex-col pointer-events-auto"
+          >
+            {/* Telegram Header */}
+            <div className="p-4 md:p-6 flex items-center justify-between border-b border-white/5 bg-[#17212b]/50 backdrop-blur-md">
+              <div className="flex items-center gap-4">
+                <button onClick={() => setIsMembersListOpen(false)} className="p-2 text-white/60 hover:text-white transition-colors">
+                  <ArrowLeft size={24} />
+                </button>
+                <div className="flex flex-col">
+                  <h3 className="text-sm md:text-base font-bold text-white leading-tight">
+                    {roomData?.roomName || (isRTL ? 'مجموعة القراءة الجماعية' : 'Collective Reading Group')}
+                  </h3>
+                  <span className="text-[10px] md:text-xs text-blue-400 font-medium">
+                    {members.length} {isRTL ? 'مشاركين' : 'participants'}
+                  </span>
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
                 <button 
-                  onClick={() => {
-                    const url = `${window.location.origin}?room=${roomId}`;
-                    navigator.clipboard.writeText(url);
-                    setShowCopySuccess(true);
-                    setTimeout(() => setShowCopySuccess(false), 2000);
-                  }}
-                  className={`w-full ${showCopySuccess ? 'bg-emerald-600' : 'bg-white/5'} border border-white/10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white transition-all flex items-center justify-center gap-3 relative overflow-hidden`}
+                  onClick={() => setIsScreenSharing(!isScreenSharing)}
+                  className={`p-2 transition-colors ${isScreenSharing ? 'text-blue-400' : 'text-white/60 hover:text-white'}`}
                 >
-                  <AnimatePresence mode="wait">
-                    {showCopySuccess ? (
-                      <MotionDiv key="success" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} className="flex items-center gap-2">
-                        <Check size={14} /> {isRTL ? 'تم نسخ الرابط!' : 'Link Copied!'}
-                      </MotionDiv>
-                    ) : (
-                      <MotionDiv key="idle" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} className="flex items-center gap-2">
-                        <Share2 size={14} /> {isRTL ? 'نسخ رابط الدعوة' : 'Copy Invite Link'}
-                      </MotionDiv>
-                    )}
-                  </AnimatePresence>
+                  <Monitor size={20} />
+                </button>
+                <button className="p-2 text-white/60 hover:text-white transition-colors">
+                  <MoreVertical size={20} />
                 </button>
               </div>
-            </MotionDiv>
+            </div>
+
+            {/* Telegram User List */}
+            <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-1 custom-scroll bg-[#0f1721]">
+              {members.map((m, idx) => (
+                <div key={m.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors group">
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg ${
+                        idx % 3 === 0 ? 'bg-gradient-to-br from-blue-500 to-indigo-600' : 
+                        idx % 3 === 1 ? 'bg-gradient-to-br from-emerald-500 to-teal-600' : 
+                        'bg-gradient-to-br from-orange-500 to-red-600'
+                      }`}>
+                        {m.name.substring(0, 1)}
+                      </div>
+                      <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-[#0f1721] rounded-full shadow-sm" />
+                    </div>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-white">{m.name} {m.id === socket?.id && `(${isRTL ? 'أنت' : 'You'})`}</span>
+                        {roomData?.adminId === m.id && (
+                          <span className="text-[8px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 font-black uppercase rounded tracking-tighter">Admin</span>
+                        )}
+                      </div>
+                      <span className="text-xs text-white/40 font-medium">
+                        {speakingMembers.has(m.id) ? (
+                          <span className="text-emerald-400">{isRTL ? 'يتحدث الآن...' : 'speaking now...'}</span>
+                        ) : (
+                          idx === 0 ? (isRTL ? 'كن مع الله ولا تبالي' : 'Be with God and don\'t care') :
+                          idx === 1 ? (isRTL ? 'إن الله لا يُعبد بالجهل..' : 'God is not worshipped in ignorance..') :
+                          (isRTL ? 'يستمع بتركيز' : 'listening intently')
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {speakingMembers.has(m.id) ? (
+                      <div className="flex gap-0.5 items-end h-4">
+                        <div className="w-1 bg-emerald-500 animate-[bounce_1s_infinite_0.1s]" style={{ height: '60%' }} />
+                        <div className="w-1 bg-emerald-500 animate-[bounce_1s_infinite_0.3s]" style={{ height: '100%' }} />
+                        <div className="w-1 bg-emerald-500 animate-[bounce_1s_infinite_0.2s]" style={{ height: '80%' }} />
+                      </div>
+                    ) : (
+                      <MicOff size={18} className="text-white/10" />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Telegram Bottom Bar */}
+            <div className="p-6 md:p-10 bg-[#17212b] border-t border-white/5 flex items-center justify-around md:justify-center md:gap-16">
+              <div className="flex flex-col items-center gap-2">
+                <button 
+                  onClick={() => setIsSpeakerActive(!isSpeakerActive)}
+                  className={`w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all ${isSpeakerActive ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 text-white/40'}`}
+                >
+                  {isSpeakerActive ? <Volume2 size={24} /> : <VolumeX size={24} />}
+                </button>
+                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{isRTL ? 'مكبر الصوت' : 'Speaker'}</span>
+              </div>
+
+              <div className="flex flex-col items-center gap-2">
+                <button 
+                  onClick={() => setIsCameraActive(!isCameraActive)}
+                  className={`w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all ${isCameraActive ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 text-white/40'}`}
+                >
+                  {isCameraActive ? <Video size={24} /> : <VideoOff size={24} />}
+                </button>
+                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{isRTL ? 'الكاميرا' : 'Camera'}</span>
+              </div>
+
+              <div className="flex flex-col items-center gap-2 -mt-4">
+                <button 
+                  onClick={toggleMic}
+                  className={`w-20 h-20 md:w-28 md:h-28 rounded-full flex items-center justify-center transition-all relative ${isMicActive ? 'bg-emerald-500 text-white shadow-[0_0_40px_rgba(16,185,129,0.4)]' : 'bg-white/5 text-white/40 border-2 border-white/5'}`}
+                >
+                  {isMicActive ? <Mic size={36} className="animate-pulse" /> : <MicOff size={36} />}
+                  {isMicActive && (
+                    <div className="absolute inset-0 rounded-full border-4 border-emerald-400/30 animate-ping" />
+                  )}
+                </button>
+                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-2">{isMicActive ? (isRTL ? 'كتم' : 'Mute') : (isRTL ? 'تحدث' : 'Unmute')}</span>
+              </div>
+
+              <div className="flex flex-col items-center gap-2">
+                <button 
+                  onClick={() => { setIsChatOpen(true); setIsMembersListOpen(false); }}
+                  className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/5 text-white/40 flex items-center justify-center hover:bg-white/10 transition-all"
+                >
+                  <MessageCircle size={24} />
+                </button>
+                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{isRTL ? 'الرسائل' : 'Message'}</span>
+              </div>
+
+              <div className="flex flex-col items-center gap-2">
+                <button 
+                  onClick={onBack}
+                  className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all"
+                >
+                  <PhoneOff size={24} />
+                </button>
+                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{isRTL ? 'مغادرة' : 'Leave'}</span>
+              </div>
+            </div>
           </MotionDiv>
         )}
 
@@ -575,32 +659,37 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
       <AnimatePresence>
         {showControls && (
           <MotionHeader initial={{ y: -100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -100, opacity: 0 }} 
-            className="fixed top-0 left-0 right-0 p-4 md:p-6 flex items-center justify-between z-[1100] bg-gradient-to-b from-black via-black/40 to-transparent pointer-events-auto"
+            className="fixed top-0 left-0 right-0 p-3 md:p-6 flex items-center justify-between z-[1100] bg-black/60 backdrop-blur-xl border-b border-white/5 pointer-events-auto"
           >
-            <div className="flex items-center gap-2 md:gap-3 pointer-events-auto">
-              {!isZenMode && <button onClick={onBack} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/60 hover:bg-white/10 active:scale-90"><ChevronLeft size={18} className={isRTL ? "rotate-180" : ""} /></button>}
-              <div className="flex flex-col">
-                <h2 className="text-[10px] md:text-xs font-black text-white uppercase italic tracking-tighter truncate max-w-[100px] md:max-w-[180px] leading-none">{book.title}</h2>
+            <div className="flex items-center gap-2 md:gap-3 pointer-events-auto overflow-x-auto no-scrollbar max-w-[calc(100vw-100px)] md:max-w-none">
+              {!isZenMode && <button onClick={onBack} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/60 hover:bg-white/10 active:scale-90 shrink-0"><ChevronLeft size={18} className={isRTL ? "rotate-180" : ""} /></button>}
+              <div className="flex flex-col shrink-0">
+                {!roomId && <h2 className="text-[10px] md:text-xs font-black text-white uppercase italic tracking-tighter truncate max-w-[100px] md:max-w-[180px] leading-none">{book.title}</h2>}
                 {roomId && (
-                  <span className="text-[7px] md:text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mt-1">
-                    {isRTL ? 'جلسة مباشرة' : 'LIVE SESSION'} • {formatSessionTime(sessionSeconds)}
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-[8px] md:text-[10px] font-black text-red-600 uppercase tracking-[0.2em] leading-none">
+                      {isRTL ? 'جلسة مباشرة' : 'LIVE SESSION'}
+                    </span>
+                    <span className="text-[7px] md:text-[8px] font-bold text-white/40 uppercase tracking-widest mt-1">
+                      {formatSessionTime(sessionSeconds)}
+                    </span>
+                  </div>
                 )}
               </div>
-              <button onClick={() => setIsArchiveOpen(true)} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 active:scale-90"><ListOrdered size={18} /></button>
-              <button onClick={() => setIsSoundPickerOpen(true)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 ${activeSoundId !== 'none' ? 'bg-red-600 text-white shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}><Volume2 size={18} /></button>
-              <button onClick={() => setIsNightMode(!isNightMode)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 ${isNightMode ? 'bg-red-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>{isNightMode ? <Sun size={18} /> : <Moon size={18} />}</button>
+              <button onClick={() => setIsArchiveOpen(true)} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 active:scale-90 shrink-0"><ListOrdered size={18} /></button>
+              <button onClick={() => setIsSoundPickerOpen(true)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 shrink-0 ${activeSoundId !== 'none' ? 'bg-red-600 text-white shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}><Volume2 size={18} /></button>
+              <button onClick={() => setIsNightMode(!isNightMode)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 shrink-0 ${isNightMode ? 'bg-red-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>{isNightMode ? <Sun size={18} /> : <Moon size={18} />}</button>
               
               {socket && roomId && (
-                <div className="flex items-center gap-2 ml-2 md:ml-4 border-l border-white/10 pl-2 md:pl-4">
-                  <button onClick={() => setIsMembersListOpen(true)} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 relative">
+                <div className="flex items-center gap-2 ml-2 md:ml-4 border-l border-white/10 pl-2 md:pl-4 shrink-0">
+                  <button onClick={() => setIsMembersListOpen(true)} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 relative shrink-0">
                     <Users size={18} />
                     <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">{members.length}</span>
                   </button>
-                  <button onClick={() => setIsChatOpen(!isChatOpen)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all ${isChatOpen ? 'bg-red-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                  <button onClick={() => setIsChatOpen(!isChatOpen)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all shrink-0 ${isChatOpen ? 'bg-red-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
                     <MessageCircle size={18} />
                   </button>
-                  <button onClick={toggleMic} title={isRTL ? 'المناقشة الصوتية' : 'Voice Discussion'} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all relative ${isMicActive ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                  <button onClick={toggleMic} title={isRTL ? 'المناقشة الصوتية' : 'Voice Discussion'} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all relative shrink-0 ${isMicActive ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
                     {isMicActive ? <Mic size={18} className="animate-pulse" /> : <MicOff size={18} />}
                     {isMicActive && (
                       <span className="absolute -top-1 -right-1 flex h-3 w-3">
@@ -616,12 +705,12 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                       setShowCopySuccess(true);
                       setTimeout(() => setShowCopySuccess(false), 2000);
                     }}
-                    className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all relative ${showCopySuccess ? 'bg-emerald-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                    className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all relative shrink-0 ${showCopySuccess ? 'bg-emerald-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
                   >
                     {showCopySuccess ? <Check size={18} /> : <Share2 size={18} />}
                   </button>
                   {isAdmin && (
-                    <button onClick={summonAll} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-emerald-600/20 text-emerald-500 rounded-full hover:bg-emerald-600 hover:text-white transition-all group relative">
+                    <button onClick={summonAll} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-emerald-600/20 text-emerald-500 rounded-full hover:bg-emerald-600 hover:text-white transition-all group relative shrink-0">
                       <Zap size={18} className="group-hover:animate-pulse" />
                       <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-[7px] font-black uppercase px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{isRTL ? 'استدعاء الجميع' : 'Summon All'}</span>
                     </button>
@@ -629,9 +718,9 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2 pointer-events-auto">
-              <button onClick={() => setIsToolsOpen(!isToolsOpen)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 ${isToolsOpen ? 'bg-white text-black shadow-xl' : 'bg-white/5 text-white/40'}`}><Palette size={18} /></button>
-              <button onClick={toggleZenMode} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full border transition-all ${isZenMode ? 'bg-red-600 border-red-600 text-white' : 'bg-white/5 border-white/10 text-white/40'}`}><Maximize2 size={18} /></button>
+            <div className="flex items-center gap-2 pointer-events-auto shrink-0">
+              <button onClick={() => setIsToolsOpen(!isToolsOpen)} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 shrink-0 ${isToolsOpen ? 'bg-white text-black shadow-xl' : 'bg-white/5 text-white/40'}`}><Palette size={18} /></button>
+              <button onClick={toggleZenMode} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full border transition-all shrink-0 ${isZenMode ? 'bg-red-600 border-red-600 text-white' : 'bg-white/5 border-white/10 text-white/40'}`}><Maximize2 size={18} /></button>
             </div>
           </MotionHeader>
         )}
@@ -693,22 +782,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
               </AnimatePresence>
               
               <div className="absolute inset-0 pointer-events-none">
-                {/* Floating Reactions */}
-                <div className="absolute inset-0 overflow-hidden">
-                  {activeReactions.map(r => (
-                    <MotionDiv
-                      key={r.id}
-                      initial={{ y: '100%', opacity: 0, x: `${Math.random() * 80 + 10}%` }}
-                      animate={{ y: '-10%', opacity: [0, 1, 1, 0] }}
-                      transition={{ duration: 3, ease: "easeOut" }}
-                      className="absolute bottom-0 flex flex-col items-center gap-1"
-                    >
-                      <span className="text-2xl">{r.emoji}</span>
-                      <span className="text-[6px] font-black text-white/40 uppercase">{r.name}</span>
-                    </MotionDiv>
-                  ))}
-                </div>
-
                 {/* Ghost Cursors */}
                 {Object.entries(memberCursors).map(([id, cursor]) => (
                   <MotionDiv
@@ -784,28 +857,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
           )}
         </AnimatePresence>
       </div>
-
-      {/* Reactions Picker - Floating on the side */}
-      {socket && roomId && !isZenMode && (
-        <div className="fixed right-6 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-[2500]">
-          {[
-            { emoji: '💡', label: 'Insight' },
-            { emoji: '🔥', label: 'Deep' },
-            { emoji: '❤️', label: 'Love' },
-            { emoji: '👏', label: 'Bravo' },
-            { emoji: '🤔', label: 'Think' }
-          ].map(r => (
-            <button 
-              key={r.emoji} 
-              onClick={() => sendReaction(r.emoji)}
-              className="w-12 h-12 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full flex items-center justify-center text-xl hover:scale-125 hover:bg-red-600/20 transition-all shadow-xl group relative"
-            >
-              {r.emoji}
-              <span className="absolute right-full mr-4 bg-black/80 text-[7px] font-black uppercase px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{r.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
 
       <AnimatePresence>
         {isGoToPageOpen && (
