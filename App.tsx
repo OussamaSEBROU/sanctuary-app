@@ -74,6 +74,7 @@ const App: React.FC = () => {
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
   const [joinRoomInput, setJoinRoomInput] = useState('');
   const [isCollectivePending, setIsCollectivePending] = useState(false);
+  const [sessionName, setSessionName] = useState('');
 
   useEffect(() => {
     const newSocket = io(window.location.origin);
@@ -85,11 +86,35 @@ const App: React.FC = () => {
       setIsAddingMenuOpen(false);
     });
 
+    newSocket.on("connect", () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomFromUrl = urlParams.get('room');
+      if (roomFromUrl) {
+        newSocket.emit("join-room", { roomId: roomFromUrl, name: lang === 'ar' ? 'قارئ منضم' : 'Joined Reader' });
+        setRoomId(roomFromUrl);
+        setIsCollectiveMode(true);
+        setIsJoiningRoom(false);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    });
+
     newSocket.on("room-updated", (data) => {
       setRoomData(data);
-      if (data.bookData && !selectedBook) {
+      if (data.bookData) {
+        setBooks(prevBooks => {
+          const bookExists = prevBooks.some(b => b.id === data.bookData.id);
+          if (!bookExists) {
+            const sessionBook = { ...data.bookData, isCollectiveOnly: true };
+            const updatedBooks = [sessionBook, ...prevBooks];
+            storageService.saveBooks(updatedBooks);
+            return updatedBooks;
+          }
+          return prevBooks;
+        });
+        
         setSelectedBook(data.bookData);
         setView(ViewState.READER);
+        setIsCollectiveMode(true);
       }
     });
 
@@ -104,22 +129,11 @@ const App: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomFromUrl = urlParams.get('room');
-    if (roomFromUrl && socket) {
-      socket.emit("join-room", { roomId: roomFromUrl, name: lang === 'ar' ? 'قارئ منضم' : 'Joined Reader' });
-      setRoomId(roomFromUrl);
-      setIsCollectiveMode(true);
-      setIsJoiningRoom(false);
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, [socket]);
-
   const handleCreateRoom = (book?: Book) => {
     if (socket) {
       socket.emit("create-room", { 
         adminName: lang === 'ar' ? 'أدمن المحراب' : 'Sanctuary Admin',
+        roomName: sessionName || (lang === 'ar' ? 'جلسة قرائية' : 'Reading Session'),
         bookId: book?.id,
         bookData: book
       });
@@ -152,7 +166,7 @@ const App: React.FC = () => {
   };
 
   const confirmDeleteBook = async () => {
-    if (!bookToDelete || deleteConfirmInput !== 'امسح من المحراب') return;
+    if (!bookToDelete || (deleteConfirmInput !== 'امسح من المحراب' && deleteConfirmInput !== 'DELETE FROM SANCTUARY')) return;
     
     await pdfStorage.deleteFile(bookToDelete.id);
     storageService.deleteBook(bookToDelete.id);
@@ -188,7 +202,11 @@ const App: React.FC = () => {
   }, []);
 
   const t = translations[lang];
-  const filteredBooks = books.filter(b => b.shelfId === activeShelfId);
+  const filteredBooks = books.filter(b => {
+    const matchesShelf = b.shelfId === activeShelfId;
+    const isNotCollective = !b.isCollectiveOnly;
+    return matchesShelf && isNotCollective;
+  });
   const fontClass = lang === 'ar' ? 'font-ar' : 'font-en';
 
   const habitData = useMemo(() => storageService.getHabitData(), [books]);
@@ -373,7 +391,8 @@ const App: React.FC = () => {
       cover: `https://picsum.photos/seed/${newBookTitle}/800/1200`,
       content: "[VISUAL_PDF_MODE]", timeSpentSeconds: 0, dailyTimeSeconds: 0,
       lastReadDate: new Date().toISOString().split('T')[0], stars: 0,
-      addedAt: Date.now(), lastPage: 0, annotations: []
+      addedAt: Date.now(), lastPage: 0, annotations: [],
+      isCollectiveOnly: isCollectivePending
     };
     const updated = [newBook, ...books];
     setBooks(updated);
@@ -384,6 +403,7 @@ const App: React.FC = () => {
       setSelectedBook(newBook);
       setView(ViewState.READER);
       setIsCollectivePending(false);
+      setSessionName('');
     }
     
     setNewBookTitle(''); setNewBookAuthor(''); setPendingFileData(null); setIsAddingBook(false);
@@ -798,6 +818,15 @@ const App: React.FC = () => {
                     {isExtracting ? <div className="animate-spin text-[#ff0000]"><Loader2 size={32} className="md:size-10" /></div> : <><div className="p-4 md:p-6 bg-white/5 rounded-full group-hover:bg-[#ff0000] group-hover:text-white transition-all"><Upload size={24} className="text-white/20 md:size-10" /></div><span className="text-[9px] md:text-[11px] uppercase font-black opacity-30 tracking-[0.2em] md:tracking-[0.3em]">{pendingFileData ? newBookTitle : t.uploadHint}</span></>}
                   </div>
                   <div className="grid gap-3 md:gap-4">
+                    {isCollectivePending && (
+                      <input 
+                        type="text" 
+                        value={sessionName} 
+                        onChange={e => setSessionName(e.target.value)} 
+                        placeholder={lang === 'ar' ? 'اسم الجلسة (اختياري)' : 'Session Name (Optional)'} 
+                        className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-6 text-xs md:text-sm font-bold text-white outline-none focus:border-[#ff0000]/50" 
+                      />
+                    )}
                     <input type="text" value={newBookTitle} onChange={e => setNewBookTitle(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-6 text-xs md:text-sm font-bold text-white outline-none focus:border-[#ff0000]/50" placeholder={t.bookTitle} />
                     <input type="text" value={newBookAuthor} onChange={e => setNewBookAuthor(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-6 text-xs md:text-sm font-bold text-white outline-none focus:border-[#ff0000]/50" placeholder={t.author} />
                   </div>
@@ -870,7 +899,7 @@ const App: React.FC = () => {
                       <p className="text-[9px] text-red-600/60 uppercase font-black tracking-widest">
                         {lang === 'ar' ? 'اكتب العبارة التالية للتأكيد:' : 'Type the following phrase to confirm:'}
                       </p>
-                      <p className="text-base font-black text-white italic tracking-tighter">امسح من المحراب</p>
+                      <p className="text-base font-black text-white italic tracking-tighter">{lang === 'ar' ? 'امسح من المحراب' : 'DELETE FROM SANCTUARY'}</p>
                       <input 
                         type="text" 
                         value={deleteConfirmInput} 
