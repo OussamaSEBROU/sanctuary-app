@@ -127,6 +127,47 @@ async function startServer() {
       io.to(roomId).emit("mic-status-changed", { id: socket.id, active });
     });
 
+    socket.on("send-voice-signal", ({ userToSignal, signal, from }) => {
+      const room = Array.from(rooms.values()).find(r => r.members.some(m => m.id === userToSignal));
+      if (room) {
+        const target = room.members.find(m => m.id === userToSignal);
+        if (target) {
+          io.to(target.socketId).emit("voice-signal", { signal, from });
+        }
+      }
+    });
+
+    socket.on("return-voice-signal", ({ signal, to, from }) => {
+      const room = Array.from(rooms.values()).find(r => r.members.some(m => m.id === to));
+      if (room) {
+        const target = room.members.find(m => m.id === to);
+        if (target) {
+          io.to(target.socketId).emit("voice-signal", { signal, from });
+        }
+      }
+    });
+
+    socket.on("request-pdf", ({ roomId, bookId, requesterId }) => {
+      const room = rooms.get(roomId);
+      if (room && room.adminId) {
+        // Find admin's socket
+        const admin = room.members.find(m => m.id === room.adminId);
+        if (admin) {
+          io.to(admin.socketId).emit("pdf-requested", { bookId, requesterId });
+        }
+      }
+    });
+
+    socket.on("send-pdf", ({ roomId, bookId, requesterId, pdfData }) => {
+      const room = rooms.get(roomId);
+      if (room) {
+        const requester = room.members.find(m => m.id === requesterId);
+        if (requester) {
+          io.to(requester.socketId).emit("pdf-received", { bookId, pdfData });
+        }
+      }
+    });
+
     socket.on("disconnect", () => {
       rooms.forEach((room, roomId) => {
         const index = room.members.findIndex(m => m.socketId === socket.id);
