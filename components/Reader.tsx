@@ -87,6 +87,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
   const [isSoundPickerOpen, setIsSoundPickerOpen] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isThumbnailsOpen, setIsThumbnailsOpen] = useState(false);
+  const [isPdfLoading, setIsPdfLoading] = useState(false);
+  const [pdfRequestSent, setPdfRequestSent] = useState(false);
   const [activeSoundId, setActiveSoundId] = useState('none');
   const [volume, setVolume] = useState(0.5);
   const [customSoundName, setCustomSoundName] = useState('');
@@ -144,6 +146,24 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
 
   useEffect(() => {
     if (!socket || !roomId) return;
+
+    socket.on("pdf-requested", async ({ bookId, requesterId }) => {
+      if (isAdmin && bookId === book.id) {
+        console.log("Admin: PDF requested by", requesterId);
+        const data = await pdfStorage.getFile(bookId);
+        if (data) {
+          socket.emit("send-pdf", { roomId, bookId, requesterId, pdfData: data });
+        }
+      }
+    });
+
+    socket.on("pdf-received", async ({ bookId, pdfData }) => {
+      if (bookId === book.id) {
+        console.log("Joiner: PDF received!");
+        await pdfStorage.saveFile(bookId, pdfData);
+        setPdfRequestSent(false); // Trigger reload
+      }
+    });
 
     // Voice Chat Logic
     const setupVoice = async () => {
@@ -372,7 +392,17 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
   useEffect(() => {
     const loadPdf = async () => {
       const fileData = await pdfStorage.getFile(book.id);
-      if (!fileData) { onBack(); return; }
+      if (!fileData) {
+        if (roomId && socket && !pdfRequestSent) {
+          console.log("PDF not found locally, requesting from room...");
+          setIsPdfLoading(true);
+          setPdfRequestSent(true);
+          socket.emit("request-pdf", { roomId, bookId: book.id, requesterId: userId });
+        } else if (!roomId) {
+          onBack();
+        }
+        return;
+      }
       try {
         const pdf = await pdfjsLib.getDocument({ data: fileData }).promise;
         setTotalPages(pdf.numPages);
@@ -391,6 +421,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
 
         await renderSinglePage(currentPage);
         setIsLoading(false);
+        setIsPdfLoading(false);
 
         const loadRest = async () => {
           for (let i = 0; i < pdf.numPages; i++) {
@@ -398,7 +429,10 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
           }
         };
         loadRest();
-      } catch (err) {}
+      } catch (err) {
+        setIsLoading(false);
+        setIsPdfLoading(false);
+      }
     };
     loadPdf();
 
