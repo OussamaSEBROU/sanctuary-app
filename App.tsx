@@ -84,8 +84,51 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    const newSocket = io(window.location.origin);
+    const onboardingSeen = localStorage.getItem('sanctuary_onboarding_seen');
+    const actualBooks = storageService.getBooks();
+    
+    // Use a function to update books to avoid overwriting socket-added books
+    setBooks(prev => {
+      if (prev.length > 0) return prev; // Already loaded or updated by socket
+      return actualBooks;
+    });
+    
+    setShelves(storageService.getShelves());
+    
+    if (!onboardingSeen && actualBooks.length === 0) {
+      setShowOnboarding(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const newSocket = io(window.location.origin, {
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+    });
+    
     setSocket(newSocket);
+
+    newSocket.on("connect", () => {
+      console.log("Connected to server");
+      // Check for room to rejoin
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomToJoin = urlParams.get('room') || localStorage.getItem('sanctuary_room_id');
+      
+      if (roomToJoin) {
+        newSocket.emit("join-room", { 
+          roomId: roomToJoin, 
+          userId,
+          name: lang === 'ar' ? 'قارئ منضم' : 'Joined Reader' 
+        });
+        setRoomId(roomToJoin);
+        setIsCollectiveMode(true);
+        setIsJoiningRoom(false);
+        if (urlParams.get('room')) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+    });
 
     newSocket.on("room-created", (id) => {
       setRoomId(id);
@@ -94,7 +137,7 @@ const App: React.FC = () => {
       setIsAddingMenuOpen(false);
     });
 
-    newSocket.on("room-joined", (data) => {
+    const handleRoomData = (data: any) => {
       setRoomData(data);
       if (data.bookData) {
         setBooks(prevBooks => {
@@ -112,27 +155,10 @@ const App: React.FC = () => {
         setView(ViewState.READER);
         setIsCollectiveMode(true);
       }
-    });
+    };
 
-    newSocket.on("room-updated", (data) => {
-      setRoomData(data);
-      if (data.bookData) {
-        setBooks(prevBooks => {
-          const bookExists = prevBooks.some(b => b.id === data.bookData.id);
-          if (!bookExists) {
-            const sessionBook = { ...data.bookData, isCollectiveOnly: true };
-            const updatedBooks = [sessionBook, ...prevBooks];
-            storageService.saveBooks(updatedBooks);
-            return updatedBooks;
-          }
-          return prevBooks;
-        });
-        
-        setSelectedBook(data.bookData);
-        setView(ViewState.READER);
-        setIsCollectiveMode(true);
-      }
-    });
+    newSocket.on("room-joined", handleRoomData);
+    newSocket.on("room-updated", handleRoomData);
 
     newSocket.on("book-selected", ({ bookId, bookData }) => {
       if (bookData) {
@@ -156,37 +182,7 @@ const App: React.FC = () => {
     return () => {
       newSocket.disconnect();
     };
-  }, []);
-
-  useEffect(() => {
-    if (socket) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const roomFromUrl = urlParams.get('room') || localStorage.getItem('sanctuary_room_id');
-      
-      if (roomFromUrl) {
-        const join = () => {
-          socket.emit("join-room", { 
-            roomId: roomFromUrl, 
-            userId,
-            name: lang === 'ar' ? 'قارئ منضم' : 'Joined Reader' 
-          });
-          setRoomId(roomFromUrl);
-          setIsCollectiveMode(true);
-          setIsJoiningRoom(false);
-          // Only clear URL if it was actually in the URL
-          if (urlParams.get('room')) {
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
-        };
-
-        if (socket.connected) {
-          join();
-        } else {
-          socket.once("connect", join);
-        }
-      }
-    }
-  }, [socket, userId]);
+  }, [userId]); // userId is stable, but good to have
 
   const handleCreateRoom = (book?: Book) => {
     if (socket) {
@@ -1003,3 +999,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+
