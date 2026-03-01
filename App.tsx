@@ -86,15 +86,23 @@ const App: React.FC = () => {
       setIsAddingMenuOpen(false);
     });
 
-    newSocket.on("connect", () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const roomFromUrl = urlParams.get('room');
-      if (roomFromUrl) {
-        newSocket.emit("join-room", { roomId: roomFromUrl, name: lang === 'ar' ? 'قارئ منضم' : 'Joined Reader' });
-        setRoomId(roomFromUrl);
+    newSocket.on("room-joined", (data) => {
+      setRoomData(data);
+      if (data.bookData) {
+        setBooks(prevBooks => {
+          const bookExists = prevBooks.some(b => b.id === data.bookData.id);
+          if (!bookExists) {
+            const sessionBook = { ...data.bookData, isCollectiveOnly: true };
+            const updatedBooks = [sessionBook, ...prevBooks];
+            storageService.saveBooks(updatedBooks);
+            return updatedBooks;
+          }
+          return prevBooks;
+        });
+        
+        setSelectedBook(data.bookData);
+        setView(ViewState.READER);
         setIsCollectiveMode(true);
-        setIsJoiningRoom(false);
-        window.history.replaceState({}, document.title, window.location.pathname);
       }
     });
 
@@ -119,15 +127,42 @@ const App: React.FC = () => {
     });
 
     newSocket.on("book-selected", ({ bookId, bookData }) => {
-      // Handle remote book selection
-      // This might require fetching the PDF if the member doesn't have it
-      // For now, we assume the member has it or we'll implement a way to share
+      if (bookData) {
+        setBooks(prevBooks => {
+          const bookExists = prevBooks.some(b => b.id === bookData.id);
+          if (!bookExists) {
+            const sessionBook = { ...bookData, isCollectiveOnly: true };
+            const updatedBooks = [sessionBook, ...prevBooks];
+            storageService.saveBooks(updatedBooks);
+            return updatedBooks;
+          }
+          return prevBooks;
+        });
+        
+        setSelectedBook(bookData);
+        setView(ViewState.READER);
+        setIsCollectiveMode(true);
+      }
     });
 
     return () => {
       newSocket.disconnect();
     };
   }, []);
+
+  useEffect(() => {
+    if (socket) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomFromUrl = urlParams.get('room');
+      if (roomFromUrl) {
+        socket.emit("join-room", { roomId: roomFromUrl, name: lang === 'ar' ? 'قارئ منضم' : 'Joined Reader' });
+        setRoomId(roomFromUrl);
+        setIsCollectiveMode(true);
+        setIsJoiningRoom(false);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, [socket]);
 
   const handleCreateRoom = (book?: Book) => {
     if (socket) {
