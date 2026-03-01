@@ -21,10 +21,10 @@ async function startServer() {
   const rooms = new Map<string, {
     id: string;
     roomName: string;
-    adminId: string;
+    adminId: string; // This will now be the persistent userId
     bookId: string | null;
     bookData: any | null;
-    members: { id: string; name: string; currentPage: number; cursor: { x: number, y: number } }[];
+    members: { id: string; socketId: string; name: string; currentPage: number; cursor: { x: number, y: number } }[];
     highlights: any[];
     chat: any[];
   }>();
@@ -32,15 +32,15 @@ async function startServer() {
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
 
-    socket.on("create-room", ({ adminName, roomName, bookId, bookData }) => {
+    socket.on("create-room", ({ adminId, adminName, roomName, bookId, bookData }) => {
       const roomId = uuidv4().substring(0, 8);
       rooms.set(roomId, {
         id: roomId,
         roomName: roomName || "Reading Session",
-        adminId: socket.id,
+        adminId: adminId,
         bookId: bookId || null,
         bookData: bookData || null,
-        members: [{ id: socket.id, name: adminName, currentPage: 0, cursor: { x: 0, y: 0 } }],
+        members: [{ id: adminId, socketId: socket.id, name: adminName, currentPage: 0, cursor: { x: 0, y: 0 } }],
         highlights: [],
         chat: []
       });
@@ -48,10 +48,18 @@ async function startServer() {
       socket.emit("room-created", roomId);
     });
 
-    socket.on("join-room", ({ roomId, name }) => {
+    socket.on("join-room", ({ roomId, userId, name }) => {
       const room = rooms.get(roomId);
       if (room) {
-        room.members.push({ id: socket.id, name, currentPage: 0, cursor: { x: 0, y: 0 } });
+        // Check if member already exists (reconnection)
+        const existingMember = room.members.find(m => m.id === userId);
+        if (existingMember) {
+          existingMember.socketId = socket.id;
+          existingMember.name = name;
+        } else {
+          room.members.push({ id: userId, socketId: socket.id, name, currentPage: 0, cursor: { x: 0, y: 0 } });
+        }
+        
         socket.join(roomId);
         // Send full room data to the joiner specifically
         socket.emit("room-joined", room);
@@ -121,17 +129,18 @@ async function startServer() {
 
     socket.on("disconnect", () => {
       rooms.forEach((room, roomId) => {
-        const index = room.members.findIndex(m => m.id === socket.id);
+        const index = room.members.findIndex(m => m.socketId === socket.id);
         if (index !== -1) {
-          room.members.splice(index, 1);
-          if (room.members.length === 0) {
-            rooms.delete(roomId);
-          } else {
-            if (room.adminId === socket.id) {
-              room.adminId = room.members[0].id;
-            }
-            io.to(roomId).emit("room-updated", room);
-          }
+          // Don't remove immediately to allow reconnection
+          // room.members.splice(index, 1);
+          // if (room.members.length === 0) {
+          //   rooms.delete(roomId);
+          // } else {
+          //   io.to(roomId).emit("room-updated", room);
+          // }
+          
+          // Just notify others that someone is offline
+          io.to(roomId).emit("room-updated", room);
         }
       });
     });
