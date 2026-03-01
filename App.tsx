@@ -75,6 +75,13 @@ const App: React.FC = () => {
   const [joinRoomInput, setJoinRoomInput] = useState('');
   const [isCollectivePending, setIsCollectivePending] = useState(false);
   const [sessionName, setSessionName] = useState('');
+  const [userId] = useState(() => {
+    const saved = localStorage.getItem('sanctuary_user_id');
+    if (saved) return saved;
+    const newId = Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('sanctuary_user_id', newId);
+    return newId;
+  });
 
   useEffect(() => {
     const newSocket = io(window.location.origin);
@@ -82,6 +89,7 @@ const App: React.FC = () => {
 
     newSocket.on("room-created", (id) => {
       setRoomId(id);
+      localStorage.setItem('sanctuary_room_id', id);
       setIsCollectiveMode(true);
       setIsAddingMenuOpen(false);
     });
@@ -153,20 +161,37 @@ const App: React.FC = () => {
   useEffect(() => {
     if (socket) {
       const urlParams = new URLSearchParams(window.location.search);
-      const roomFromUrl = urlParams.get('room');
+      const roomFromUrl = urlParams.get('room') || localStorage.getItem('sanctuary_room_id');
+      
       if (roomFromUrl) {
-        socket.emit("join-room", { roomId: roomFromUrl, name: lang === 'ar' ? 'قارئ منضم' : 'Joined Reader' });
-        setRoomId(roomFromUrl);
-        setIsCollectiveMode(true);
-        setIsJoiningRoom(false);
-        window.history.replaceState({}, document.title, window.location.pathname);
+        const join = () => {
+          socket.emit("join-room", { 
+            roomId: roomFromUrl, 
+            userId,
+            name: lang === 'ar' ? 'قارئ منضم' : 'Joined Reader' 
+          });
+          setRoomId(roomFromUrl);
+          setIsCollectiveMode(true);
+          setIsJoiningRoom(false);
+          // Only clear URL if it was actually in the URL
+          if (urlParams.get('room')) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        };
+
+        if (socket.connected) {
+          join();
+        } else {
+          socket.once("connect", join);
+        }
       }
     }
-  }, [socket]);
+  }, [socket, userId]);
 
   const handleCreateRoom = (book?: Book) => {
     if (socket) {
       socket.emit("create-room", { 
+        adminId: userId,
         adminName: lang === 'ar' ? 'أدمن المحراب' : 'Sanctuary Admin',
         roomName: sessionName || (lang === 'ar' ? 'جلسة قرائية' : 'Reading Session'),
         bookId: book?.id,
@@ -177,8 +202,13 @@ const App: React.FC = () => {
 
   const handleJoinRoom = () => {
     if (socket && joinRoomInput) {
-      socket.emit("join-room", { roomId: joinRoomInput, name: lang === 'ar' ? 'قارئ منضم' : 'Joined Reader' });
+      socket.emit("join-room", { 
+        roomId: joinRoomInput, 
+        userId,
+        name: lang === 'ar' ? 'قارئ منضم' : 'Joined Reader' 
+      });
       setRoomId(joinRoomInput);
+      localStorage.setItem('sanctuary_room_id', joinRoomInput);
       setIsCollectiveMode(true);
       setIsJoiningRoom(false);
       // Clean URL
@@ -821,10 +851,12 @@ const App: React.FC = () => {
                 <Reader 
                   book={selectedBook} 
                   lang={lang} 
+                  userId={userId}
                   onBack={() => {
                     handleReaderBack();
                     setIsCollectiveMode(false);
                     setRoomId(null);
+                    localStorage.removeItem('sanctuary_room_id');
                   }} 
                   onStatsUpdate={handleStatsUpdate} 
                   socket={socket}
