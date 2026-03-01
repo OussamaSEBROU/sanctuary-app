@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Socket } from 'socket.io-client';
 import { ChatMessage } from '../types';
+import Peer from 'simple-peer';
 
 declare const pdfjsLib: any;
 
@@ -28,6 +29,7 @@ const MotionHeader = motion.header as any;
 interface ReaderProps {
   book: Book;
   lang: Language;
+  userId: string;
   onBack: () => void;
   onStatsUpdate: (starReached?: number | null) => void;
   socket?: Socket | null;
@@ -63,7 +65,7 @@ const TOOL_ICONS = {
   note: MessageSquare
 };
 
-export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdate, socket, roomId, roomData }) => {
+export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onStatsUpdate, socket, roomId, roomData }) => {
   const [isZenMode, setIsZenMode] = useState(false);
   const [isNightMode, setIsNightMode] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -103,12 +105,14 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   const [activeReactions, setActiveReactions] = useState<any[]>([]);
   const [isMembersListOpen, setIsMembersListOpen] = useState(false);
   const [isMicActive, setIsMicActive] = useState(false);
-  const [isCameraActive, setIsCameraActive] = useState(false);
   const [isSpeakerActive, setIsSpeakerActive] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [showCopySuccess, setShowCopySuccess] = useState(false);
   const [speakingMembers, setSpeakingMembers] = useState<Set<string>>(new Set());
-  const isAdmin = socket && roomData?.adminId === socket.id;
+  const [peers, setPeers] = useState<Record<string, Peer.Instance>>({});
+  const streamRef = useRef<MediaStream | null>(null);
+  const peersRef = useRef<Record<string, Peer.Instance>>({});
+  const isAdmin = socket && roomData?.adminId === userId;
   
   const initialPinchDistance = useRef<number | null>(null);
   const initialScaleOnPinch = useRef<number>(1);
@@ -141,9 +145,91 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
   useEffect(() => {
     if (!socket || !roomId) return;
 
+    // Voice Chat Logic
+    const setupVoice = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        streamRef.current = stream;
+        
+        // Mute by default if mic is not active
+        stream.getAudioTracks().forEach(track => track.enabled = isMicActive);
+      } catch (err) {
+        console.error("Failed to get media stream", err);
+      }
+    };
+
+    setupVoice();
+
     socket.on("room-updated", (data) => {
       setMembers(data.members);
+      
+      // Handle new members for voice chat
+      if (streamRef.current) {
+        data.members.forEach((member: any) => {
+          if (member.id !== userId && !peersRef.current[member.id]) {
+            // Create peer for new member
+            createPeer(member.id, streamRef.current!);
+          }
+        });
+      }
     });
+
+    socket.on("voice-signal", ({ from, signal }) => {
+      const peer = peersRef.current[from];
+      if (peer) {
+        peer.signal(signal);
+      } else if (streamRef.current) {
+        // If we receive a signal from someone we don't have a peer for, create one
+        addPeer(signal, from, streamRef.current!);
+      }
+    });
+
+    const createPeer = (userToSignal: string, stream: MediaStream) => {
+      const peer = new Peer({
+        initiator: true,
+        trickle: false,
+        stream,
+      });
+
+      peer.on("signal", signal => {
+        socket.emit("send-voice-signal", { userToSignal, signal, from: userId });
+      });
+
+      peer.on("stream", stream => {
+        const audio = document.createElement("audio");
+        audio.srcObject = stream;
+        audio.autoplay = true;
+        audio.id = `audio-${userToSignal}`;
+        document.body.appendChild(audio);
+      });
+
+      peersRef.current[userToSignal] = peer;
+      setPeers(prev => ({ ...prev, [userToSignal]: peer }));
+    };
+
+    const addPeer = (incomingSignal: any, callerId: string, stream: MediaStream) => {
+      const peer = new Peer({
+        initiator: false,
+        trickle: false,
+        stream,
+      });
+
+      peer.on("signal", signal => {
+        socket.emit("return-voice-signal", { signal, to: callerId, from: userId });
+      });
+
+      peer.on("stream", stream => {
+        const audio = document.createElement("audio");
+        audio.srcObject = stream;
+        audio.autoplay = true;
+        audio.id = `audio-${callerId}`;
+        document.body.appendChild(audio);
+      });
+
+      peer.signal(incomingSignal);
+      peersRef.current[callerId] = peer;
+      setPeers(prev => ({ ...prev, [callerId]: peer }));
+    };
 
     socket.on("member-moved", ({ id, page }) => {
       setMembers(prev => prev.map(m => m.id === id ? { ...m, currentPage: page } : m));
@@ -202,6 +288,11 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     if (!socket || !roomId) return;
     const newState = !isMicActive;
     setIsMicActive(newState);
+    
+    if (streamRef.current) {
+      streamRef.current.getAudioTracks().forEach(track => track.enabled = newState);
+    }
+    
     socket.emit("toggle-mic", { roomId, active: newState });
   };
 
@@ -246,6 +337,25 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
     document.addEventListener('fullscreenchange', handleFsChange);
     return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, [isZenMode]);
+
+  useEffect(() => {
+    // Handle speaker toggle
+    const audios = document.querySelectorAll('audio[id^="audio-"]');
+    audios.forEach((audio: any) => {
+      audio.muted = !isSpeakerActive;
+    });
+  }, [isSpeakerActive]);
+
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      Object.values(peersRef.current).forEach(peer => peer.destroy());
+      const audios = document.querySelectorAll('audio[id^="audio-"]');
+      audios.forEach(audio => audio.remove());
+    };
+  }, []);
 
   useEffect(() => {
     if (isZenMode) setShowControls(false);
@@ -601,16 +711,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, onBack, onStatsUpdat
                   {isSpeakerActive ? <Volume2 size={24} /> : <VolumeX size={24} />}
                 </button>
                 <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{isRTL ? 'مكبر الصوت' : 'Speaker'}</span>
-              </div>
-
-              <div className="flex flex-col items-center gap-2">
-                <button 
-                  onClick={() => setIsCameraActive(!isCameraActive)}
-                  className={`w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all ${isCameraActive ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 text-white/40'}`}
-                >
-                  {isCameraActive ? <Video size={24} /> : <VideoOff size={24} />}
-                </button>
-                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{isRTL ? 'الكاميرا' : 'Camera'}</span>
               </div>
 
               <div className="flex flex-col items-center gap-2 -mt-4">
