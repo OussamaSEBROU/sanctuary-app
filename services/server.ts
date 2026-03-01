@@ -53,7 +53,10 @@ async function startServer() {
       if (room) {
         room.members.push({ id: socket.id, name, currentPage: 0, cursor: { x: 0, y: 0 } });
         socket.join(roomId);
-        io.to(roomId).emit("room-updated", room);
+        // Send full room data to the joiner specifically
+        socket.emit("room-joined", room);
+        // Notify others
+        socket.to(roomId).emit("room-updated", room);
       } else {
         socket.emit("error", "Room not found");
       }
