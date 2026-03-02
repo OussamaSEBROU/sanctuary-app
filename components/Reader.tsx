@@ -14,7 +14,7 @@ import {
   Moon, Bird, Flame, VolumeX, Sparkles, Search, Droplets,
   Edit3, Sun, Clock, BoxSelect, Palette, Check, LayoutGrid,
   FileAudio, Users, Send, MessageCircle, Share2, Zap,
-  Mic, MicOff, Ghost, BookOpen,
+  Mic, MicOff, Hand, Ghost, BookOpen,
   PhoneOff, Video, VideoOff, MoreVertical, Monitor, ArrowLeft
 } from 'lucide-react';
 import { Socket } from 'socket.io-client';
@@ -730,6 +730,9 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
                         {roomData?.adminId === m.id && (
                           <span className="text-[8px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 font-black uppercase rounded tracking-tighter">Admin</span>
                         )}
+                        {m.isHandRaised && (
+                          <Hand size={12} className="text-yellow-500 animate-bounce" />
+                        )}
                       </div>
                       <span className="text-xs text-white/40 font-medium">
                         {speakingMembers.has(m.id) ? (
@@ -863,7 +866,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
                 <div className="flex items-center gap-1.5 ml-1 md:ml-4 border-l border-white/10 pl-1 md:pl-4 shrink-0">
                   {/* Raise Hand */}
                   <button onClick={toggleHand} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all relative shrink-0 ${isHandRaised ? 'bg-yellow-500 text-black shadow-[0_0_15px_rgba(234,179,8,0.4)]' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
-                    <Ghost size={16} className={isHandRaised ? "animate-bounce" : ""} />
+                    <Hand size={16} className={isHandRaised ? "animate-bounce" : ""} />
                   </button>
 
                   <button onClick={() => setIsMembersListOpen(true)} className="w-8 h-8 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 relative shrink-0">
