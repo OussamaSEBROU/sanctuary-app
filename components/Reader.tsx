@@ -14,7 +14,7 @@ import {
   Moon, Bird, Flame, VolumeX, Sparkles, Search, Droplets,
   Edit3, Sun, Clock, BoxSelect, Palette, Check, LayoutGrid,
   FileAudio, Users, Send, MessageCircle, Share2, Zap,
-  Mic, MicOff, Ghost,
+  Mic, MicOff, Ghost, BookOpen,
   PhoneOff, Video, VideoOff, MoreVertical, Monitor, ArrowLeft
 } from 'lucide-react';
 import { Socket } from 'socket.io-client';
@@ -395,6 +395,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
       if (!fileData) {
         if (roomId && socket && !pdfRequestSent) {
           console.log("PDF not found locally, requesting from room...");
+          setIsLoading(true);
           setIsPdfLoading(true);
           setPdfRequestSent(true);
           socket.emit("request-pdf", { roomId, bookId: book.id, requesterId: userId });
@@ -785,8 +786,25 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
 
         {isLoading && (
           <MotionDiv key="loading-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[5000] bg-black flex flex-col items-center justify-center p-8 text-center pointer-events-none">
-            <Sparkles size={40} className="text-[#ff0000] animate-pulse mb-4" />
-            <h3 className="text-sm font-black uppercase tracking-[0.3em] text-white/80">{t.loadingMessages[0]}</h3>
+            {isPdfLoading ? (
+              <>
+                <div className="relative mb-6">
+                  <div className="w-24 h-24 rounded-full border-4 border-white/5 border-t-red-600 animate-spin" />
+                  <BookOpen className="absolute inset-0 m-auto text-white/20" size={32} />
+                </div>
+                <div className="space-y-2 max-w-xs">
+                  <h3 className="text-xl font-black text-white uppercase italic tracking-tighter leading-none">{lang === 'ar' ? 'جاري استلام المخطوطة' : 'Receiving Manuscript'}</h3>
+                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] leading-relaxed mt-4">
+                    {lang === 'ar' ? 'يتم الآن نقل بيانات الكتاب من الأدمن إلى جهازك لتتمكن من القراءة معه.' : 'The book data is being transferred from the admin to your device so you can read together.'}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <Sparkles size={40} className="text-[#ff0000] animate-pulse mb-4" />
+                <h3 className="text-sm font-black uppercase tracking-[0.3em] text-white/80">{t.loadingMessages[0]}</h3>
+              </>
+            )}
           </MotionDiv>
         )}
       </AnimatePresence>
