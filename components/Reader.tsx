@@ -71,7 +71,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
   const [showControls, setShowControls] = useState(true);
   const [pages, setPages] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(book.lastPage || 0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!roomId);
   const [totalPages, setTotalPages] = useState(0);
   
   const [activeTool, setActiveTool] = useState<Tool>('view');
@@ -440,7 +440,6 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
       if (!fileData) {
         if (roomId && socket && !pdfRequestSent) {
           console.log("PDF not found locally, requesting from room...");
-          setIsLoading(true);
           setIsPdfLoading(true);
           setPdfRequestSent(true);
           socket.emit("request-pdf", { roomId, bookId: book.id, requesterId: userId });
@@ -450,6 +449,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
         return;
       }
       try {
+        setIsLoading(true);
         const pdf = await pdfjsLib.getDocument({ data: fileData }).promise;
         setTotalPages(pdf.numPages);
         const tempPages = new Array(pdf.numPages).fill(null);
@@ -904,7 +904,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
           </MotionDiv>
         )}
 
-        {isLoading && (
+        {isLoading && !remoteScreenStream && (
           <MotionDiv key="loading-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[5000] bg-black flex flex-col items-center justify-center p-8 text-center pointer-events-none">
             <div className="w-12 h-12 rounded-full border-2 border-white/5 border-t-red-600 animate-spin mb-6" />
             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">
