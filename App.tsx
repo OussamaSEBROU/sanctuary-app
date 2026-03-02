@@ -149,6 +149,8 @@ const App: React.FC = () => {
       localStorage.setItem('sanctuary_room_id', id);
       setIsCollectiveMode(true);
       setIsAddingMenuOpen(false);
+      // Set basic room data so admin is recognized immediately
+      setRoomData({ adminId: userId, id });
     });
 
     const handleRoomData = (data: any) => {
@@ -697,12 +699,12 @@ const App: React.FC = () => {
               <div className="relative pointer-events-auto">
                 <button 
                   onClick={() => {
-                    if (isCollectiveMode && roomData?.adminId !== userId) {
+                    if (isCollectiveMode && roomData && roomData.adminId !== userId) {
                       return;
                     }
                     setIsAddingMenuOpen(!isAddingMenuOpen);
                   }} 
-                  className={`px-4 md:px-8 py-2.5 md:py-4 rounded-full transition-all flex items-center gap-1.5 active:scale-95 shrink-0 ${isAddingMenuOpen ? 'bg-[#ff0000] text-white' : 'bg-white text-black'} text-[8px] md:text-[11px] font-black uppercase tracking-[0.1em] md:tracking-[0.3em] shadow-2xl ${isCollectiveMode && roomData?.adminId !== userId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`px-4 md:px-8 py-2.5 md:py-4 rounded-full transition-all flex items-center gap-1.5 active:scale-95 shrink-0 ${isAddingMenuOpen ? 'bg-[#ff0000] text-white' : 'bg-white text-black'} text-[8px] md:text-[11px] font-black uppercase tracking-[0.1em] md:tracking-[0.3em] shadow-2xl ${isCollectiveMode && roomData && roomData.adminId !== userId ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Plus size={12} className={`md:size-3.5 transition-transform ${isAddingMenuOpen ? 'rotate-45' : ''}`} />
                   {lang === 'ar' ? 'إضافة' : 'Add'}
