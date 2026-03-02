@@ -127,6 +127,10 @@ async function startServer() {
       io.to(roomId).emit("mic-status-changed", { id: socket.id, active });
     });
 
+    socket.on("raise-hand", ({ roomId, raised }) => {
+      io.to(roomId).emit("hand-raised", { id: socket.id, raised });
+    });
+
     socket.on("send-voice-signal", ({ userToSignal, signal, from }) => {
       const room = Array.from(rooms.values()).find(r => r.members.some(m => m.id === userToSignal));
       if (room) {
