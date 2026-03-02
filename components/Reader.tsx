@@ -110,6 +110,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
   const [isSpeakerActive, setIsSpeakerActive] = useState(true);
   const [isHandRaised, setIsHandRaised] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [remoteScreenStream, setRemoteScreenStream] = useState<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
   const [showCopySuccess, setShowCopySuccess] = useState(false);
   const [speakingMembers, setSpeakingMembers] = useState<Set<string>>(new Set());
   const [peers, setPeers] = useState<Record<string, Peer.Instance>>({});
@@ -206,10 +208,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
     });
 
     const createPeer = (userToSignal: string, stream: MediaStream) => {
+      const combinedStream = new MediaStream([...stream.getTracks()]);
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(track => combinedStream.addTrack(track));
+      }
+
       const peer = new Peer({
         initiator: true,
         trickle: false,
-        stream,
+        stream: combinedStream,
       });
 
       peer.on("signal", signal => {
@@ -217,11 +224,17 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
       });
 
       peer.on("stream", stream => {
-        const audio = document.createElement("audio");
-        audio.srcObject = stream;
-        audio.autoplay = true;
-        audio.id = `audio-${userToSignal}`;
-        document.body.appendChild(audio);
+        if (stream.getVideoTracks().length > 0) {
+          setRemoteScreenStream(stream);
+        }
+        
+        if (stream.getAudioTracks().length > 0) {
+          const audio = document.createElement("audio");
+          audio.srcObject = stream;
+          audio.autoplay = true;
+          audio.id = `audio-${userToSignal}`;
+          document.body.appendChild(audio);
+        }
       });
 
       peersRef.current[userToSignal] = peer;
@@ -229,10 +242,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
     };
 
     const addPeer = (incomingSignal: any, callerId: string, stream: MediaStream) => {
+      const combinedStream = new MediaStream([...stream.getTracks()]);
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(track => combinedStream.addTrack(track));
+      }
+
       const peer = new Peer({
         initiator: false,
         trickle: false,
-        stream,
+        stream: combinedStream,
       });
 
       peer.on("signal", signal => {
@@ -240,11 +258,17 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
       });
 
       peer.on("stream", stream => {
-        const audio = document.createElement("audio");
-        audio.srcObject = stream;
-        audio.autoplay = true;
-        audio.id = `audio-${callerId}`;
-        document.body.appendChild(audio);
+        if (stream.getVideoTracks().length > 0) {
+          setRemoteScreenStream(stream);
+        }
+
+        if (stream.getAudioTracks().length > 0) {
+          const audio = document.createElement("audio");
+          audio.srcObject = stream;
+          audio.autoplay = true;
+          audio.id = `audio-${callerId}`;
+          document.body.appendChild(audio);
+        }
       });
 
       peer.signal(incomingSignal);
@@ -487,6 +511,44 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
     }
   };
 
+  const startScreenShare = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      screenStreamRef.current = stream;
+      setIsScreenSharing(true);
+      
+      // Add track to all existing peers
+      Object.values(peersRef.current).forEach(peer => {
+        stream.getTracks().forEach(track => {
+          peer.addTrack(track, stream);
+        });
+      });
+
+      stream.getVideoTracks()[0].onended = () => stopScreenShare();
+    } catch (err) {
+      console.error("Error sharing screen:", err);
+      setIsScreenSharing(false);
+    }
+  };
+
+  const stopScreenShare = () => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(track => track.stop());
+      screenStreamRef.current = null;
+    }
+    setIsScreenSharing(false);
+    // SimplePeer doesn't have a clean way to remove tracks without renegotiation in some versions,
+    // but stopping tracks will stop the stream on the other end.
+  };
+
+  const toggleScreenShare = () => {
+    if (isScreenSharing) {
+      stopScreenShare();
+    } else {
+      startScreenShare();
+    }
+  };
+
   const jumpToPage = (e: React.FormEvent) => {
     e.preventDefault();
     const pageNum = parseInt(targetPageInput, 10) - 1;
@@ -631,6 +693,37 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
       <audio ref={audioRef} loop hidden preload="auto" />
       <input type="file" ref={audioInputRef} accept=".mp3,audio/mpeg" hidden onChange={handleCustomAudioUpload} />
 
+      {/* Live Stream View for Guests */}
+      <AnimatePresence>
+        {remoteScreenStream && (
+          <MotionDiv 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-[1500] bg-black flex flex-col items-center justify-center pointer-events-auto"
+          >
+            <video 
+              autoPlay 
+              playsInline 
+              ref={video => { if (video) video.srcObject = remoteScreenStream; }} 
+              className="w-full h-full object-contain"
+            />
+            <div className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-red-600 px-6 py-2 rounded-full shadow-2xl">
+              <div className="w-2 h-2 rounded-full bg-white animate-ping" />
+              <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] text-white">
+                {isRTL ? 'بث مباشر من المشرف' : 'Live from Admin'}
+              </span>
+            </div>
+            <button 
+              onClick={() => setRemoteScreenStream(null)}
+              className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all"
+            >
+              <X size={20} />
+            </button>
+          </MotionDiv>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {isChatOpen && (
           <MotionDiv 
@@ -697,12 +790,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => setIsScreenSharing(!isScreenSharing)}
-                  className={`p-2 transition-colors ${isScreenSharing ? 'text-blue-400' : 'text-white/60 hover:text-white'}`}
-                >
-                  <Monitor size={20} />
-                </button>
+                {isAdmin && (
+                  <button 
+                    onClick={toggleScreenShare}
+                    className={`p-2 transition-colors ${isScreenSharing ? 'text-red-500 animate-pulse' : 'text-white/60 hover:text-white'}`}
+                    title={isRTL ? 'بث مباشر للجلسة' : 'Live Stream Session'}
+                  >
+                    <Monitor size={20} />
+                  </button>
+                )}
                 <button className="p-2 text-white/60 hover:text-white transition-colors">
                   <MoreVertical size={20} />
                 </button>
