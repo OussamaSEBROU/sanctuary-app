@@ -83,11 +83,12 @@ const App: React.FC = () => {
     return newId;
   });
 
-  // Persistent Room ID sync from URL
+  // Persistent Room ID sync from URL - CRITICAL FIX
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const roomFromUrl = urlParams.get('room');
     if (roomFromUrl) {
+      console.log("Found room in URL:", roomFromUrl);
       localStorage.setItem('sanctuary_room_id', roomFromUrl);
       setRoomId(roomFromUrl);
       setIsCollectiveMode(true);
@@ -113,16 +114,19 @@ const App: React.FC = () => {
   useEffect(() => {
     const newSocket = io(window.location.origin, {
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 20,
       reconnectionDelay: 1000,
+      timeout: 20000,
     });
     
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
+      console.log("Socket connected, checking for room...");
       const roomToJoin = localStorage.getItem('sanctuary_room_id');
       
       if (roomToJoin) {
+        console.log("Emitting join-room for:", roomToJoin);
         newSocket.emit("join-room", { 
           roomId: roomToJoin, 
           userId,
@@ -148,6 +152,7 @@ const App: React.FC = () => {
     });
 
     const handleRoomData = (data: any) => {
+      console.log("Received room data:", data);
       setRoomData(data);
       if (data.bookData) {
         setBooks(prevBooks => {
@@ -162,8 +167,11 @@ const App: React.FC = () => {
         });
         
         setSelectedBook(data.bookData);
-        // Only switch view if not already in reader or if book changed
-        setView(prev => prev === ViewState.READER ? prev : ViewState.READER);
+        // FORCE view change to READER
+        setView(ViewState.READER);
+        setIsCollectiveMode(true);
+      } else {
+        // If no book selected, stay on shelf but in collective mode
         setIsCollectiveMode(true);
       }
     };
@@ -177,7 +185,7 @@ const App: React.FC = () => {
         localStorage.removeItem('sanctuary_room_id');
         setRoomId(null);
         setIsCollectiveMode(false);
-        if (view === ViewState.READER && roomData) {
+        if (view === ViewState.READER) {
           setView(ViewState.SHELF);
         }
       }
@@ -346,42 +354,60 @@ const App: React.FC = () => {
   const activeBook = filteredBooks[activeBookIndex];
   const activeBookStats = activeBook ? { minutes: Math.floor(activeBook.timeSpentSeconds / 60), stars: activeBook.stars } : { minutes: 0, stars: 0 };
 
-  const insights: Insight[] = useMemo(() => [
-    { text: lang === 'ar' ? 'أنت تقرأ بانتظام مذهل!' : 'You read with amazing regularity!', icon: <Sparkles className="text-yellow-400" size={18} />, color: 'bg-yellow-400/10 border-yellow-400/20', isShining: true },
-    { text: lang === 'ar' ? 'لقد وصلت لـ 5 نجوم في كتاب واحد' : 'You reached 5 stars in one book', icon: <Star className="text-emerald-400" size={18} />, color: 'bg-emerald-400/10 border-emerald-400/20' },
-    { text: lang === 'ar' ? 'وقتك المفضل للقراءة هو المساء' : 'Your favorite reading time is evening', icon: <Clock className="text-blue-400" size={18} />, color: 'bg-blue-400/10 border-blue-400/20' }
-  ], [lang]);
-
   return (
     <Layout lang={lang}>
-      <div className={`flex flex-col h-screen-safe overflow-y-auto custom-scroll ${fontClass}`}>
+      <div className={`flex flex-col h-screen overflow-hidden ${fontClass} bg-[#000a00]`}>
         <AnimatePresence>
           {isSidebarOpen && (
-            <MotionAside initial={{ x: lang === 'ar' ? 300 : -300 }} animate={{ x: 0 }} exit={{ x: lang === 'ar' ? 300 : -300 }} className={`fixed inset-y-0 ${lang === 'ar' ? 'right-0' : 'left-0'} w-72 bg-[#0b140b] border-${lang === 'ar' ? 'l' : 'r'} border-white/5 z-[8000] p-8 flex flex-col shadow-2xl`}>
-              <div className="flex items-center justify-between mb-12">
-                <h2 className="text-xl font-black uppercase italic tracking-tighter text-white">{t.library}</h2>
-                <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-full bg-white/5 text-white/40 hover:text-white transition-colors"><X size={20} /></button>
+            <MotionAside 
+              initial={{ x: lang === 'ar' ? '100%' : '-100%' }} 
+              animate={{ x: 0 }} 
+              exit={{ x: lang === 'ar' ? '100%' : '-100%' }} 
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className={`fixed inset-y-0 ${lang === 'ar' ? 'right-0' : 'left-0'} w-80 bg-black/95 backdrop-blur-3xl border-${lang === 'ar' ? 'l' : 'r'} border-white/10 z-[8000] p-10 flex flex-col shadow-[0_0_100px_rgba(0,0,0,1)]`}
+            >
+              <div className="flex items-center justify-between mb-16">
+                <div className="flex flex-col">
+                  <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white leading-none">{t.library}</h2>
+                  <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mt-2">{t.sanctuary}</span>
+                </div>
+                <button onClick={() => setIsSidebarOpen(false)} className="p-3 rounded-full bg-white/5 text-white/40 hover:text-white transition-all hover:rotate-90"><X size={20} /></button>
               </div>
-              <div className="flex-1 space-y-2 overflow-y-auto custom-scroll pr-2">
-                <button onClick={() => { setActiveShelfId('default'); setActiveBookIndex(0); setView(ViewState.SHELF); setIsSidebarOpen(false); }} className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all group ${activeShelfId === 'default' ? 'bg-white text-black' : 'text-white/40 hover:bg-white/5'}`}>
-                  <div className="flex items-center gap-3"><Library size={18} /> <span className="text-xs font-black uppercase tracking-widest">{t.defaultShelf}</span></div>
-                  <span className="text-[10px] font-black opacity-40">{books.filter(b => b.shelfId === 'default').length}</span>
+              
+              <div className="flex-1 space-y-3 overflow-y-auto no-scrollbar pr-2">
+                <button 
+                  onClick={() => { setActiveShelfId('default'); setActiveBookIndex(0); setView(ViewState.SHELF); setIsSidebarOpen(false); }} 
+                  className={`w-full flex items-center justify-between p-5 rounded-3xl transition-all group ${activeShelfId === 'default' ? 'bg-white text-black shadow-2xl scale-[1.02]' : 'text-white/40 hover:bg-white/5'}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <Library size={20} className={activeShelfId === 'default' ? 'text-black' : 'text-white/20'} /> 
+                    <span className="text-xs font-black uppercase tracking-widest">{t.defaultShelf}</span>
+                  </div>
+                  <span className={`text-[10px] font-black ${activeShelfId === 'default' ? 'text-black/40' : 'text-white/10'}`}>{books.filter(b => b.shelfId === 'default').length}</span>
                 </button>
+                
                 {shelves.map(shelf => (
                   <div key={shelf.id} className="group relative">
-                    <button onClick={() => { setActiveShelfId(shelf.id); setActiveBookIndex(0); setView(ViewState.SHELF); setIsSidebarOpen(false); }} className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all ${activeShelfId === shelf.id ? 'bg-white text-black' : 'text-white/40 hover:bg-white/5'}`}>
-                      <div className="flex items-center gap-3"><Library size={18} /> <span className="text-xs font-black uppercase tracking-widest">{shelf.name}</span></div>
-                      <span className="text-[10px] font-black opacity-40">{books.filter(b => b.shelfId === shelf.id).length}</span>
+                    <button 
+                      onClick={() => { setActiveShelfId(shelf.id); setActiveBookIndex(0); setView(ViewState.SHELF); setIsSidebarOpen(false); }} 
+                      className={`w-full flex items-center justify-between p-5 rounded-3xl transition-all ${activeShelfId === shelf.id ? 'bg-white text-black shadow-2xl scale-[1.02]' : 'text-white/40 hover:bg-white/5'}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <Library size={20} className={activeShelfId === shelf.id ? 'text-black' : 'text-white/20'} /> 
+                        <span className="text-xs font-black uppercase tracking-widest">{shelf.name}</span>
+                      </div>
+                      <span className={`text-[10px] font-black ${activeShelfId === shelf.id ? 'text-black/40' : 'text-white/10'}`}>{books.filter(b => b.shelfId === shelf.id).length}</span>
                     </button>
-                    <button onClick={(e) => handleDeleteShelf(e, shelf.id)} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
+                    <button onClick={(e) => handleDeleteShelf(e, shelf.id)} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:scale-125"><Trash2 size={16} /></button>
                   </div>
                 ))}
               </div>
-              <div className="pt-8 space-y-4">
-                <button onClick={() => { setIsAddingShelf(true); setIsSidebarOpen(false); }} className="w-full py-4 rounded-2xl border border-dashed border-white/10 text-white/40 hover:border-white/30 hover:text-white transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest"><Plus size={16} /> {t.newShelf}</button>
-                <div className="flex gap-2">
-                  <button onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')} className="flex-1 p-4 rounded-2xl bg-white/5 text-white/40 hover:text-white transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest"><Globe size={16} /> {lang === 'ar' ? 'EN' : 'AR'}</button>
-                  <button onClick={() => setView(ViewState.DASHBOARD)} className="flex-1 p-4 rounded-2xl bg-white/5 text-white/40 hover:text-white transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest"><LayoutDashboard size={16} /></button>
+              
+              <div className="pt-10 space-y-5">
+                <button onClick={() => { setIsAddingShelf(true); setIsSidebarOpen(false); }} className="w-full py-5 rounded-3xl border-2 border-dashed border-white/5 text-white/20 hover:border-[#ff0000]/30 hover:text-[#ff0000] hover:bg-[#ff0000]/5 transition-all flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-[0.2em]"><Plus size={18} /> {t.newShelf}</button>
+                <div className="flex gap-3">
+                  <button onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')} className="flex-1 p-5 rounded-3xl bg-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest border border-white/5"><Globe size={18} /> {lang === 'ar' ? 'EN' : 'AR'}</button>
+                  <button onClick={() => setView(ViewState.DASHBOARD)} className="flex-1 p-5 rounded-3xl bg-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest border border-white/5"><LayoutDashboard size={18} /></button>
                 </div>
               </div>
             </MotionAside>
@@ -418,16 +444,7 @@ const App: React.FC = () => {
                     </MotionDiv>
                   </div>
                 </header>
-                <div className="mt-4 mb-2 flex justify-center px-6 pointer-events-none min-h-[40px]">
-                  <AnimatePresence mode="wait">
-                    {showInsights && insights.length > 0 && (
-                      <MotionDiv key={activeInsightIndex} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 0.9 }} exit={{ y: -20, opacity: 0 }} className={`flex items-center gap-2 px-5 py-3 rounded-full border border-white/10 backdrop-blur-2xl ${insights[activeInsightIndex % insights.length].color}`}>
-                        {insights[activeInsightIndex % insights.length].icon}
-                        <span className="text-[9px] md:text-[11px] font-black uppercase tracking-[0.1em] text-white whitespace-nowrap">{insights[activeInsightIndex % insights.length].text}</span>
-                      </MotionDiv>
-                    )}
-                  </AnimatePresence>
-                </div>
+                
                 <div className="flex-1 flex flex-col justify-center items-center pb-12 md:pb-20">
                   <Shelf books={filteredBooks} lang={lang} activeIndex={activeBookIndex} onActiveIndexChange={setActiveBookIndex} onSelectBook={(b) => { setSelectedBook(b); setView(ViewState.READER); }} onAddBook={() => setIsAddingBook(true)} onDeleteBook={(b) => setBookToDelete(b)} />
                 </div>
