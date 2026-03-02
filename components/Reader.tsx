@@ -108,6 +108,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
   const [isMembersListOpen, setIsMembersListOpen] = useState(false);
   const [isMicActive, setIsMicActive] = useState(false);
   const [isSpeakerActive, setIsSpeakerActive] = useState(true);
+  const [isHandRaised, setIsHandRaised] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [showCopySuccess, setShowCopySuccess] = useState(false);
   const [speakingMembers, setSpeakingMembers] = useState<Set<string>>(new Set());
@@ -292,6 +293,18 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
       });
     });
 
+    socket.on("hand-raised", ({ id, raised }) => {
+      setMembers(prev => prev.map(m => m.id === id ? { ...m, isHandRaised: raised } : m));
+      if (raised) {
+        const member = members.find(m => m.id === id);
+        const newReaction = { id: Math.random(), emoji: '✋', name: member?.name || '...' };
+        setActiveReactions(prev => [...prev, newReaction]);
+        setTimeout(() => {
+          setActiveReactions(prev => prev.filter(r => r.id !== newReaction.id));
+        }, 5000);
+      }
+    });
+
     return () => {
       socket.off("room-updated");
       socket.off("member-moved");
@@ -301,8 +314,16 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
       socket.off("new-reaction");
       socket.off("summoned");
       socket.off("mic-status-changed");
+      socket.off("hand-raised");
     };
   }, [socket, roomId, members]);
+
+  const toggleHand = () => {
+    if (!socket || !roomId) return;
+    const newState = !isHandRaised;
+    setIsHandRaised(newState);
+    socket.emit("raise-hand", { roomId, raised: newState });
+  };
 
   const toggleMic = () => {
     if (!socket || !roomId) return;
@@ -447,7 +468,7 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
       if (timerRef.current) clearInterval(timerRef.current); 
       if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); 
     };
-  }, [book.id]);
+  }, [book.id, pdfRequestSent]);
 
   useEffect(() => { 
     storageService.updateBookAnnotations(book.id, annotations); 
@@ -828,36 +849,23 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
                 )}
               </div>
 
-              {!roomId && (
-                <>
-                  <div className="h-4 w-[1px] bg-white/10 mx-1 shrink-0" />
-                  <button onClick={() => setIsArchiveOpen(true)} className="w-8 h-8 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 active:scale-90 shrink-0">
-                    <ListOrdered size={16} />
-                  </button>
-                  <button onClick={() => setIsSoundPickerOpen(true)} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 shrink-0 ${activeSoundId !== 'none' ? 'bg-red-600 text-white shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
-                    <Volume2 size={16} />
-                  </button>
-                </>
-              )}
+              <div className="h-4 w-[1px] bg-white/10 mx-1 shrink-0" />
               
-              {!roomId && (
-                <>
-                  <button onClick={() => setIsNightMode(!isNightMode)} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 shrink-0 ${isNightMode ? 'bg-red-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
-                    {isNightMode ? <Sun size={16} /> : <Moon size={16} />}
-                  </button>
-                  <div className="flex items-center gap-1.5 pointer-events-auto shrink-0">
-                    <button onClick={() => setIsToolsOpen(!isToolsOpen)} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 shrink-0 ${isToolsOpen ? 'bg-white text-black shadow-xl' : 'bg-white/5 text-white/40'}`}>
-                      <Palette size={16} />
-                    </button>
-                    <button onClick={toggleZenMode} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full border transition-all shrink-0 ${isZenMode ? 'bg-red-600 border-red-600 text-white' : 'bg-white/5 border-white/10 text-white/40'}`}>
-                      <Maximize2 size={16} />
-                    </button>
-                  </div>
-                </>
-              )}
+              <button onClick={() => setIsArchiveOpen(true)} className="w-8 h-8 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 active:scale-90 shrink-0">
+                <ListOrdered size={16} />
+              </button>
+              
+              <button onClick={() => setIsNightMode(!isNightMode)} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 shrink-0 ${isNightMode ? 'bg-red-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                {isNightMode ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
               
               {socket && roomId && (
                 <div className="flex items-center gap-1.5 ml-1 md:ml-4 border-l border-white/10 pl-1 md:pl-4 shrink-0">
+                  {/* Raise Hand */}
+                  <button onClick={toggleHand} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all relative shrink-0 ${isHandRaised ? 'bg-yellow-500 text-black shadow-[0_0_15px_rgba(234,179,8,0.4)]' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                    <Ghost size={16} className={isHandRaised ? "animate-bounce" : ""} />
+                  </button>
+
                   <button onClick={() => setIsMembersListOpen(true)} className="w-8 h-8 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 relative shrink-0">
                     <Users size={16} />
                     <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[7px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center">
@@ -886,6 +894,15 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
                   </button>
                 </div>
               )}
+            </div>
+
+            <div className="flex items-center gap-1.5 pointer-events-auto shrink-0">
+              <button onClick={() => setIsToolsOpen(!isToolsOpen)} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 shrink-0 ${isToolsOpen ? 'bg-white text-black shadow-xl' : 'bg-white/5 text-white/40'}`}>
+                <Palette size={16} />
+              </button>
+              <button onClick={toggleZenMode} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full border transition-all shrink-0 ${isZenMode ? 'bg-red-600 border-red-600 text-white' : 'bg-white/5 border-white/10 text-white/40'}`}>
+                <Maximize2 size={16} />
+              </button>
             </div>
           </MotionHeader>
         )}
