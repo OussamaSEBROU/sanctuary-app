@@ -799,43 +799,62 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
           <MotionHeader initial={{ y: -100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -100, opacity: 0 }} 
             className="fixed top-0 left-0 right-0 p-2 md:p-6 flex items-center justify-between z-[1100] bg-black/80 backdrop-blur-2xl border-b border-white/10 pointer-events-auto"
           >
-            <div className="flex items-center gap-1.5 md:gap-3 pointer-events-auto overflow-x-auto no-scrollbar max-w-[calc(100vw-110px)] md:max-w-none">
-              {!isZenMode && (
+            <div className="flex items-center gap-2 md:gap-4 pointer-events-auto">
+              {!roomId ? (
                 <button onClick={onBack} className="w-8 h-8 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/60 hover:bg-white/10 active:scale-90 shrink-0">
                   <ChevronLeft size={16} className={isRTL ? "rotate-180" : ""} />
                 </button>
+              ) : (
+                <button onClick={onBack} className="flex items-center gap-2 px-3 py-1.5 md:px-5 md:py-2.5 bg-red-600/10 text-red-500 rounded-full hover:bg-red-600 hover:text-white transition-all group active:scale-95 shrink-0">
+                  <PhoneOff size={14} className="md:size-5" />
+                  <span className="text-[9px] md:text-xs font-black uppercase tracking-widest">{isRTL ? 'مغادرة' : 'Leave'}</span>
+                </button>
               )}
-              
+
               <div className="flex flex-col shrink-0 px-1">
                 {!roomId ? (
                   <h2 className="text-[9px] md:text-xs font-black text-white uppercase italic tracking-tighter truncate max-w-[80px] md:max-w-[180px] leading-none">
                     {book.title}
                   </h2>
                 ) : (
-                  <div className="flex flex-col">
-                    <span className="text-[7px] md:text-[10px] font-black text-red-500 uppercase tracking-[0.2em] leading-none">
+                  <>
+                    <span className="text-[7px] md:text-[9px] font-black text-red-500 uppercase tracking-[0.2em] leading-none">
                       {isRTL ? 'جلسة مباشرة' : 'LIVE SESSION'}
                     </span>
-                    <span className="text-[6px] md:text-[8px] font-bold text-white/30 uppercase tracking-widest mt-1">
+                    <span className="text-[6px] md:text-[8px] font-bold text-white/30 uppercase tracking-widest mt-0.5">
                       {formatSessionTime(sessionSeconds)}
                     </span>
-                  </div>
+                  </>
                 )}
               </div>
 
-              <div className="h-4 w-[1px] bg-white/10 mx-1 shrink-0" />
-
-              <button onClick={() => setIsArchiveOpen(true)} className="w-8 h-8 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 active:scale-90 shrink-0">
-                <ListOrdered size={16} />
-              </button>
+              {!roomId && (
+                <>
+                  <div className="h-4 w-[1px] bg-white/10 mx-1 shrink-0" />
+                  <button onClick={() => setIsArchiveOpen(true)} className="w-8 h-8 md:w-11 md:h-11 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:bg-white/10 active:scale-90 shrink-0">
+                    <ListOrdered size={16} />
+                  </button>
+                  <button onClick={() => setIsSoundPickerOpen(true)} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 shrink-0 ${activeSoundId !== 'none' ? 'bg-red-600 text-white shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                    <Volume2 size={16} />
+                  </button>
+                </>
+              )}
               
-              <button onClick={() => setIsSoundPickerOpen(true)} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 shrink-0 ${activeSoundId !== 'none' ? 'bg-red-600 text-white shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
-                <Volume2 size={16} />
-              </button>
-              
-              <button onClick={() => setIsNightMode(!isNightMode)} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 shrink-0 ${isNightMode ? 'bg-red-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
-                {isNightMode ? <Sun size={16} /> : <Moon size={16} />}
-              </button>
+              {!roomId && (
+                <>
+                  <button onClick={() => setIsNightMode(!isNightMode)} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 shrink-0 ${isNightMode ? 'bg-red-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                    {isNightMode ? <Sun size={16} /> : <Moon size={16} />}
+                  </button>
+                  <div className="flex items-center gap-1.5 pointer-events-auto shrink-0">
+                    <button onClick={() => setIsToolsOpen(!isToolsOpen)} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 shrink-0 ${isToolsOpen ? 'bg-white text-black shadow-xl' : 'bg-white/5 text-white/40'}`}>
+                      <Palette size={16} />
+                    </button>
+                    <button onClick={toggleZenMode} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full border transition-all shrink-0 ${isZenMode ? 'bg-red-600 border-red-600 text-white' : 'bg-white/5 border-white/10 text-white/40'}`}>
+                      <Maximize2 size={16} />
+                    </button>
+                  </div>
+                </>
+              )}
               
               {socket && roomId && (
                 <div className="flex items-center gap-1.5 ml-1 md:ml-4 border-l border-white/10 pl-1 md:pl-4 shrink-0">
@@ -865,23 +884,8 @@ export const Reader: React.FC<ReaderProps> = ({ book, lang, userId, onBack, onSt
                   >
                     {showCopySuccess ? <Check size={16} /> : <Share2 size={16} />}
                   </button>
-                  
-                  {isAdmin && (
-                    <button onClick={summonAll} className="w-8 h-8 md:w-11 md:h-11 flex items-center justify-center bg-emerald-600/20 text-emerald-500 rounded-full hover:bg-emerald-600 hover:text-white transition-all shrink-0">
-                      <Zap size={16} />
-                    </button>
-                  )}
                 </div>
               )}
-            </div>
-
-            <div className="flex items-center gap-1.5 pointer-events-auto shrink-0">
-              <button onClick={() => setIsToolsOpen(!isToolsOpen)} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all active:scale-90 shrink-0 ${isToolsOpen ? 'bg-white text-black shadow-xl' : 'bg-white/5 text-white/40'}`}>
-                <Palette size={16} />
-              </button>
-              <button onClick={toggleZenMode} className={`w-8 h-8 md:w-11 md:h-11 flex items-center justify-center rounded-full border transition-all shrink-0 ${isZenMode ? 'bg-red-600 border-red-600 text-white' : 'bg-white/5 border-white/10 text-white/40'}`}>
-                <Maximize2 size={16} />
-              </button>
             </div>
           </MotionHeader>
         )}
