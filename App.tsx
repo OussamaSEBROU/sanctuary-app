@@ -83,6 +83,17 @@ const App: React.FC = () => {
     return newId;
   });
 
+  // Persistent Room ID sync from URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomFromUrl = urlParams.get('room');
+    if (roomFromUrl) {
+      localStorage.setItem('sanctuary_room_id', roomFromUrl);
+      setRoomId(roomFromUrl);
+      setIsCollectiveMode(true);
+    }
+  }, []);
+
   useEffect(() => {
     const onboardingSeen = localStorage.getItem('sanctuary_onboarding_seen');
     const actualBooks = storageService.getBooks();
@@ -109,8 +120,7 @@ const App: React.FC = () => {
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const roomToJoin = urlParams.get('room') || localStorage.getItem('sanctuary_room_id');
+      const roomToJoin = localStorage.getItem('sanctuary_room_id');
       
       if (roomToJoin) {
         newSocket.emit("join-room", { 
@@ -121,6 +131,9 @@ const App: React.FC = () => {
         setRoomId(roomToJoin);
         setIsCollectiveMode(true);
         setIsJoiningRoom(false);
+        
+        // Clean URL if present
+        const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('room')) {
           window.history.replaceState({}, document.title, window.location.pathname);
         }
@@ -149,13 +162,26 @@ const App: React.FC = () => {
         });
         
         setSelectedBook(data.bookData);
-        setView(ViewState.READER);
+        // Only switch view if not already in reader or if book changed
+        setView(prev => prev === ViewState.READER ? prev : ViewState.READER);
         setIsCollectiveMode(true);
       }
     };
 
     newSocket.on("room-joined", handleRoomData);
     newSocket.on("room-updated", handleRoomData);
+
+    newSocket.on("error", (err: any) => {
+      console.error("Socket error:", err);
+      if (err.message === "Room not found") {
+        localStorage.removeItem('sanctuary_room_id');
+        setRoomId(null);
+        setIsCollectiveMode(false);
+        if (view === ViewState.READER && roomData) {
+          setView(ViewState.SHELF);
+        }
+      }
+    });
 
     newSocket.on("book-selected", ({ bookId, bookData }) => {
       if (bookData) {
@@ -265,12 +291,16 @@ const App: React.FC = () => {
       shelfId: activeShelfId,
       addedAt: Date.now(),
       lastPage: 0,
-      totalPages: 0,
+      stars: 0,
+      timeSpentSeconds: 0,
+      cover: '',
+      content: '',
       annotations: []
     };
     await pdfStorage.saveFile(newBook.id, pendingFileData);
-    storageService.addBook(newBook);
-    setBooks(storageService.getBooks());
+    const updatedBooks = [...books, newBook];
+    storageService.saveBooks(updatedBooks);
+    setBooks(updatedBooks);
     setIsAddingBook(false);
     setPendingFileData(null);
     setNewBookTitle('');
@@ -314,7 +344,7 @@ const App: React.FC = () => {
   const fontClass = lang === 'ar' ? 'font-ar' : 'font-en';
   const filteredBooks = books.filter(b => b.shelfId === activeShelfId);
   const activeBook = filteredBooks[activeBookIndex];
-  const activeBookStats = activeBook ? storageService.getBookStats(activeBook.id) : { minutes: 0, stars: 0 };
+  const activeBookStats = activeBook ? { minutes: Math.floor(activeBook.timeSpentSeconds / 60), stars: activeBook.stars } : { minutes: 0, stars: 0 };
 
   const insights: Insight[] = useMemo(() => [
     { text: lang === 'ar' ? 'أنت تقرأ بانتظام مذهل!' : 'You read with amazing regularity!', icon: <Sparkles className="text-yellow-400" size={18} />, color: 'bg-yellow-400/10 border-yellow-400/20', isShining: true },
